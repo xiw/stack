@@ -12,6 +12,7 @@ m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 # Checks for programs.
 AM_PROG_CC_C_O
 AC_PROG_CXX
+AM_PROG_AR
 AC_PROG_LN_S
 AC_PROG_MKDIR_P
 AC_PROG_SED
@@ -36,20 +37,23 @@ case $build_os in
 esac
 
 # Checks for SMT.
+AM_CONDITIONAL(Z3,false)
+AM_CONDITIONAL(BOOLECTOR,false)
 AC_MSG_CHECKING([for SMT solver])
 AC_ARG_ENABLE([z3],
 	AS_HELP_STRING([--enable-z3],[Use Z3 as SMT solver]))
 if test "x$enable_z3" = "xyes"; then
 	SMT_LIB=libz3.a
 	SMT_LIBADD="-lz3 -lgomp -lgmp"
-	AC_DEFINE([HAVE_Z3],[1],[Use Z3 as SMT solver])
 	AC_MSG_RESULT([Z3])
+	AC_SEARCH_LIBS([__gmpz_init],[gmp],,[AC_MSG_FAILURE([gmp not found])])
+	AM_CONDITIONAL(Z3,true)
 else
 	SMT_LIB=libboolector.a
 	SMT_LIBADD=-lboolector
-	AC_DEFINE([HAVE_BOOLECTOR],[1],[Use Boolector as SMT solver])
 	AC_MSG_RESULT([Boolector])
 	AC_SEARCH_LIBS([zlibVersion],[z],,[AC_MSG_FAILURE([zlib not found])])
+	AM_CONDITIONAL(BOOLECTOR,true)
 fi
 AC_SUBST([SMT_LIB])
 AC_SUBST([SMT_LIBADD])
