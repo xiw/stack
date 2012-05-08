@@ -11,8 +11,8 @@ endif
 if Z3
 libsat_la_SOURCES += SMTZ3.cc
 endif
-libsat_la_LDFLAGS  = -L`gcc -print-file-name=` -L$(top_builddir)/lib
 libsat_la_LIBADD   = $(SMT_LIBADD)
+libsat_la_LDFLAGS  = -L`gcc -print-file-name=` -L$(top_builddir)/lib
 
-libint_la_SOURCES = IntRewrite.cc
+libint_la_SOURCES = IntRewrite.cc IntSat.cc
 libint_la_LIBADD  = libsat.la
