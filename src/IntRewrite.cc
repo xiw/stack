@@ -94,4 +94,4 @@ bool IntRewrite::insertOverflowSat(Instruction *I, Intrinsic::ID SID, Intrinsic:
 char IntRewrite::ID;
 
 static RegisterPass<IntRewrite>
-X("int-rewrite", "Rewrite integer operations", false, false);
+X("int-rewrite", "Insert int.sat calls", false, false);
