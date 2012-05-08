@@ -18,6 +18,17 @@ struct SMTContextImpl {
 #define lhs ((Z3_ast)lhs_)
 #define rhs ((Z3_ast)rhs_)
 
+static inline Z3_ast bv2bool_(SMTContextImpl *ctx_, Z3_ast e0) {
+	return Z3_mk_eq(ctx, e0, ctx_->bvtrue);
+}
+
+static inline Z3_ast bool2bv_(SMTContextImpl *ctx_, Z3_ast e0) {
+	return Z3_mk_ite(ctx, e0, ctx_->bvtrue, ctx_->bvfalse);
+}
+
+#define bv2bool(x) bv2bool_(ctx_, x)
+#define bool2bv(x) bool2bv_(ctx_, x)
+
 SMTSolver::SMTSolver() {
 	ctx_ = new SMTContextImpl;
 	Z3_config cfg = Z3_mk_config();
@@ -37,7 +48,7 @@ SMTSolver::~SMTSolver() {
 }
 
 SMTStatus SMTSolver::query(SMTExpr e_, SMTModel *m_) {
-	Z3_assert_cnstr(ctx, e);
+	Z3_assert_cnstr(ctx, bv2bool(e));
 	Z3_lbool res = Z3_check_and_get_model(ctx, (Z3_model *)m_);
 	switch (res) {
 	default:         return SMT_UNDEF;
@@ -96,23 +107,12 @@ SMTExpr SMTSolver::bvvar(unsigned width, const char *name) {
 	return Z3_mk_const(ctx, Z3_mk_string_symbol(ctx, name), Z3_mk_bv_sort(ctx, width));
 }
 
-static inline Z3_ast bv2bool_(SMTContextImpl *ctx_, Z3_ast e0) {
-	return Z3_mk_eq(ctx, e0, ctx_->bvtrue);
-}
-
-static inline Z3_ast bool2bv_(SMTContextImpl *ctx_, Z3_ast e0) {
-	return Z3_mk_ite(ctx, e0, ctx_->bvtrue, ctx_->bvfalse);
-}
-
-#define bv2bool(x) bv2bool_(ctx_, x)
-#define bool2bv(x) bool2bv_(ctx_, x)
-
 SMTExpr SMTSolver::ite(SMTExpr e_, SMTExpr lhs_, SMTExpr rhs_) {
 	return Z3_mk_ite(ctx, bv2bool(e), lhs, rhs);
 }
 
 SMTExpr SMTSolver::eq(SMTExpr lhs_, SMTExpr rhs_) {
-	return Z3_mk_eq(ctx, lhs, rhs);
+	return bool2bv(Z3_mk_eq(ctx, lhs, rhs));
 }
 
 SMTExpr SMTSolver::ne(SMTExpr lhs_, SMTExpr rhs_) {
