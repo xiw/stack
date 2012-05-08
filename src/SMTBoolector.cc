@@ -5,7 +5,9 @@
 #include <llvm/Support/raw_ostream.h>
 #include <assert.h>
 #include <stdio.h>
+extern "C" {
 #include <boolector/boolector.h>
+}
 
 #define ctx ((Btor *)ctx_)
 #define m   ((Btor *)m_)
