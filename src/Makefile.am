@@ -1,14 +1,18 @@
 AM_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall -Wno-unknown-pragmas
 
-lib_LIBRARIES = libsmt.a
-#lib_LTLIBRARIES = libkint.la
+noinst_LTLIBRARIES = libsat.la
+lib_LTLIBRARIES    = libint.la
 
-libsmt_a_CPPFLAGS = -I$(top_builddir)/lib
-libsmt_a_SOURCES  = ValueGen.cc PathGen.cc
+libsat_la_CPPFLAGS = -I$(top_builddir)/lib
+libsat_la_SOURCES  = ValueGen.cc PathGen.cc
 if BOOLECTOR
-libsmt_a_SOURCES += SMTBoolector.cc
+libsat_la_SOURCES += SMTBoolector.cc
 endif
 if Z3
-libsmt_a_SOURCES += SMTZ3.cc
+libsat_la_SOURCES += SMTZ3.cc
 endif
+libsat_la_LDFLAGS  = -L`gcc -print-file-name=` -L$(top_builddir)/lib
+libsat_la_LIBADD   = $(SMT_LIBADD)
 
+libint_la_SOURCES = IntRewrite.cc
+libint_la_LIBADD  = libsat.la
