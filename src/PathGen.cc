@@ -8,8 +8,8 @@ using namespace llvm;
 
 #define SMT VG.SMT
 
-PathGen::PathGen(ValueGen &VG)
-	: VG(VG) {}
+PathGen::PathGen(ValueGen &VG, const EdgeVec &BE)
+	: VG(VG), BackEdges(BE) {}
 
 PathGen::~PathGen() {
 	for (iterator i = Cache.begin(), e = Cache.end(); i != e; ++i)

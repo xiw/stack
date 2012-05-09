@@ -14,25 +14,24 @@ namespace llvm {
 class ValueGen;
 
 class PathGen {
-	ValueGen &VG;
-
+public:
 	typedef llvm::DenseMap<llvm::BasicBlock *, SMTExpr> BBExprMap;
 	typedef BBExprMap::iterator iterator;
-	BBExprMap Cache;
+	typedef std::pair<const llvm::BasicBlock *, const llvm::BasicBlock *> Edge;
+	typedef llvm::SmallVectorImpl<Edge> EdgeVec;
 
-	typedef std::pair<
-		const llvm::BasicBlock *, const llvm::BasicBlock *
-	> Edge;
-	llvm::SmallVector<Edge, 16> BackEdges;
+	PathGen(ValueGen &, const EdgeVec &);
+	~PathGen();
+
+	SMTExpr get(llvm::BasicBlock *);
+
+private:
+	ValueGen &VG;
+	const EdgeVec &BackEdges;
+	BBExprMap Cache;
 
 	SMTExpr getTermGuard(llvm::TerminatorInst *I, llvm::BasicBlock *BB);
 	SMTExpr getTermGuard(llvm::BranchInst *I, llvm::BasicBlock *BB);
 	SMTExpr getTermGuard(llvm::SwitchInst *I, llvm::BasicBlock *BB);
 	SMTExpr getPHIGuard(llvm::BasicBlock *BB, llvm::BasicBlock *Pred);
-
-public:
-	PathGen(ValueGen &);
-	~PathGen();
-
-	SMTExpr get(llvm::BasicBlock *);
 };

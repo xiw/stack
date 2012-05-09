@@ -1,8 +1,12 @@
 #define DEBUG_TYPE "int-sat"
+#include <llvm/BasicBlock.h>
 #include <llvm/Instructions.h>
+#include <llvm/Function.h>
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/ADT/SmallVector.h>
 #include <llvm/Target/TargetData.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "PathGen.h"
 #include "SMTSolver.h"
 #include "ValueGen.h"
@@ -24,6 +28,8 @@ struct IntSat : ModulePass {
 
 private:
 	TargetData *TD;
+	Function *CurF;
+	SmallVector<PathGen::Edge, 32> BackEdges;
 
 	void check(CallInst *);
 };
@@ -31,13 +37,15 @@ private:
 } // anonymous namespace
 
 bool IntSat::runOnModule(Module &M) {
-	Function *F = M.getFunction("int.sat");
-	if (F) {
+	Function *IntSat = M.getFunction("int.sat");
+	if (IntSat) {
 		TD = &getAnalysis<TargetData>();
-		Function::use_iterator i = F->use_begin(), e = F->use_end();
+		CurF = 0;
+		BackEdges.clear();
+		Function::use_iterator i = IntSat->use_begin(), e = IntSat->use_end();
 		for (; i != e; ++i) {
 			CallInst *CI = dyn_cast<CallInst>(*i);
-			if (CI && CI->getCalledFunction() == F)
+			if (CI && CI->getCalledFunction() == IntSat)
 				check(CI);
 		}
 	}
@@ -45,12 +53,19 @@ bool IntSat::runOnModule(Module &M) {
 }
 
 void IntSat::check(CallInst *I) {
+	BasicBlock *BB = I->getParent();
+	Function *F = BB->getParent();
+	if (CurF != F) {
+		CurF = F;
+		BackEdges.clear();
+		FindFunctionBackedges(*F, BackEdges);
+	}
 	SMTSolver SMT;
 	ValueGen VG(*TD, SMT);
-	PathGen PG(VG);
+	PathGen PG(VG, BackEdges);
 	Value *V = I->getArgOperand(0);
 	SMTExpr ValuePred = VG.get(V);
-	SMTExpr PathPred = PG.get(I->getParent());
+	SMTExpr PathPred = PG.get(BB);
 	SMT.dump(ValuePred);
 	SMT.dump(PathPred);
 #if 0
