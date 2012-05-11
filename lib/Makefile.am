@@ -1,8 +1,8 @@
 if LINUX
-Z3        = z3-x64-3.2
+Z3        = z3-x64-4.0
 endif
 if DARWIN
-Z3        = z3-osx-3.2.1
+Z3        = z3-osx-4.0
 endif
 BOOLECTOR = boolector-1.4.1-376e6b0-110304
 PICOSAT   = picosat-936
