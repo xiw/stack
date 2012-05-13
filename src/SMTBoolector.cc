@@ -9,6 +9,8 @@ extern "C" {
 #include <boolector/boolector.h>
 }
 
+using namespace llvm;
+
 #define ctx ((Btor *)ctx_)
 #define m   ((Btor *)m_)
 #define e   ((BtorExp *)e_)
@@ -38,20 +40,21 @@ SMTStatus SMTSolver::query(SMTExpr e_, SMTModel *m_) {
 	return SMT_SAT;
 }
 
-void SMTSolver::eval(SMTModel m_, SMTExpr e_, llvm::raw_ostream &OS) {
+void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
 	char *s = boolector_bv_assignment(ctx, e);
-	OS << s;
+	APInt Val(bvwidth(e), s, 2);
 	boolector_free_bv_assignment(ctx, s);
+	OS << "0x" << Val.toString(16, false);;
 }
 
 void SMTSolver::release(SMTModel m_) {}
 
 void SMTSolver::dump(SMTExpr e_) {
-	print(e, llvm::dbgs());
-	llvm::dbgs() << "\n";
+	print(e, dbgs());
+	dbgs() << "\n";
 }
 
-void SMTSolver::print(SMTExpr e_, llvm::raw_ostream &OS) {
+void SMTSolver::print(SMTExpr e_, raw_ostream &OS) {
 	FILE *fp = tmpfile();
 	assert(fp && "tmpfile");
 	boolector_dump_smt(ctx, fp, e);
@@ -86,12 +89,12 @@ SMTExpr SMTSolver::bvtrue() {
 	return boolector_true(ctx);
 }
 
-SMTExpr SMTSolver::bvconst(const llvm::APInt &Val) {
+SMTExpr SMTSolver::bvconst(const APInt &Val) {
 	unsigned intbits = sizeof(unsigned) * CHAR_BIT;
 	unsigned width = Val.getBitWidth();
 	if (width <= intbits)
 		return boolector_unsigned_int(ctx, Val.getZExtValue(), width);
-	llvm::SmallString<32> Str, FullStr;
+	SmallString<32> Str, FullStr;
 	Val.toStringUnsigned(Str, 2);
 	assert(Str.size() <= width);
 	FullStr.assign(width - Str.size(), '0');
