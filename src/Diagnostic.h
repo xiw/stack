@@ -19,11 +19,12 @@ public:
 	virtual ~DiagnosticImpl() {}
 	virtual void emit(const llvm::DebugLoc &) = 0;
 	virtual void emit(const llvm::Twine &) = 0;
+	virtual llvm::raw_ostream &os() = 0;
 };
 
 class Diagnostic {
 public:
-	Diagnostic(llvm::raw_ostream &, llvm::LLVMContext &);
+	Diagnostic(llvm::LLVMContext &);
 	Diagnostic &operator <<(const llvm::DebugLoc &DbgLoc) {
 		Diag->emit(DbgLoc);
 		return *this;
@@ -32,6 +33,7 @@ public:
 		Diag->emit(Msg);
 		return *this;
 	}
+	llvm::raw_ostream &os() { return Diag->os(); }
 private:
 	llvm::OwningPtr<DiagnosticImpl> Diag;
 };

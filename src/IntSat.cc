@@ -75,8 +75,7 @@ void IntSat::check(CallInst *I) {
 	SMTModel Model = 0;
 	SMTStatus Status = SMT.query(Query, &Model);
 	SMT.decref(Query);
-	raw_ostream &OS = llvm::errs();
-	Diagnostic Diag(OS, F->getContext());
+	Diagnostic Diag(F->getContext());
 	switch (Status) {
 	default:
 	case SMT_UNSAT:
@@ -84,6 +83,18 @@ void IntSat::check(CallInst *I) {
 	case SMT_SAT:
 		Diag << I->getDebugLoc() << "reason";
 		break;
+	}
+	if (Model) {
+		for (ValueGen::iterator i = VG.begin(), e = VG.end(); i != e; ++i) {
+			Value *KeyV = i->first;
+			if (isa<Constant>(KeyV))
+				continue;
+			raw_ostream &OS = Diag.os();
+			WriteAsOperand(OS, KeyV, false, F->getParent());
+			OS << ":\t";
+			SMT.eval(Model, i->second, OS);
+			OS << '\n';
+		}
 	}
 }
 

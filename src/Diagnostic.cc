@@ -14,11 +14,12 @@ namespace {
 
 class BugReporter : public DiagnosticImpl {
 public:
-	BugReporter(raw_ostream &OS, LLVMContext &VMCtx) : OS(OS), VMCtx(VMCtx) {
+	BugReporter(LLVMContext &VMCtx) : OS(llvm::errs()), VMCtx(VMCtx) {
 		isDisplayed = OS.is_displayed();
 	}
 	virtual void emit(const llvm::DebugLoc &);
 	virtual void emit(const llvm::Twine &Str);
+	virtual llvm::raw_ostream &os() { return OS; }
 private:
 	raw_ostream &OS;
 	LLVMContext &VMCtx;
@@ -28,11 +29,11 @@ private:
 
 class BugVerifier : public DiagnosticImpl {
 public:
-	BugVerifier(raw_ostream &OS, const char *Str) : OS(OS), Prefix(Str) {}
+	BugVerifier(const char *Str) : Prefix(Str) {}
 	virtual void emit(const llvm::DebugLoc &);
 	virtual void emit(const llvm::Twine &Str);
+	virtual llvm::raw_ostream &os() { return nulls(); }
 private:
-	raw_ostream &OS;
 	std::string Prefix, Expected;
 	unsigned Line, Col;
 };
@@ -41,12 +42,12 @@ private:
 
 // Diagnostic
 
-Diagnostic::Diagnostic(raw_ostream &OS, LLVMContext &VMCtx) {
+Diagnostic::Diagnostic(LLVMContext &VMCtx) {
 	if (const char *Prefix = ::getenv("VERIFY_PREFIX")) {
-		Diag.reset(new BugVerifier(OS, Prefix));
+		Diag.reset(new BugVerifier(Prefix));
 		return;
 	}
-	Diag.reset(new BugReporter(OS, VMCtx));
+	Diag.reset(new BugReporter(VMCtx));
 }
 
 // BugReporter
