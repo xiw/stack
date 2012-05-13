@@ -168,11 +168,11 @@ void BugVerifier::emit(const Twine &Str) {
 void BugVerifier::addExp(const MDNode *MD, unsigned LineNo, StringRef Str) {
 	// Extract expected string.
 	Str = Str.split(Prefix).second;
-	for (;;) {
+	while (!Str.empty()) {
 		StringRef ExpStr;
 		tie(ExpStr, Str) = Str.split("{{").second.split("}}");
-		if (Str.empty())
-			break;
+		if (ExpStr.empty())
+			continue;
 		Exps.push_back(ExpString(MD, LineNo, ExpStr));
 	}
 }
