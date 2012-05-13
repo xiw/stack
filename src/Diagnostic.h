@@ -4,15 +4,10 @@
 
 namespace llvm {
 	class DebugLoc;
-	class LLVMContext;
+	class Module;
 	class Twine;
 	class raw_ostream;
 } // namespace llvm
-
-enum DiagnosticClass {
-	DIAG_BUG,
-	DIAG_OK,
-};
 
 class DiagnosticImpl {
 public:
@@ -24,7 +19,7 @@ public:
 
 class Diagnostic {
 public:
-	Diagnostic(llvm::LLVMContext &);
+	Diagnostic(llvm::Module &);
 	Diagnostic &operator <<(const llvm::DebugLoc &DbgLoc) {
 		Diag->emit(DbgLoc);
 		return *this;

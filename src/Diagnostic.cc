@@ -1,4 +1,6 @@
 #include "Diagnostic.h"
+#include "FileCache.h"
+#include <llvm/Module.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/ADT/StringRef.h>
@@ -14,16 +16,18 @@ namespace {
 
 class BugReporter : public DiagnosticImpl {
 public:
-	BugReporter(LLVMContext &VMCtx) : OS(llvm::errs()), VMCtx(VMCtx) {
+	BugReporter(Module &M) : OS(llvm::errs()), M(M) {
 		isDisplayed = OS.is_displayed();
 	}
 	virtual void emit(const llvm::DebugLoc &);
-	virtual void emit(const llvm::Twine &Str);
+	virtual void emit(const llvm::Twine &);
 	virtual llvm::raw_ostream &os() { return OS; }
 private:
 	raw_ostream &OS;
-	LLVMContext &VMCtx;
+	Module &M;
 	bool isDisplayed;
+	FileCache Cache;
+	StringRef Line;
 };
 
 
@@ -31,7 +35,7 @@ class BugVerifier : public DiagnosticImpl {
 public:
 	BugVerifier(const char *Str) : Prefix(Str) {}
 	virtual void emit(const llvm::DebugLoc &);
-	virtual void emit(const llvm::Twine &Str);
+	virtual void emit(const llvm::Twine &);
 	virtual llvm::raw_ostream &os() { return nulls(); }
 private:
 	std::string Prefix, Expected;
@@ -42,12 +46,12 @@ private:
 
 // Diagnostic
 
-Diagnostic::Diagnostic(LLVMContext &VMCtx) {
+Diagnostic::Diagnostic(Module &M) {
 	if (const char *Prefix = ::getenv("VERIFY_PREFIX")) {
 		Diag.reset(new BugVerifier(Prefix));
 		return;
 	}
-	Diag.reset(new BugReporter(VMCtx));
+	Diag.reset(new BugReporter(M));
 }
 
 // BugReporter
@@ -55,8 +59,10 @@ Diagnostic::Diagnostic(LLVMContext &VMCtx) {
 void BugReporter::emit(const DebugLoc &DbgLoc) {
 	if (isDisplayed)
 		OS.changeColor(raw_ostream::CYAN);
-	llvm::MDNode *N = DbgLoc.getAsMDNode(VMCtx);
-	llvm::DILocation Loc(N);
+	LLVMContext &VMCtx = M.getContext();
+	Line = Cache.getLine(DbgLoc, VMCtx);
+	MDNode *N = DbgLoc.getAsMDNode(VMCtx);
+	DILocation Loc(N);
 	for (;;) {
 		OS << Loc.getDirectory() << Loc.getFilename() << ':';
 		OS << Loc.getLineNumber() << ':';
@@ -78,6 +84,8 @@ void BugReporter::emit(const llvm::Twine &Str) {
 	OS << Str << '\n';
 	if (isDisplayed)
 		OS.resetColor();
+	if (!Line.empty())
+		OS << Line << '\n';
 }
 
 // BugVerifier

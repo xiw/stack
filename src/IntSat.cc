@@ -4,13 +4,13 @@
 #include <llvm/Function.h>
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/ADT/OwningPtr.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Assembly/Writer.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "Diagnostic.h"
-#include "FileCache.h"
 #include "PathGen.h"
 #include "SMTSolver.h"
 #include "ValueGen.h"
@@ -34,7 +34,7 @@ private:
 	TargetData *TD;
 	Function *CurF;
 	SmallVector<PathGen::Edge, 32> BackEdges;
-	FileCache Cache;
+	OwningPtr<Diagnostic> Diag;
 
 	void check(CallInst *);
 };
@@ -47,6 +47,7 @@ bool IntSat::runOnModule(Module &M) {
 		TD = &getAnalysis<TargetData>();
 		CurF = 0;
 		BackEdges.clear();
+		Diag.reset(new Diagnostic(M));
 		Function::use_iterator i = IntSat->use_begin(), e = IntSat->use_end();
 		for (; i != e; ++i) {
 			CallInst *CI = dyn_cast<CallInst>(*i);
@@ -77,22 +78,15 @@ void IntSat::check(CallInst *I) {
 	SMTModel Model = 0;
 	SMTStatus Status = SMT.query(Query, &Model);
 	SMT.decref(Query);
-	Diagnostic Diag(F->getContext());
-	raw_ostream &OS = Diag.os();
-	const DebugLoc &DbgLoc = I->getDebugLoc();
-	StringRef Line;
 	switch (Status) {
-	default:
+	default: break;
 	case SMT_UNSAT:
-		break;
-	case SMT_SAT:
-		Diag << DbgLoc << "reason";
-		Line = Cache.getLine(DbgLoc, I->getContext());
-		if (!Line.empty())
-			OS << Line << '\n';
-		break;
+		return;
 	}
+	*Diag << I->getDebugLoc() << "reason";
+	// Output model.
 	if (Model) {
+		raw_ostream &OS = Diag->os();
 		for (ValueGen::iterator i = VG.begin(), e = VG.end(); i != e; ++i) {
 			Value *KeyV = i->first;
 			if (isa<Constant>(KeyV))
