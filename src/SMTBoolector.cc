@@ -48,6 +48,7 @@ void SMTSolver::release(SMTModel m_) {}
 
 void SMTSolver::dump(SMTExpr e_) {
 	print(e, llvm::dbgs());
+	llvm::dbgs() << "\n";
 }
 
 void SMTSolver::print(SMTExpr e_, llvm::raw_ostream &OS) {
