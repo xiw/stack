@@ -2,6 +2,8 @@
 #include <llvm/DerivedTypes.h>
 #include <llvm/Instructions.h>
 #include <llvm/Intrinsics.h>
+#include <llvm/LLVMContext.h>
+#include <llvm/Metadata.h>
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/InstIterator.h>
@@ -21,6 +23,7 @@ struct IntRewrite : FunctionPass {
 	virtual bool doInitialization(Module &M) {
 		this->IntSat = 0;
 		this->M = &M;
+		this->MD_int = M.getContext().getMDKindID("int");
 		return false;
 	}
 
@@ -29,6 +32,7 @@ struct IntRewrite : FunctionPass {
 private:
 	Function *IntSat;
 	Module *M;
+	unsigned MD_int;
 
 	Function *getSat() {
 		if (!IntSat) {
@@ -42,9 +46,12 @@ private:
 		return IntSat;
 	}
 
-	void insertSat(Value *V, Instruction *IP) {
+	void insertSat(Value *V, Instruction *IP, StringRef Anno) {
 		Instruction *I = CallInst::Create(getSat(), V, "", IP);
 		I->setDebugLoc(IP->getDebugLoc());
+		LLVMContext &VMCtx = M->getContext();
+		MDNode *MD = MDNode::get(VMCtx, MDString::get(VMCtx, Anno));
+		I->setMetadata(MD_int, MD);
 	}
 
 	bool insertOverflowSat(Instruction *, Intrinsic::ID, Intrinsic::ID);
@@ -87,7 +94,7 @@ bool IntRewrite::insertOverflowSat(Instruction *I, Intrinsic::ID SID, Intrinsic:
 	Value *Args[] = {BO->getOperand(0), BO->getOperand(1)};
 	CallInst *CI = CallInst::Create(F, Args, "", BO);
 	ExtractValueInst *EVI = ExtractValueInst::Create(CI, 1, "", BO);
-	insertSat(EVI, BO);
+	insertSat(EVI, BO, F->getName().substr(5, 4));
 	return true;
 }
 

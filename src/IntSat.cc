@@ -2,6 +2,7 @@
 #include <llvm/BasicBlock.h>
 #include <llvm/Instructions.h>
 #include <llvm/Function.h>
+#include <llvm/LLVMContext.h>
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/OwningPtr.h>
@@ -35,6 +36,7 @@ private:
 	Function *CurF;
 	SmallVector<PathGen::Edge, 32> BackEdges;
 	OwningPtr<Diagnostic> Diag;
+	unsigned MD_int;
 
 	void check(CallInst *);
 };
@@ -48,6 +50,7 @@ bool IntSat::runOnModule(Module &M) {
 		CurF = 0;
 		BackEdges.clear();
 		Diag.reset(new Diagnostic(M));
+		MD_int = M.getContext().getMDKindID("int");
 		Function::use_iterator i = IntSat->use_begin(), e = IntSat->use_end();
 		for (; i != e; ++i) {
 			CallInst *CI = dyn_cast<CallInst>(*i);
@@ -83,7 +86,11 @@ void IntSat::check(CallInst *I) {
 	case SMT_UNSAT:
 		return;
 	}
-	*Diag << I->getDebugLoc() << "reason";
+	// Output location and operator.
+	StringRef Reason = cast<MDString>(
+		I->getMetadata(MD_int)->getOperand(0)
+	)->getString();
+	*Diag << I->getDebugLoc() << Reason;
 	// Output model.
 	if (Model) {
 		raw_ostream &OS = Diag->os();
