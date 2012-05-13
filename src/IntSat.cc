@@ -10,6 +10,7 @@
 #include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "Diagnostic.h"
+#include "FileCache.h"
 #include "PathGen.h"
 #include "SMTSolver.h"
 #include "ValueGen.h"
@@ -33,6 +34,7 @@ private:
 	TargetData *TD;
 	Function *CurF;
 	SmallVector<PathGen::Edge, 32> BackEdges;
+	FileCache Cache;
 
 	void check(CallInst *);
 };
@@ -76,12 +78,18 @@ void IntSat::check(CallInst *I) {
 	SMTStatus Status = SMT.query(Query, &Model);
 	SMT.decref(Query);
 	Diagnostic Diag(F->getContext());
+	raw_ostream &OS = Diag.os();
+	const DebugLoc &DbgLoc = I->getDebugLoc();
+	StringRef Line;
 	switch (Status) {
 	default:
 	case SMT_UNSAT:
 		break;
 	case SMT_SAT:
-		Diag << I->getDebugLoc() << "reason";
+		Diag << DbgLoc << "reason";
+		Line = Cache.getLine(DbgLoc, I->getContext());
+		if (!Line.empty())
+			OS << Line << '\n';
 		break;
 	}
 	if (Model) {
@@ -89,7 +97,6 @@ void IntSat::check(CallInst *I) {
 			Value *KeyV = i->first;
 			if (isa<Constant>(KeyV))
 				continue;
-			raw_ostream &OS = Diag.os();
 			WriteAsOperand(OS, KeyV, false, F->getParent());
 			OS << ":\t";
 			SMT.eval(Model, i->second, OS);
