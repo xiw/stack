@@ -61,7 +61,7 @@ void SMTSolver::eval(SMTModel m_, SMTExpr e_, llvm::raw_ostream &OS) {
 	Z3_ast v = 0;
 	Z3_bool ret = Z3_eval(ctx, m, e, &v);
 	assert(ret);
-	assert(!v);
+	assert(v);
 	OS << Z3_ast_to_string(ctx, v);
 }
 
