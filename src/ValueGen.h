@@ -22,4 +22,6 @@ public:
 
 	SMTExpr get(llvm::Value *);
 
+	iterator begin() { return Cache.begin(); }
+	iterator end() { return Cache.end(); }
 };
