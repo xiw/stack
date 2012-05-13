@@ -5,8 +5,11 @@
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/Assembly/Writer.h>
+#include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include "Diagnostic.h"
 #include "PathGen.h"
 #include "SMTSolver.h"
 #include "ValueGen.h"
@@ -53,6 +56,9 @@ bool IntSat::runOnModule(Module &M) {
 }
 
 void IntSat::check(CallInst *I) {
+	Value *V = I->getArgOperand(0);
+	if (isa<Constant>(V))
+		return;
 	BasicBlock *BB = I->getParent();
 	Function *F = BB->getParent();
 	if (CurF != F) {
@@ -63,24 +69,22 @@ void IntSat::check(CallInst *I) {
 	SMTSolver SMT;
 	ValueGen VG(*TD, SMT);
 	PathGen PG(VG, BackEdges);
-	Value *V = I->getArgOperand(0);
 	SMTExpr ValuePred = VG.get(V);
 	SMTExpr PathPred = PG.get(BB);
-	SMT.dump(ValuePred);
-	SMT.dump(PathPred);
-#if 0
 	SMTExpr Query = SMT.bvand(ValuePred, PathPred);
 	SMTModel Model = 0;
 	SMTStatus Status = SMT.query(Query, &Model);
 	SMT.decref(Query);
+	raw_ostream &OS = llvm::errs();
+	Diagnostic Diag(OS, F->getContext());
 	switch (Status) {
 	default:
 	case SMT_UNSAT:
+		break;
 	case SMT_SAT:
-	case SMT_TIMEOUT:
+		Diag << I->getDebugLoc() << "reason";
 		break;
 	}
-#endif
 }
 
 char IntSat::ID;
