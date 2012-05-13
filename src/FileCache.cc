@@ -14,7 +14,7 @@ FileCache::~FileCache() {
 		delete i->second;
 }
 
-StringRef FileCache::getLine(StringRef Filename, unsigned Line) {
+StringRef FileCache::getFile(llvm::StringRef Filename) {
 	MemoryBuffer *&MB = BM[Filename];
 	if (!MB) {
 		OwningPtr<MemoryBuffer> Result;
@@ -23,7 +23,19 @@ StringRef FileCache::getLine(StringRef Filename, unsigned Line) {
 			return StringRef();
 		MB = Result.take();
 	}
-	StringRef First, Second = MB->getBuffer();
+	return MB->getBuffer();
+}
+
+StringRef FileCache::getFile(const MDNode *MD) {
+	DICompileUnit CU(MD);
+	if (!CU.Verify())
+		return StringRef();
+	std::string Path = (CU.getDirectory() + CU.getFilename()).str();
+	return getFile(Path);
+}
+
+StringRef FileCache::getLine(StringRef Filename, unsigned Line) {
+	StringRef First, Second = getFile(Filename);
 	for (unsigned i = 0; i != Line; ++i)
 		tie(First, Second) = Second.split('\n');
 	return First;

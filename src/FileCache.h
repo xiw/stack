@@ -5,12 +5,15 @@
 namespace llvm {
 	class DebugLoc;
 	class LLVMContext;
+	class MDNode;
 	class MemoryBuffer;
 } // namespace llvm
 
 class FileCache {
 public:
 	~FileCache();
+	llvm::StringRef getFile(llvm::StringRef Filename);
+	llvm::StringRef getFile(const llvm::MDNode *);
 	llvm::StringRef getLine(llvm::StringRef Filename, unsigned Line);
 	llvm::StringRef getLine(const llvm::DebugLoc &, llvm::LLVMContext &);
 private:
