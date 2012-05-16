@@ -6,6 +6,8 @@
 #include <assert.h>
 #include <z3.h>
 
+using namespace llvm;
+
 struct SMTContextImpl {
 	Z3_context c;
 	Z3_ast bvfalse;
@@ -57,11 +59,27 @@ SMTStatus SMTSolver::query(SMTExpr e_, SMTModel *m_) {
 	}
 }
 
-void SMTSolver::eval(SMTModel m_, SMTExpr e_, llvm::raw_ostream &OS) {
+void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
 	Z3_ast v = 0;
-	Z3_bool ret = Z3_eval(ctx, m, e, &v);
+	Z3_bool ret = Z3_model_eval(ctx, m, e, Z3_TRUE, &v);
 	assert(ret);
 	assert(v);
+	if (Z3_is_numeral_ast(ctx, v)) {
+		APInt Val(bvwidth(v), Z3_get_numeral_string(ctx, v), 10);
+		OS << "0x" << Val.toString(16, false);
+		return;
+	}
+	if (bvwidth(v) == 1 && Z3_is_app(ctx, v)) {
+		Z3_push(ctx);
+		Z3_assert_cnstr(ctx, Z3_mk_eq(ctx, v, ctx_->bvtrue));
+		switch (Z3_check(ctx)) {
+		default: assert(0);
+		case Z3_L_FALSE: OS << "0x0"; break;
+		case Z3_L_TRUE:  OS << "0x1"; break; 
+		}
+		Z3_pop(ctx, 1);
+		return;
+	}
 	OS << Z3_ast_to_string(ctx, v);
 }
 
@@ -70,11 +88,11 @@ void SMTSolver::release(SMTModel m_) {
 }
 
 void SMTSolver::dump(SMTExpr e_) {
-	print(e, llvm::dbgs());
-	llvm::dbgs() << "\n";
+	print(e, dbgs());
+	dbgs() << "\n";
 }
 
-void SMTSolver::print(SMTExpr e_, llvm::raw_ostream &OS) {
+void SMTSolver::print(SMTExpr e_, raw_ostream &OS) {
 	OS << Z3_ast_to_string(ctx, Z3_simplify(ctx, e));
 }
 
@@ -94,12 +112,12 @@ SMTExpr SMTSolver::bvtrue() {
 	return ctx_->bvtrue;
 }
 
-SMTExpr SMTSolver::bvconst(const llvm::APInt &Val) {
+SMTExpr SMTSolver::bvconst(const APInt &Val) {
 	unsigned width = Val.getBitWidth();
 	Z3_sort t = Z3_mk_bv_sort(ctx, width);
 	if (width <= 64)
 		return Z3_mk_unsigned_int64(ctx, Val.getZExtValue(), t);
-	llvm::SmallString<32> s;
+	SmallString<32> s;
 	Val.toStringUnsigned(s);
 	return Z3_mk_numeral(ctx, s.c_str(), t);
 }
