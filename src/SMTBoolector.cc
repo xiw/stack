@@ -44,7 +44,9 @@ void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
 	char *s = boolector_bv_assignment(ctx, e);
 	APInt Val(bvwidth(e), s, 2);
 	boolector_free_bv_assignment(ctx, s);
-	OS << "0x" << Val.toString(16, false);;
+	if (Val.uge(0xa))
+		OS << "0x";
+	OS << Val.toString(16, false);;
 }
 
 void SMTSolver::release(SMTModel m_) {}

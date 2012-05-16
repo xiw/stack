@@ -66,7 +66,9 @@ void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
 	assert(v);
 	if (Z3_is_numeral_ast(ctx, v)) {
 		APInt Val(bvwidth(v), Z3_get_numeral_string(ctx, v), 10);
-		OS << "0x" << Val.toString(16, false);
+		if (Val.uge(0xa))
+			OS << "0x";
+		OS << Val.toString(16, false);
 		return;
 	}
 	if (bvwidth(v) == 1 && Z3_is_app(ctx, v)) {
@@ -74,8 +76,8 @@ void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
 		Z3_assert_cnstr(ctx, Z3_mk_eq(ctx, v, ctx_->bvtrue));
 		switch (Z3_check(ctx)) {
 		default: assert(0);
-		case Z3_L_FALSE: OS << "0x0"; break;
-		case Z3_L_TRUE:  OS << "0x1"; break; 
+		case Z3_L_FALSE: OS << "0"; break;
+		case Z3_L_TRUE:  OS << "1"; break;
 		}
 		Z3_pop(ctx, 1);
 		return;
