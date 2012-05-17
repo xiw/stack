@@ -7,6 +7,7 @@
 #include <llvm/ADT/Twine.h>
 #include <llvm/Analysis/DebugInfo.h>
 #include <llvm/Support/DebugLoc.h>
+#include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
 #include <algorithm>
 #include <cstdlib>
@@ -91,8 +92,9 @@ void BugReporter::emit(const DebugLoc &DbgLoc) {
 	MDNode *N = DbgLoc.getAsMDNode(VMCtx);
 	DILocation Loc(N);
 	for (;;) {
-		OS << Loc.getDirectory() << Loc.getFilename() << ':';
-		OS << Loc.getLineNumber() << ':';
+		SmallString<64> Path;
+		sys::path::append(Path, Loc.getDirectory(), Loc.getFilename());
+		OS << Path << ':' << Loc.getLineNumber() << ':';
 		if (unsigned Col = Loc.getColumnNumber())
 			OS << Col << ':';
 		Loc = Loc.getOrigLocation();

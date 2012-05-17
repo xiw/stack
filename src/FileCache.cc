@@ -1,10 +1,12 @@
 #include "FileCache.h"
 #include <llvm/ADT/OwningPtr.h>
+#include <llvm/ADT/SmallString.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/Twine.h>
 #include <llvm/Analysis/DebugInfo.h>
 #include <llvm/Support/DebugLoc.h>
 #include <llvm/Support/MemoryBuffer.h>
+#include <llvm/Support/Path.h>
 #include <llvm/Support/system_error.h>
 
 using namespace llvm;
@@ -30,7 +32,8 @@ StringRef FileCache::getFile(const MDNode *MD) {
 	DICompileUnit CU(MD);
 	if (!CU.Verify())
 		return StringRef();
-	std::string Path = (CU.getDirectory() + CU.getFilename()).str();
+	SmallString<64> Path;
+	sys::path::append(Path, CU.getDirectory(), CU.getFilename());
 	return getFile(Path);
 }
 
