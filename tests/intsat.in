@@ -1,0 +1,3 @@
+#!/bin/bash
+
+opt -load=@abs_top_builddir@/src/.libs/libint.so -disable-output -overflow -int-rewrite -int-sat $@

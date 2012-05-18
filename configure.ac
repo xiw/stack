@@ -74,5 +74,8 @@ AC_CONFIG_FILES([
 	Makefile
 	lib/Makefile
 	src/Makefile
+	tests/Makefile
+	tests/lit.cfg
 ])
+AC_CONFIG_FILES([tests/intsat],[chmod a+x tests/intsat])
 AC_OUTPUT

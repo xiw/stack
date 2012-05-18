@@ -1,0 +1,19 @@
+config.name             = 'ksat'
+config.test_format      = lit.formats.ShTest()
+config.suffixes         = ['.c']
+
+config.target_triple    = "@host@"
+config.test_exec_root   = "@abs_builddir@"
+config.test_source_root = "@abs_srcdir@"
+
+import os, os.path
+
+llvmcc = os.getenv('LLVMCC')
+if not llvmcc:
+	lit.fatal('LLVMCC not set')
+config.environment['LLVMCC'] = llvmcc
+
+kcc = os.path.join(config.test_source_root, 'kcc')
+if not os.path.exists(kcc):
+	lit.fatal("kcc not found")
+config.substitutions.append( ('%kcc', kcc) )
