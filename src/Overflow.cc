@@ -66,26 +66,35 @@ bool Overflow::runOnFunction(Function &F) {
 		Builder->SetInsertPoint(I);
 		Value *L = I->getOperand(0), *R = I->getOperand(1);
 		Value *V = tryIntrinsicWithInverse(I->getPredicate(), L, R);
-		if (!V && !I->isEquality())
+		if (!V)
 			V = tryIntrinsicWithInverse(I->getSwappedPredicate(), R, L);
-		if (V) {
-			if (Instruction *NewInst = dyn_cast<Instruction>(V))
-				NewInst->setDebugLoc(I->getDebugLoc());
-			I->replaceAllUsesWith(V);
-			RecursivelyDeleteTriviallyDeadInstructions(I);
-			Changed = true;
-		}
+		if (!V)
+			continue;
+		if (Instruction *NewInst = dyn_cast<Instruction>(V))
+			NewInst->setDebugLoc(I->getDebugLoc());
+		I->replaceAllUsesWith(V);
+		RecursivelyDeleteTriviallyDeadInstructions(I);
+		Changed = true;
 	}
 	return Changed;
 }
 
 Value *Overflow::tryIntrinsic(CmpInst::Predicate Pred, Value *L, Value *R) {
-	llvm::Value *X, *Y;
+	llvm::Value *X, *Y, *A;
 
-	// x > UMAX / y
+	// x >u UMAX /u y
 	if (Pred == llvm::CmpInst::ICMP_UGT
 		&& match(L, m_Value(X))
 		&& match(R, m_UDiv(m_AllOnes(), m_Value(Y)))) {
+			return createOverflowBit(Intrinsic::umul_with_overflow, X, Y);
+        }
+
+	// x != (x * y) /u y, x != (y * x) /u y
+	if (Pred == llvm::CmpInst::ICMP_NE
+		&& match(L, m_Value(X))
+		&& match(R, m_UDiv(m_Value(A), m_Value(Y)))
+		&& (match(A, m_Mul(m_Specific(X), m_Specific(Y)))
+			|| match(A, m_Mul(m_Specific(Y), m_Specific(X))))) {
 			return createOverflowBit(Intrinsic::umul_with_overflow, X, Y);
         }
 
