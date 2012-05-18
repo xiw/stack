@@ -12,7 +12,7 @@ m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 # Checks for programs.
 AM_PROG_CC_C_O
 AC_PROG_CXX
-AM_PROG_AR
+m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_LN_S
 AC_PROG_MKDIR_P
 AC_PROG_SED
