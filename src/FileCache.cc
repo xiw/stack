@@ -16,7 +16,7 @@ FileCache::~FileCache() {
 		delete i->second;
 }
 
-StringRef FileCache::getFile(llvm::StringRef Filename) {
+StringRef FileCache::getFile(StringRef Filename) {
 	MemoryBuffer *&MB = BM[Filename];
 	if (!MB) {
 		OwningPtr<MemoryBuffer> Result;
@@ -29,29 +29,24 @@ StringRef FileCache::getFile(llvm::StringRef Filename) {
 }
 
 StringRef FileCache::getFile(const MDNode *MD) {
-	DICompileUnit CU(MD);
-	if (!CU.Verify())
-		return StringRef();
 	SmallString<64> Path;
-	sys::path::append(Path, CU.getDirectory(), CU.getFilename());
+	getPath(Path, MD);
 	return getFile(Path);
 }
 
-StringRef FileCache::getLine(StringRef Filename, unsigned Line) {
-	StringRef First, Second = getFile(Filename);
-	for (unsigned i = 0; i != Line; ++i)
-		tie(First, Second) = Second.split('\n');
-	return First;
+StringRef FileCache::getLine(const DebugLoc &DbgLoc, LLVMContext &VMCtx) {
+	StringRef Str = getFile(DbgLoc.getScope(VMCtx));
+	unsigned LineNo = DbgLoc.getLine();
+	StringRef Line;
+	for (unsigned i = 0; i != LineNo; ++i)
+		tie(Line, Str) = Str.split('\n');
+	return Line;
 }
 
-StringRef FileCache::getLine(const DebugLoc &DbgLoc, LLVMContext &VMCtx) {
-	MDNode *MD = DbgLoc.getAsMDNode(VMCtx);
-	if (!MD)
-		return StringRef();
-	DILocation Loc(MD);
-	unsigned Line = Loc.getLineNumber();
-	if (!Line)
-		return StringRef();
-	std::string Path = (Loc.getDirectory() + Loc.getFilename()).str();
-	return getLine(Path, Line);
+void FileCache::getPath(SmallVectorImpl<char> &Path, const MDNode *MD) {
+	StringRef Filename = DIScope(MD).getFilename();
+	if (sys::path::is_absolute(Filename))
+		Path.append(Filename.begin(), Filename.end());
+	else
+		sys::path::append(Path, DIScope(MD).getDirectory(), Filename);
 }

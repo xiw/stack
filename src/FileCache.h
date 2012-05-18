@@ -7,6 +7,7 @@ namespace llvm {
 	class LLVMContext;
 	class MDNode;
 	class MemoryBuffer;
+	template <typename T> class SmallVectorImpl;
 } // namespace llvm
 
 class FileCache {
@@ -14,8 +15,8 @@ public:
 	~FileCache();
 	llvm::StringRef getFile(llvm::StringRef Filename);
 	llvm::StringRef getFile(const llvm::MDNode *);
-	llvm::StringRef getLine(llvm::StringRef Filename, unsigned Line);
 	llvm::StringRef getLine(const llvm::DebugLoc &, llvm::LLVMContext &);
+	static void getPath(llvm::SmallVectorImpl<char> &, const llvm::MDNode *);
 private:
 	typedef llvm::StringMap<llvm::MemoryBuffer *> BufferMap;
 	BufferMap BM;

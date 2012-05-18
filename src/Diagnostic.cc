@@ -8,7 +8,6 @@
 #include <llvm/Analysis/DebugInfo.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/DebugLoc.h>
-#include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
 #include <algorithm>
 #include <list>
@@ -48,14 +47,14 @@ public:
 	virtual llvm::raw_ostream &os() { return nulls(); }
 private:
 	struct ExpString {
-		const MDNode *Unit;
+		SmallString<64> Path;
 		unsigned LineNo;
 		StringRef Content;
 		ExpString(const MDNode *MD, unsigned N, StringRef Str)
-			: Unit(MD), LineNo(N), Content(Str) {}
+			: LineNo(N), Content(Str) { FileCache::getPath(Path, MD); }
 		bool operator <(const ExpString &other) {
-			if (Unit != other.Unit)
-				return Unit < other.Unit;
+			if (Path != other.Path)
+				return Path < other.Path;
 			if (LineNo != other.LineNo)
 				return LineNo < other.LineNo;
 			return Content < other.Content;
@@ -67,12 +66,11 @@ private:
 	Module &M;
 	FileCache Cache;
 	ExpList Exps, Acts;
-	MDNode *CurUnit;
+	MDNode *CurScope;
 	unsigned CurLine;
 
 	void addExp(const MDNode *, unsigned LineNo, StringRef);
 	static void report(raw_ostream &, ExpList &, const char *Category);
-	static MDNode *getCompileUnit(MDNode *);
 };
 
 } // anonymous namespace
@@ -97,7 +95,7 @@ void BugReporter::emit(const DebugLoc &DbgLoc) {
 	DILocation Loc(N);
 	for (;;) {
 		SmallString<64> Path;
-		sys::path::append(Path, Loc.getDirectory(), Loc.getFilename());
+		FileCache::getPath(Path, Loc);
 		OS << Path << ':' << Loc.getLineNumber() << ':';
 		if (unsigned Col = Loc.getColumnNumber())
 			OS << Col << ':';
@@ -161,14 +159,14 @@ BugVerifier::~BugVerifier() {
 }
 
 void BugVerifier::emit(const DebugLoc &DbgLoc) {
-	CurUnit = getCompileUnit(DbgLoc.getScope(M.getContext()));
+	CurScope = DbgLoc.getScope(M.getContext());
 	CurLine = DbgLoc.getLine();
 }
 
 void BugVerifier::emit(const Twine &Str) {
 	SmallString<256> Buf;
 	StringRef Actual = Str.toStringRef(Buf);
-	Acts.push_back(ExpString(CurUnit, CurLine, Actual));
+	Acts.push_back(ExpString(CurScope, CurLine, Actual));
 }
 
 void BugVerifier::addExp(const MDNode *MD, unsigned LineNo, StringRef Str) {
@@ -187,27 +185,8 @@ void BugVerifier::report(raw_ostream &OS, ExpList &L, const char *Category) {
 	OS << L.size() << ' ' << Category << '\n';
 	ExpList::const_iterator i = L.begin(), e = L.end();
 	for (; i != e; ++i) {
-		OS << DICompileUnit(i->Unit).getFilename() << ":";
+		OS << i->Path << ":";
 		OS << i->LineNo << ": ";
 		OS << i->Content << '\n';
 	}
-}
-
-MDNode *BugVerifier::getCompileUnit(MDNode *MD) {
-	DIScope N(MD);
-	if (N.isCompileUnit())
-		return MD;
-	if (N.isFile())
-		return DIFile(MD).getCompileUnit();
-	if (N.isType())
-		return DIType(MD).getCompileUnit();
-	if (N.isSubprogram())
-		return DISubprogram(MD).getCompileUnit();
-	if (N.isGlobalVariable())
-		return DIGlobalVariable(MD).getCompileUnit();
-	if (N.isVariable())
-		return DIVariable(MD).getCompileUnit();
-	if (N.isNameSpace())
-		return DINameSpace(MD).getCompileUnit();
-	assert(0);
 }
