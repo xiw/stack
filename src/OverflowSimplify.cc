@@ -1,6 +1,9 @@
 #define DEBUG_TYPE "overflow-simplify"
+#include <llvm/Constants.h>
+#include <llvm/Instructions.h>
 #include <llvm/IntrinsicInst.h>
 #include <llvm/Pass.h>
+#include <llvm/ADT/APInt.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/Assembly/Writer.h>
 #include <llvm/Support/InstIterator.h>
@@ -22,8 +25,8 @@ struct OverflowSimplify : FunctionPass {
 	virtual bool runOnFunction(Function &);
 
 private:
-	Instruction *simplify(Intrinsic::ID, Constant *, Value *);
-	bool canonicalize(Intrinsic::ID, Value *, Value *, IntrinsicInst *);
+	bool simplify(Value *, ConstantInt *, IntrinsicInst *);
+	bool canonicalize(Value *, Value *, IntrinsicInst *);
 };
 
 } // anonymous namespace
@@ -33,35 +36,44 @@ bool OverflowSimplify::runOnFunction(Function &F) {
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
 		IntrinsicInst *I = dyn_cast<IntrinsicInst>(&*i);
 		++i;
-		if (!I)
+		if (!I || I->getNumArgOperands() != 2)
 			continue;
-		Intrinsic::ID ID = I->getIntrinsicID();
 		Value *LHS = I->getArgOperand(0), *RHS = I->getArgOperand(1);
-		Instruction *NewInst;
-		if (Constant *C = dyn_cast<Constant>(LHS))
-			NewInst = simplify(ID, C, RHS);
-		else if (Constant *C = dyn_cast<Constant>(RHS))
-			NewInst = simplify(ID, C, LHS);
-		else {
-			Changed |= canonicalize(ID, LHS, RHS, I);
-			continue;
-		}
-		if (!NewInst)
-			continue;
-		NewInst->setDebugLoc(I->getDebugLoc());
-		ReplaceInstWithInst(I, NewInst);
-		Changed = true;
+		if (ConstantInt *C = dyn_cast<ConstantInt>(LHS))
+			Changed |= simplify(RHS, C, I);
+		else if (ConstantInt *C = dyn_cast<ConstantInt>(RHS))
+			Changed |= simplify(LHS, C, I);
+		else
+			Changed |= canonicalize(LHS, RHS, I);
 	}
 	return Changed;
 }
 
-Instruction *OverflowSimplify::simplify(Intrinsic::ID ID, Constant *C, Value *V) {
-	// TODO: fold into a simple cmp.
-	return 0;
+bool OverflowSimplify::simplify(Value *V, ConstantInt *C, IntrinsicInst *I) {
+	unsigned numBits = C->getBitWidth();
+	LLVMContext &VMCtx = V->getContext();
+	Value *Res, *Cmp;
+	switch (I->getIntrinsicID()) {
+	default: return false;
+	// TODO: other overflow intrinsics.
+	case Intrinsic::umul_with_overflow:
+		Res = BinaryOperator::Create(BinaryOperator::Mul, V, C, "", I);
+		Cmp = new ICmpInst(I, CmpInst::ICMP_UGT, V, ConstantInt::get(VMCtx,
+			APInt::getMaxValue(numBits).udiv(C->getValue())));
+		break;
+	}
+	Type *RetTy = StructType::get(V->getType(), Type::getInt1Ty(VMCtx), NULL);
+	Value *RetV = UndefValue::get(RetTy);
+	RetV = InsertValueInst::Create(RetV, Res, 0, "", I);
+	Instruction *NewInst = InsertValueInst::Create(RetV, Cmp, 1, "", I);
+	NewInst->setDebugLoc(I->getDebugLoc());
+	I->replaceAllUsesWith(NewInst);
+	I->eraseFromParent();
+	return true;
 }
 
-bool OverflowSimplify::canonicalize(Intrinsic::ID ID, Value *L, Value *R, IntrinsicInst *I) {
-	switch (ID) {
+bool OverflowSimplify::canonicalize(Value *L, Value *R, IntrinsicInst *I) {
+	switch (I->getIntrinsicID()) {
 	default: return false;
 	case Intrinsic::sadd_with_overflow:
 	case Intrinsic::uadd_with_overflow:
