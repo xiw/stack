@@ -6,14 +6,19 @@
 #include <llvm/ADT/StringRef.h>
 #include <llvm/ADT/Twine.h>
 #include <llvm/Analysis/DebugInfo.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/DebugLoc.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
 #include <algorithm>
-#include <cstdlib>
 #include <list>
 
 using namespace llvm;
+
+static cl::opt<std::string>
+CheckPrefix("check-prefix",
+            cl::desc("Specify a specific prefix to match"),
+            cl::value_desc("prefix"));
 
 namespace {
 
@@ -36,7 +41,7 @@ private:
 
 class BugVerifier : public DiagnosticImpl {
 public:
-	BugVerifier(const char *, Module &);
+	BugVerifier(const std::string &, Module &);
 	~BugVerifier();
 	virtual void emit(const DebugLoc &);
 	virtual void emit(const Twine &);
@@ -75,11 +80,10 @@ private:
 // Diagnostic
 
 Diagnostic::Diagnostic(Module &M) {
-	if (const char *Prefix = std::getenv("VERIFY_PREFIX")) {
-		Diag.reset(new BugVerifier(Prefix, M));
-		return;
-	}
-	Diag.reset(new BugReporter(M));
+	if (CheckPrefix.empty())
+		Diag.reset(new BugReporter(M));
+	else
+		Diag.reset(new BugVerifier(CheckPrefix, M));
 }
 
 // BugReporter
@@ -119,8 +123,8 @@ void BugReporter::emit(const Twine &Str) {
 
 // BugVerifier
 
-BugVerifier::BugVerifier(const char *Str, Module &M) : M(M) {
-	Prefix = std::string("// ") + Str;
+BugVerifier::BugVerifier(const std::string &Str, Module &M) : M(M) {
+	Prefix = "// " + Str + ":";
 	DebugInfoFinder DIF;
 	DIF.processModule(M);
 	DebugInfoFinder::iterator i = DIF.compile_unit_begin(), e = DIF.compile_unit_end();
