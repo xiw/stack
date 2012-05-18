@@ -154,6 +154,7 @@ BugVerifier::~BugVerifier() {
 		report(OS, FP, "superfluous");
 	if (!FN.empty() || !FP.empty()) {
 		OS << "test failed\n";
+		M.dump();
 		exit(1);
 	}
 }
