@@ -78,4 +78,8 @@ AC_CONFIG_FILES([
 	tests/lit.cfg
 ])
 AC_CONFIG_FILES([tests/intsat],[chmod a+x tests/intsat])
+AC_CONFIG_LINKS([
+	tests/kcc:tests/kcc
+	tests/kgcc:tests/kgcc
+])
 AC_OUTPUT
