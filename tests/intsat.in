@@ -1,3 +1,12 @@
 #!/bin/bash
 
-opt -load=@abs_top_builddir@/src/.libs/libint.so -disable-output -overflow -int-rewrite -overflow-simplify -int-sat $@
+opt -disable-output -load=@abs_top_builddir@/src/.libs/libint.so \
+	-targetlibinfo -tbaa -basicaa -globalopt -ipsccp -deadargelim \
+	-simplifycfg -basiccg -prune-eh -inline -functionattrs -argpromotion \
+	-scalarrepl-ssa -early-cse -simplify-libcalls -lazy-value-info \
+	-jump-threading -correlated-propagation -simplifycfg \
+	-overflow -int-rewrite -overflow-simplify \
+	-std-compile-opts \
+	-overflow-simplify \
+	-O3 \
+	-int-sat $@
