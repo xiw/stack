@@ -1,5 +1,5 @@
-//RUN: %kcc -m32 -o - %s | %intsat --check-prefix=exp
-//RUN: %kcc -m64 -o - %s | %intsat --check-prefix=exp
+// RUN: %kcc -m32 -o - %s | %intsat --check-prefix=exp
+// RUN: %kcc -m64 -o - %s | %intsat --check-prefix=exp
 
 #include <stdlib.h>
 #include <stdint.h>
