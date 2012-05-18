@@ -1,0 +1,45 @@
+#!/usr/bin/env python
+
+import os
+import subprocess
+import sys
+
+def cc(llvmcc, src, argv):
+	out = ''
+	outing = False
+	for i, a in enumerate(argv):
+		if outing:
+			out = a
+			argv[i] = '-'
+			outing = False
+		if a == '-o':
+			outing = True
+	if not out:
+		argv += ['-o', '-']
+		out = src
+	if out != '-':
+		out = os.path.splitext(out)[0] + '.ll'
+	more = ['-S', '-flto', '-fstrict-overflow', '-O0', '-g']
+	p1 = subprocess.Popen(llvmcc + argv + more, stdout=subprocess.PIPE)
+	opts = ['-strip-debug-declare', '-targetlibinfo', '-tbaa', '-basicaa',
+	        '-simplifycfg', '-scalarrepl', '-early-cse', '-lower-expect']
+	p2 = subprocess.Popen(['opt', '-S', '-o', out] + opts, stdin=p1.stdout)
+	p1.stdout.close()
+	p2.communicate()
+	return p1.returncode
+
+def main():
+	llvmcc = os.getenv('LLVMCC')
+	if not llvmcc:
+		raise Exception('LLVMCC not set')
+	llvmcc = llvmcc.split(' ', 1)
+
+	argv = sys.argv[1:]
+
+	src = [a for a in argv if a.endswith('.c') or a == '-']
+	if src:
+		rc = cc(llvmcc, src[0], list(argv))
+		sys.exit(rc)
+
+if __name__ == '__main__':
+	main()
