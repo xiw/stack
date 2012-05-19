@@ -14,6 +14,6 @@ endif
 libsat_la_LIBADD   = $(SMT_LIBADD)
 libsat_la_LDFLAGS  = -L`gcc -print-file-name=` -L$(top_builddir)/lib
 
-libint_la_SOURCES = IntRewrite.cc IntSat.cc Overflow.cc
+libint_la_SOURCES = IntRewrite.cc IntSat.cc Overflow.cc Annotation.cc
 libint_la_LIBADD  = libsat.la
 libint_la_LDFLAGS = -module
