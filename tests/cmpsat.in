@@ -1,0 +1,4 @@
+#!/bin/bash
+
+opt -disable-output -load=@abs_top_builddir@/src/.libs/libcmp.so \
+	-cmp-sat $@
