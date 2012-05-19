@@ -95,7 +95,7 @@ void BugReporter::emit(const DebugLoc &DbgLoc) {
 	DILocation Loc(N);
 	for (;;) {
 		SmallString<64> Path;
-		FileCache::getPath(Path, Loc);
+		FileCache::getPath(Path, Loc.getScope());
 		OS << Path << ':' << Loc.getLineNumber() << ':';
 		if (unsigned Col = Loc.getColumnNumber())
 			OS << Col << ':';
