@@ -66,7 +66,7 @@ void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
 	assert(v);
 	if (Z3_is_numeral_ast(ctx, v)) {
 		APInt Val(bvwidth(v), Z3_get_numeral_string(ctx, v), 10);
-		if (Val.uge(0xa))
+		if (Val.getLimitedValue(0xa) == 0xa)
 			OS << "0x";
 		OS << Val.toString(16, false);
 		return;
