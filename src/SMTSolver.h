@@ -21,7 +21,7 @@ public:
 	SMTSolver();
 	~SMTSolver();
 
-	SMTStatus query(SMTExpr, SMTModel *);
+	SMTStatus query(SMTExpr, SMTModel * = 0);
 	void eval(SMTModel, SMTExpr, llvm::raw_ostream &);
 	void release(SMTModel);
 
