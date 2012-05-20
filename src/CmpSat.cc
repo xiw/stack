@@ -5,6 +5,7 @@
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/Support/InstIterator.h>
+#include <llvm/Support/raw_ostream.h>
 #include "Diagnostic.h"
 
 using namespace llvm;
@@ -64,7 +65,7 @@ void CmpSat::checkSat(ICmpInst *I) {
 	// Ignore loop variables.
 	if (isa<llvm::SCEVAddRecExpr>(L) || isa<llvm::SCEVAddRecExpr>(R))
 		return;
-	const char *Reason;
+	CmpStatus Reason;
 	if (SE->isKnownPredicate(I->getPredicate(), L, R))
 		Reason = CMP_TRUE;
 	else if (SE->isKnownPredicate(I->getInversePredicate(), L, R))
@@ -74,6 +75,9 @@ void CmpSat::checkSat(ICmpInst *I) {
 	if (!Reason)
 		return;
 	*Diag << I->getDebugLoc() << Reason;
+	raw_ostream &OS = Diag->os();
+	OS << "lhs: " << *L << '\n';
+	OS << "rhs: " << *R << '\n';
 }
 
 CmpStatus CmpSat::solveSat(ICmpInst *I) {
