@@ -50,8 +50,10 @@ SMTSolver::~SMTSolver() {
 }
 
 SMTStatus SMTSolver::query(SMTExpr e_, SMTModel *m_) {
+	Z3_push(ctx);
 	Z3_assert_cnstr(ctx, bv2bool(e));
 	Z3_lbool res = Z3_check_and_get_model(ctx, (Z3_model *)m_);
+	Z3_pop(ctx, 1);
 	switch (res) {
 	default:         return SMT_UNDEF;
 	case Z3_L_FALSE: return SMT_UNSAT;
