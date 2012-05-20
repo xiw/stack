@@ -1,13 +1,29 @@
 // RUN: %kcc -o - %s | %cmpsat --check-prefix=exp
 // http://git.kernel.org/linus/44b0052c5cb4e75389ed3eb9e98c29295a7dadfb
 
-void bar0(void);
-void bar1(void);
+#define BIT(n)		(1UL << (n))
 
-void foo(int errc)
+#define PCH_EPASSIV	BIT(5)
+#define PCH_EWARN	BIT(6)
+
+#define PCH_REC		0x00007f00
+#define PCH_TEC		0x000000ff
+
+typedef unsigned int u32;
+
+int foo(u32 status, u32 errc)
 {
-	if (((errc & 0x7f) >> 8) > 127) // exp: {{comparison always false}}
-		bar0();
-	if ((errc & 0xff) > 127)
-		bar1();
+	if (status & PCH_EWARN)	{
+		if (((errc & PCH_REC) >> 8) > 96)
+			return -1;
+		if ((errc & PCH_TEC) > 96)
+			return -2;
+	}
+	if (status & PCH_EPASSIVE) {
+		if (((errc & PCH_REC) >> 8) > 127) // exp: {{comparison always false}}
+			return -3;
+		if ((errc & PCH_TEC) > 127)
+			return -4;
+	}
+	return 0;
 }
