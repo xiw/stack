@@ -2,11 +2,14 @@
 #include <llvm/Instructions.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/OwningPtr.h>
-#include <llvm/Analysis/ScalarEvolution.h>
-#include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/Target/TargetData.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "Diagnostic.h"
+#include "PathGen.h"
+#include "SMTSolver.h"
+#include "ValueGen.h"
 
 using namespace llvm;
 
@@ -18,27 +21,24 @@ static CmpStatus CMP_TRUE = "comparison always true";
 
 struct CmpSat : FunctionPass {
 	static char ID;
-	CmpSat() : FunctionPass(ID) {
-		PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
-		initializeScalarEvolutionPass(Registry);
-	}
+	CmpSat() : FunctionPass(ID) {}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		AU.setPreservesAll();
-		AU.addRequired<ScalarEvolution>();
 	}
 
 	virtual bool doInitialization(Module &M) {
 		Diag.reset(new Diagnostic(M));
+		TD.reset(new TargetData(&M));
+		CurF = 0;
 		return false;
 	}
 
 	virtual bool runOnFunction(Function &F) {
-		SE = &getAnalysis<ScalarEvolution>();
 		inst_iterator i = inst_begin(F), e = inst_end(F);
 		for (; i != e; ++i) {
 			if (ICmpInst *ICI = dyn_cast<ICmpInst>(&*i)) {
-				checkSat(ICI);
+				check(ICI);
 			}
 		}
 		return false;
@@ -46,45 +46,50 @@ struct CmpSat : FunctionPass {
 
 private:
 	OwningPtr<Diagnostic> Diag;
-	ScalarEvolution *SE;
+	OwningPtr<TargetData> TD;
+	Function *CurF;
+	SmallVector<PathGen::Edge, 32> BackEdges;
 
-	void checkSat(ICmpInst *);
-	CmpStatus solveSat(ICmpInst *);
+	void check(ICmpInst *);
 };
 
 } // anonymous namespace
 
-void CmpSat::checkSat(ICmpInst *I) {
-	if (!SE->isSCEVable(I->getOperand(0)->getType()))
-		return;
-	const SCEV *L = SE->getSCEV(I->getOperand(0));
-	const SCEV *R = SE->getSCEV(I->getOperand(1));
-	// Ignore constant comparison.
-	if (isa<SCEVConstant>(L) && isa<SCEVConstant>(R))
-		return;
-	// Ignore loop variables.
-	if (isa<llvm::SCEVAddRecExpr>(L) || isa<llvm::SCEVAddRecExpr>(R))
-		return;
-	CmpStatus Reason;
-	if (SE->isKnownPredicate(I->getPredicate(), L, R))
-		Reason = CMP_TRUE;
-	else if (SE->isKnownPredicate(I->getInversePredicate(), L, R))
+void CmpSat::check(ICmpInst *I) {
+	BasicBlock *BB = I->getParent();
+	Function *F = BB->getParent();
+	if (CurF != F) {
+		CurF = F;
+		BackEdges.clear();
+		FindFunctionBackedges(*F, BackEdges);
+	}
+	SMTSolver SMT;
+	ValueGen VG(*TD, SMT);
+	PathGen PG(VG, BackEdges);
+	SMTExpr ValuePred = VG.get(I);
+	SMTExpr PathPred = PG.get(BB);
+	SMTExpr Query = SMT.bvand(ValuePred, PathPred);
+	SMTStatus Status = SMT.query(Query);
+	SMT.decref(Query);
+	CmpStatus Reason = 0;
+	if (Status == SMT_UNSAT) {
 		Reason = CMP_FALSE;
-	else
-		Reason = solveSat(I);
-	if (!Reason)
-		return;
-	*Diag << I->getDebugLoc() << Reason;
-	raw_ostream &OS = Diag->os();
-	OS << "lhs: " << *L << '\n';
-	OS << "rhs: " << *R << '\n';
-}
-
-CmpStatus CmpSat::solveSat(ICmpInst *I) {
-	return 0;
+	} else {
+		SMTExpr NotValuePred = SMT.bvnot(ValuePred);
+		Query = SMT.bvand(NotValuePred, PathPred);
+		Status = SMT.query(Query);
+		SMT.decref(Query);
+		SMT.decref(NotValuePred);
+		if (Status == SMT_UNSAT)
+			Reason = CMP_TRUE;
+	}
+	SMT.decref(ValuePred);
+	SMT.decref(PathPred);
+	if (Reason)
+		*Diag << I->getDebugLoc() << Reason;
 }
 
 char CmpSat::ID;
 
 static RegisterPass<CmpSat>
-X("cmp-sat", "Detecting bogus comparisons", false, true);
+X("cmp-sat", "Detecting bogus comparisons via satisfiability", false, true);

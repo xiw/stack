@@ -18,6 +18,6 @@ libint_la_SOURCES = IntRewrite.cc IntSat.cc Overflow.cc OverflowSimplify.cc Anno
 libint_la_LIBADD  = libsat.la
 libint_la_LDFLAGS = -module
 
-libcmp_la_SOURCES = CmpSat.cc
+libcmp_la_SOURCES = CmpRange.cc CmpSat.cc
 libcmp_la_LIBADD  = libsat.la
 libcmp_la_LDFLAGS = -module
