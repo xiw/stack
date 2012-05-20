@@ -13,8 +13,8 @@ int foo(u8 lane)
 	if (lpre == DP_TRAIN_PRE_EMPHASIS_9_5) // exp: {{comparison always false}}
 		return -1;
 	if ((lpre << 3) == DP_TRAIN_PRE_EMPHASIS_9_5)
-		return -1;
-	if (lvsw == DP_TRAIN_VOLTAGE_SWING_1200)
 		return -2;
+	if (lvsw == DP_TRAIN_VOLTAGE_SWING_1200)
+		return -3;
 	return 0;
 }
