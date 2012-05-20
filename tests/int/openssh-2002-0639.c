@@ -1,5 +1,5 @@
-// RUN: %kcc -m32 -o - %s | %intsat --check-prefix=exp
-// RUN: %kcc -m32 -D__PATCH__ -o - %s | %intsat --check-prefix=exp-patch
+// RUN: %kcc -m32 -o - %s | %kint --check-prefix=exp
+// RUN: %kcc -m32 -D__PATCH__ -o - %s | %kint --check-prefix=exp-patch
 // CVE-2002-0639: http://www.openssh.com/txt/preauth.adv
 
 #include <sys/types.h>

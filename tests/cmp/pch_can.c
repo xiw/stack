@@ -1,4 +1,4 @@
-// RUN: %kcc -o - %s | %cmpsat --check-prefix=exp
+// RUN: %kcc -o - %s | %kcmp --check-prefix=exp
 // http://git.kernel.org/linus/44b0052c5cb4e75389ed3eb9e98c29295a7dadfb
 
 #define BIT(n)		(1UL << (n))
