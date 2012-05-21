@@ -3,7 +3,7 @@
 
 #define BIT(n)		(1UL << (n))
 
-#define PCH_EPASSIV	BIT(5)
+#define PCH_EPASSIVE	BIT(5)
 #define PCH_EWARN	BIT(6)
 
 #define PCH_REC		0x00007f00
