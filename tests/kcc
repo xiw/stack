@@ -21,8 +21,7 @@ def cc(llvmcc, src, argv):
 		out = os.path.splitext(out)[0] + '.ll'
 	more = ['-S', '-flto', '-fstrict-overflow', '-O0', '-g']
 	p1 = subprocess.Popen(llvmcc + argv + more, stdout=subprocess.PIPE)
-	opts = ['-strip-debug-declare', '-targetlibinfo', '-tbaa', '-basicaa',
-	        '-simplifycfg', '-scalarrepl', '-early-cse', '-lower-expect']
+	opts = ['-strip-debug-declare', '-scalarrepl']
 	p2 = subprocess.Popen(['opt', '-S', '-o', out] + opts, stdin=p1.stdout)
 	p1.stdout.close()
 	p2.communicate()
