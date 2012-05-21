@@ -1,7 +1,7 @@
 AM_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall -Wno-unknown-pragmas
 
 noinst_LTLIBRARIES = libsat.la
-lib_LTLIBRARIES    = libint.la libcmp.la
+lib_LTLIBRARIES    = libint.la libcmp.la libundef.la
 
 libsat_la_CPPFLAGS = -I$(top_builddir)/lib
 libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc FileCache.cc
@@ -21,3 +21,7 @@ libint_la_LDFLAGS = -module
 libcmp_la_SOURCES = CmpRange.cc CmpSat.cc
 libcmp_la_LIBADD  = libsat.la
 libcmp_la_LDFLAGS = -module
+
+libundef_la_SOURCES = UndefSat.cc
+libundef_la_LIBADD  = libsat.la
+libundef_la_LDFLAGS = -module
