@@ -28,13 +28,8 @@ def cc(llvmcc, src, argv):
 	return p1.returncode
 
 def main():
-	llvmcc = os.getenv('LLVMCC')
-	if not llvmcc:
-		raise Exception('LLVMCC not set')
-	llvmcc = llvmcc.split(' ', 1)
-
+	llvmcc = os.getenv('LLVMCC', 'clang').split(' ', 1)
 	argv = sys.argv[1:]
-
 	src = [a for a in argv if a.endswith('.c') or a == '-']
 	if src:
 		rc = cc(llvmcc, src[0], list(argv))

@@ -8,10 +8,8 @@ config.test_source_root = "@abs_srcdir@"
 
 import os, os.path
 
-llvmcc = os.getenv('LLVMCC')
-if not llvmcc:
-	lit.fatal('LLVMCC not set')
-config.environment['LLVMCC'] = llvmcc
+if 'LLVMCC' in os.environ:
+	config.environment['LLVMCC'] = os.getenv('LLVMCC')
 
 kcc = os.path.join(config.test_source_root, 'kcc')
 if not os.path.exists(kcc):
