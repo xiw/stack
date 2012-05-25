@@ -25,7 +25,7 @@ struct OverflowSimplify : FunctionPass {
 	virtual bool runOnFunction(Function &);
 
 private:
-	bool simplify(Value *, ConstantInt *, IntrinsicInst *);
+	bool simplify(bool Swapped, Value *, ConstantInt *, IntrinsicInst *);
 	bool canonicalize(Value *, Value *, IntrinsicInst *);
 };
 
@@ -40,22 +40,31 @@ bool OverflowSimplify::runOnFunction(Function &F) {
 			continue;
 		Value *LHS = I->getArgOperand(0), *RHS = I->getArgOperand(1);
 		if (ConstantInt *C = dyn_cast<ConstantInt>(LHS))
-			Changed |= simplify(RHS, C, I);
+			Changed |= simplify(true, RHS, C, I);
 		else if (ConstantInt *C = dyn_cast<ConstantInt>(RHS))
-			Changed |= simplify(LHS, C, I);
+			Changed |= simplify(false, LHS, C, I);
 		else
 			Changed |= canonicalize(LHS, RHS, I);
 	}
 	return Changed;
 }
 
-bool OverflowSimplify::simplify(Value *V, ConstantInt *C, IntrinsicInst *I) {
+bool OverflowSimplify::simplify(bool Swapped, Value *V, ConstantInt *C, IntrinsicInst *I) {
 	unsigned numBits = C->getBitWidth();
 	LLVMContext &VMCtx = V->getContext();
 	Value *Res, *Cmp;
 	switch (I->getIntrinsicID()) {
 	default: return false;
 	// TODO: other overflow intrinsics.
+	case Intrinsic::uadd_with_overflow:
+		Res = BinaryOperator::Create(BinaryOperator::Add, V, C, "", I);
+		Cmp = new ICmpInst(I, CmpInst::ICMP_UGT, V, ConstantInt::get(VMCtx,
+			APInt::getMaxValue(numBits) - C->getValue()));
+		break;
+	case Intrinsic::usub_with_overflow:
+		Res = BinaryOperator::Create(BinaryOperator::Sub, V, C, "", I);
+		Cmp = new ICmpInst(I, (Swapped ? CmpInst::ICMP_UGT : CmpInst::ICMP_ULT), V, C);
+		break;
 	case Intrinsic::umul_with_overflow:
 		Res = BinaryOperator::Create(BinaryOperator::Mul, V, C, "", I);
 		Cmp = new ICmpInst(I, CmpInst::ICMP_UGT, V, ConstantInt::get(VMCtx,
