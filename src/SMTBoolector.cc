@@ -3,6 +3,7 @@
 #include <llvm/ADT/SmallString.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
+#include <algorithm>
 #include <assert.h>
 #include <stdio.h>
 extern "C" {
@@ -42,8 +43,10 @@ SMTStatus SMTSolver::query(SMTExpr e_, SMTModel *m_) {
 
 void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
 	char *s = boolector_bv_assignment(ctx, e);
-	APInt Val(bvwidth(e), s, 2);
+	std::string str(s);
 	boolector_free_bv_assignment(ctx, s);
+	std::replace(str.begin(), str.end(), 'x', '0');
+	APInt Val(bvwidth(e), str.c_str(), 2);
 	if (Val.uge(0xa))
 		OS << "0x";
 	OS << Val.toString(16, false);;
