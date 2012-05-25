@@ -6,6 +6,7 @@ opt -disable-output -load=@abs_top_builddir@/src/.libs/libint.so \
 	-simplifycfg -basiccg -prune-eh -inline -functionattrs -argpromotion \
 	-scalarrepl-ssa -early-cse -simplify-libcalls -lazy-value-info \
 	-jump-threading -correlated-propagation -simplifycfg \
+	-strip-dead-prototypes -globaldce -constmerge \
 	-overflow -sink \
 	-int-rewrite -overflow-simplify \
 	-std-compile-opts \
