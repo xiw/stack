@@ -83,8 +83,6 @@ void CmpSat::check(ICmpInst *I) {
 		if (Status == SMT_UNSAT)
 			Reason = CMP_TRUE;
 	}
-	SMT.decref(ValuePred);
-	SMT.decref(PathPred);
 	if (Reason)
 		*Diag << I->getDebugLoc() << Reason;
 }

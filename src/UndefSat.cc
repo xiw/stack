@@ -151,23 +151,16 @@ void UndefWrapper::checkEqv(BasicBlock *BB0, BasicBlock *BB1) {
 	SMTExpr Query = SMT.ne(P0, P1);
 	SMTStatus Status = SMT.query(Query);
 	SMT.decref(Query);
-	if (Status != SMT_UNSAT) {
-		SMT.decref(P0);
-		SMT.decref(P1);
+	if (Status != SMT_UNSAT)
 		return;
-	}
 
 	Value *V0 = Br0->getCondition();
 	SMTExpr Cond0 = VG.get(V0);
 	SMTExpr NewP0 = SMT.bvand(Cond0, P0);
-	SMT.release(Cond0);
-	SMT.release(P0);
 
 	Value *V1 = Br1->getCondition();
 	SMTExpr Cond1 = VG.get(V1);
 	SMTExpr NewP1 = SMT.bvand(Cond1, P1);
-	SMT.release(Cond1);
-	SMT.release(P1);
 
 	// Then we check if the conditions change with the new branching.
 	Query = SMT.ne(NewP0, NewP1);

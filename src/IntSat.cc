@@ -80,8 +80,6 @@ void IntSat::check(CallInst *I) {
 	SMTExpr Query = SMT.bvand(ValuePred, PathPred);
 	SMTModel Model = 0;
 	SMTStatus Status = SMT.query(Query, &Model);
-	SMT.decref(ValuePred);
-	SMT.decref(PathPred);
 	SMT.decref(Query);
 	switch (Status) {
 	default: break;
