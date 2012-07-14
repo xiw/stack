@@ -14,4 +14,5 @@ if 'LLVMCC' in os.environ:
 kcc = os.path.join(config.test_source_root, 'kcc')
 if not os.path.exists(kcc):
 	lit.fatal("kcc not found")
+kcc += " -c"
 config.substitutions.append( ('%kcc', kcc) )

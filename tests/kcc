@@ -30,10 +30,16 @@ def cc(llvmcc, src, argv):
 def main():
 	llvmcc = os.getenv('LLVMCC', 'clang').split(' ', 1)
 	argv = sys.argv[1:]
-	src = [a for a in argv if a.endswith('.c') or a == '-']
-	if src:
-		rc = cc(llvmcc, src[0], list(argv))
-		sys.exit(rc)
+	# Keep silence if no -c (e.g., -E).
+	if '-c' not in argv:
+		return
+	src = [a for a in argv if a.endswith('.c')]
+	# Keep silence if only '-' is given; otherwise we need to duplicate
+	# data from stdin for the next consumer (e.g., gcc).
+	if not src:
+		return
+	rc = cc(llvmcc, src[0], list(argv))
+	sys.exit(rc)
 
 if __name__ == '__main__':
 	main()
