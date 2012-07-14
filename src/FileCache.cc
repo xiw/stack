@@ -1,9 +1,9 @@
 #include "FileCache.h"
+#include <llvm/DebugInfo.h>
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/Twine.h>
-#include <llvm/Analysis/DebugInfo.h>
 #include <llvm/Support/DebugLoc.h>
 #include <llvm/Support/MemoryBuffer.h>
 #include <llvm/Support/Path.h>

@@ -1,11 +1,11 @@
 #include "Diagnostic.h"
 #include "FileCache.h"
+#include <llvm/DebugInfo.h>
 #include <llvm/Module.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/ADT/StringRef.h>
 #include <llvm/ADT/Twine.h>
-#include <llvm/Analysis/DebugInfo.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/DebugLoc.h>
 #include <llvm/Support/raw_ostream.h>
