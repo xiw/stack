@@ -119,6 +119,16 @@ bool UndefWrapper::runOnFunction(Function &F) {
 	ValueToValueMapTy VMap;
 	for (Function::arg_iterator i = F.arg_begin(), e = F.arg_end(); i != e; ++i)
 		VMap[i] = i;
+	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
+		Instruction *I = &*i;
+		switch (I->getOpcode()) {
+		default: break;
+		case Instruction::Call:
+		case Instruction::Load:
+			VMap[I] = I;
+			break;
+		}
+	}
 	OwningPtr<Function> Clone(CloneFunction(&F, VMap, false));
 	// Run the pass, which updates VMap.
 	if (!FPM.run(F))
@@ -128,7 +138,6 @@ bool UndefWrapper::runOnFunction(Function &F) {
 	FindFunctionBackedges(F, BackEdges0);
 	BackEdges1.clear();
 	FindFunctionBackedges(F, BackEdges1);
-	// FIXME: add pairs(i0, i1) in VMap into the solver as i0 == i1.
 	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i)
 		checkEqv(cast<BasicBlock>(VMap.lookup(i)), i);
 	return true;
