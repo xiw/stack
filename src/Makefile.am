@@ -22,6 +22,6 @@ libcmp_la_SOURCES = CmpRange.cc CmpSat.cc
 libcmp_la_LIBADD  = libsat.la
 libcmp_la_LDFLAGS = -module
 
-libundef_la_SOURCES = UndefSat.cc
+libundef_la_SOURCES = UndefSat.cc RZCE.cpp
 libundef_la_LIBADD  = libsat.la
 libundef_la_LDFLAGS = -module
