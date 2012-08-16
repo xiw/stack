@@ -57,8 +57,7 @@ private:
 
 bool Overflow::runOnFunction(Function &F) {
 	bool Changed = false;
-	inst_iterator i = inst_begin(F), e = inst_end(F);
-	for (; i != e; ) {
+	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
 		ICmpInst *I = dyn_cast<ICmpInst>(&*i);
 		++i;
 		if (!I)

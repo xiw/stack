@@ -2,6 +2,7 @@
 #include <llvm/BasicBlock.h>
 #include <llvm/Instructions.h>
 #include <llvm/Function.h>
+#include <llvm/Intrinsics.h>
 #include <llvm/LLVMContext.h>
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
@@ -44,17 +45,17 @@ private:
 } // anonymous namespace
 
 bool IntSat::runOnModule(Module &M) {
-	Function *IntSat = M.getFunction("int.sat");
-	if (IntSat) {
+	Function *Trap = Intrinsic::getDeclaration(&M, Intrinsic::debugtrap);
+	if (Trap) {
 		TD = &getAnalysis<TargetData>();
 		CurF = 0;
 		BackEdges.clear();
 		Diag.reset(new Diagnostic(M));
 		MD_int = M.getContext().getMDKindID("int");
-		Function::use_iterator i = IntSat->use_begin(), e = IntSat->use_end();
+		Function::use_iterator i = Trap->use_begin(), e = Trap->use_end();
 		for (; i != e; ++i) {
 			CallInst *CI = dyn_cast<CallInst>(*i);
-			if (CI && CI->getCalledFunction() == IntSat)
+			if (CI && CI->getCalledFunction() == Trap)
 				check(CI);
 		}
 	}
@@ -62,8 +63,11 @@ bool IntSat::runOnModule(Module &M) {
 }
 
 void IntSat::check(CallInst *I) {
-	Value *V = I->getArgOperand(0);
-	if (isa<Constant>(V))
+	const DebugLoc &DbgLoc = I->getDebugLoc();
+	if (DbgLoc.isUnknown())
+		return;
+	MDNode *MD = I->getMetadata(MD_int);
+	if (!MD)
 		return;
 	BasicBlock *BB = I->getParent();
 	Function *F = BB->getParent();
@@ -75,22 +79,17 @@ void IntSat::check(CallInst *I) {
 	SMTSolver SMT;
 	ValueGen VG(*TD, SMT);
 	PathGen PG(VG, BackEdges);
-	SMTExpr ValuePred = VG.get(V);
-	SMTExpr PathPred = PG.get(BB);
-	SMTExpr Query = SMT.bvand(ValuePred, PathPred);
+	SMTExpr Query = PG.get(BB);
 	SMTModel Model = 0;
 	SMTStatus Status = SMT.query(Query, &Model);
-	SMT.decref(Query);
 	switch (Status) {
 	default: break;
 	case SMT_UNSAT:
 		return;
 	}
 	// Output location and operator.
-	StringRef Reason = cast<MDString>(
-		I->getMetadata(MD_int)->getOperand(0)
-	)->getString();
-	*Diag << I->getDebugLoc() << Reason;
+	StringRef Reason = cast<MDString>(MD->getOperand(0))->getString();
+	*Diag << DbgLoc << Reason;
 	// Output model.
 	if (Model) {
 		raw_ostream &OS = Diag->os();
@@ -109,4 +108,4 @@ void IntSat::check(CallInst *I) {
 char IntSat::ID;
 
 static RegisterPass<IntSat>
-X("int-sat", "Check int.sat calls for satisfiability", false, true);
+X("int-sat", "Check llvm.debugtrap calls for satisfiability", false, true);
