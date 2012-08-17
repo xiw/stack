@@ -74,7 +74,6 @@ bool IntRewrite::runOnFunction(Function &F) {
 		if (!isa<BinaryOperator>(I) && !isa<GetElementPtrInst>(I))
 			continue;
 		Builder->SetInsertPoint(I);
-		Builder->SetCurrentDebugLocation(I->getDebugLoc());
 		Value *V = NULL;
 		switch (I->getOpcode()) {
 		default: continue;
