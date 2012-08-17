@@ -15,18 +15,18 @@ using namespace llvm;
 
 namespace {
 
-struct IntRewrite : ModulePass {
+struct IntRewrite : FunctionPass {
 	static char ID;
-	IntRewrite() : ModulePass(ID) { }
+	IntRewrite() : FunctionPass(ID) { }
 
-	virtual bool runOnModule(Module &M) {
+	virtual bool doInitialization(Module &M) {
 		LLVMContext &VMCtx = M.getContext();
 		Builder.reset(new IRBuilder<>(VMCtx));
 		MD_int = VMCtx.getMDKindID("int");
-		for (Module::iterator i = M.begin(), e = M.end(); i != e; ++i)
-			rewrite(i);
-		return true;
+		return false;
 	}
+
+	virtual bool runOnFunction(Function &);
 
 private:
 	OwningPtr<IRBuilder<> > Builder;
@@ -43,7 +43,7 @@ private:
 
 } // anonymous namespace
 
-void IntRewrite::rewrite(Function *F) {
+bool IntRewrite::runOnFunction(Function &F) {
 	SmallVector<std::pair<Value *, Instruction *>, 16> Checks;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 		Instruction *I = &*i;
@@ -91,6 +91,7 @@ void IntRewrite::rewrite(Function *F) {
 	// to do it after looping over all instructions.
 	for (size_t i = 0, n = Checks.size(); i != n; ++i)
 		insertTrap(Checks[i].first, Checks[i].second);
+	return !Checks.empty();
 }
 
 void IntRewrite::insertTrap(Value *V, Instruction *IP) {
