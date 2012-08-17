@@ -7,6 +7,7 @@
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
@@ -32,12 +33,12 @@ private:
 	unsigned MD_int;
 
 	void rewrite(Function *);
+	void insertTrap(Value *V, Instruction *IP);
 
 	Value *insertOverflowCheck(Instruction *, Intrinsic::ID, Intrinsic::ID);
 	Value *insertSDivCheck(Instruction *);
 	Value *insertShiftCheck(Value *);
-
-	void insertTrap(Value *V, Instruction *IP);
+	Value *insertArrayCheck(Instruction *);
 };
 
 } // anonymous namespace
@@ -46,7 +47,7 @@ void IntRewrite::rewrite(Function *F) {
 	SmallVector<std::pair<Value *, Instruction *>, 16> Checks;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 		Instruction *I = &*i;
-		if (!isa<BinaryOperator>(I))
+		if (!isa<BinaryOperator>(I) && !isa<GetElementPtrInst>(I))
 			continue;
 		Builder->SetInsertPoint(I);
 		Value *V = NULL;
@@ -70,18 +71,58 @@ void IntRewrite::rewrite(Function *F) {
 		case Instruction::SDiv:
 			V = insertSDivCheck(I);
 			break;
+		// Div by zero is not rewitten here, but done in a separate
+		// pass before -overflow (which runs before this pass), since
+		// -overflow rewrites divisions as multiplications.
 		case Instruction::Shl:
 		case Instruction::LShr:
 		case Instruction::AShr:
 			V = insertShiftCheck(I->getOperand(1));
 			break;
+		case Instruction::GetElementPtr:
+			V = insertArrayCheck(I);
+			break;
 		}
+		if (!V)
+			continue;
 		Checks.push_back(std::make_pair(V, I));
 	}
 	// Since inserting trap will change the control flow, it's better
 	// to do it after looping over all instructions.
 	for (size_t i = 0, n = Checks.size(); i != n; ++i)
 		insertTrap(Checks[i].first, Checks[i].second);
+}
+
+void IntRewrite::insertTrap(Value *V, Instruction *IP) {
+	BasicBlock *Pred = IP->getParent();
+	BasicBlock *Succ = SplitBlock(Pred, IP, this);
+	// Create a new BB containing a trap instruction.
+	LLVMContext &VMCtx = V->getContext();
+	Function *F = Pred->getParent();
+	BasicBlock *BB = BasicBlock::Create(VMCtx, Pred->getName() + "." + IP->getName(), F, Succ);
+	Builder->SetInsertPoint(BB);
+	Builder->SetCurrentDebugLocation(IP->getDebugLoc());
+	Module *M = F->getParent();
+	Function *Trap = Intrinsic::getDeclaration(M, Intrinsic::debugtrap);
+	CallInst *CI = Builder->CreateCall(Trap);
+	// Embed operation name in metadata.
+	std::string Anno = IP->getOpcodeName();;
+	switch (IP->getOpcode()) {
+	case Instruction::Add:
+	case Instruction::Sub:
+	case Instruction::Mul:
+		Anno = cast<BinaryOperator>(IP)->hasNoSignedWrap() ? "s" : "u" + Anno;
+		break;
+	case Instruction::GetElementPtr:
+		Anno = "array";
+		break;
+	}
+	MDNode *MD = MDNode::get(VMCtx, MDString::get(VMCtx, Anno));
+	CI->setMetadata(MD_int, MD);
+	Builder->CreateBr(Succ);
+	// Create a new conditional br in Pred.
+	Pred->getTerminator()->eraseFromParent();
+	BranchInst::Create(BB, Succ, V, Pred);
 }
 
 Value *IntRewrite::insertOverflowCheck(Instruction *I, Intrinsic::ID SID, Intrinsic::ID UID) {
@@ -98,7 +139,7 @@ Value *IntRewrite::insertSDivCheck(Instruction *I) {
 	IntegerType *T = cast<IntegerType>(I->getType());
 	unsigned n = T->getBitWidth();
 	Constant *SMin = ConstantInt::get(T, APInt::getSignedMinValue(n));
-	Constant *MinusOne = ConstantInt::get(T, APInt::getAllOnesValue(n));
+	Constant *MinusOne = Constant::getAllOnesValue(T);
 	return Builder->CreateAnd(
 		Builder->CreateICmpEQ(L, SMin),
 		Builder->CreateICmpEQ(R, MinusOne)
@@ -111,32 +152,25 @@ Value *IntRewrite::insertShiftCheck(Value *V) {
 	return Builder->CreateICmpUGE(V, C);
 }
 
-void IntRewrite::insertTrap(Value *V, Instruction *IP) {
-	BasicBlock *Pred = IP->getParent();
-	BasicBlock *Succ = SplitBlock(Pred, IP, this);
-	// Create a new BB containing a trap instruction.
-	LLVMContext &VMCtx = V->getContext();
-	Function *F = Pred->getParent();
-	BasicBlock *BB = BasicBlock::Create(VMCtx, "", F, Succ);
-	Builder->SetInsertPoint(BB);
-	Builder->SetCurrentDebugLocation(IP->getDebugLoc());
-	Module *M = F->getParent();
-	Function *Trap = Intrinsic::getDeclaration(M, Intrinsic::debugtrap);
-	CallInst *CI = Builder->CreateCall(Trap);
-	// Embed operation name in metadata.
-	std::string Anno = IP->getOpcodeName();
-	switch (IP->getOpcode()) {
-	case Instruction::Add:
-	case Instruction::Sub:
-	case Instruction::Mul:
-		Anno = cast<BinaryOperator>(IP)->hasNoSignedWrap() ? "s" : "u" + Anno;
+Value *IntRewrite::insertArrayCheck(Instruction *I) {
+	Value *V = NULL;
+	gep_type_iterator i = gep_type_begin(I), e = gep_type_end(I);
+	for (; i != e; ++i) {
+		// For arr[idx], check idx >u n.  Here we don't use idx >= n
+		// since it is unclear if the pointer will be dereferenced.
+		ArrayType *T = dyn_cast<ArrayType>(*i);
+		if (!T)
+			continue;
+		uint64_t n = T->getNumElements();
+		Value *Idx = i.getOperand();
+		Type *IdxTy = Idx->getType();
+		Value *Check = Builder->CreateICmpUGT(Idx, ConstantInt::get(IdxTy, n));
+		if (V)
+			V = Builder->CreateOr(V, Check);
+		else
+			V = Check;
 	}
-	MDNode *MD = MDNode::get(VMCtx, MDString::get(VMCtx, Anno));
-	CI->setMetadata(MD_int, MD);
-	Builder->CreateBr(Succ);
-	// Create a new conditional br in Pred.
-	Pred->getTerminator()->eraseFromParent();
-	BranchInst::Create(BB, Succ, V, Pred);
+	return V;
 }
 
 char IntRewrite::ID;
