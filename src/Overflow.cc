@@ -22,82 +22,131 @@ struct Overflow : FunctionPass {
 		AU.setPreservesCFG();
 	}
 
-	virtual bool doInitialization(Module &M) {
-		Builder.reset(new IRBuilder<>(M.getContext()));
-		this->M = &M;
-		return false;
-	}
-
 	virtual bool runOnFunction(Function &);
 
 private:
-	OwningPtr<IRBuilder<> > Builder;
-	Module *M;
+	typedef IRBuilder<> BuilderTy;
+	BuilderTy *Builder;
 
-	Value *tryIntrinsicWithInverse(CmpInst::Predicate Pred, Value *L, Value *R) {
-		Value *V = tryIntrinsic(Pred, L, R);
-		if (V)
-			return V;
-		V = tryIntrinsic(CmpInst::getInversePredicate(Pred), L, R);
-		if (V)
-			return Builder->CreateXor(V, 1);
-		return 0;
-	}
-
-	Value *createOverflowBit(Intrinsic::ID ID, Value *V0, Value *V1) {
-		Function *F = Intrinsic::getDeclaration(M, ID, V0->getType());
-		CallInst *CI = Builder->CreateCall2(F, V0, V1);
+	Value *createOverflowBit(Intrinsic::ID ID, Value *L, Value *R) {
+		Module *M = Builder->GetInsertBlock()->getParent()->getParent();
+		Function *F = Intrinsic::getDeclaration(M, ID, L->getType());
+		CallInst *CI = Builder->CreateCall2(F, L, R);
 		return Builder->CreateExtractValue(CI, 1);
 	}
 
-	Value *tryIntrinsic(CmpInst::Predicate, Value *, Value *);
+	Value *matchCmpWithSwappedAndInverse(CmpInst::Predicate Pred, Value *L, Value *R) {
+		// Try match comparision and the inverse form.
+		if (Value *V = matchCmpWithInverse(Pred, L, R))
+			return V;
+		Pred = CmpInst::getSwappedPredicate(Pred);
+		if (Value *V = matchCmpWithInverse(Pred, R, L))
+			return V;
+		return NULL;
+	}
+
+	Value *matchCmpWithInverse(CmpInst::Predicate Pred, Value *L, Value *R) {
+		// Try match comparision and the inverse form.
+		if (Value *V = matchCmp(Pred, L, R))
+			return V;
+		Pred = CmpInst::getInversePredicate(Pred);
+		if (Value *V = matchCmp(Pred, L, R))
+			return Builder->CreateXor(V, 1);
+		return NULL;
+	}
+
+	Value *matchCmp(CmpInst::Predicate, Value *, Value *);
 };
 
 } // anonymous namespace
 
 bool Overflow::runOnFunction(Function &F) {
+	BuilderTy TheBuilder(F.getContext());
+	Builder = &TheBuilder;
 	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
 		ICmpInst *I = dyn_cast<ICmpInst>(&*i);
 		++i;
 		if (!I)
 			continue;
-		Builder->SetInsertPoint(I);
 		Value *L = I->getOperand(0), *R = I->getOperand(1);
-		Value *V = tryIntrinsicWithInverse(I->getPredicate(), L, R);
-		if (!V)
-			V = tryIntrinsicWithInverse(I->getSwappedPredicate(), R, L);
+		if (!L->getType()->isIntegerTy())
+			continue;
+		Builder->SetInsertPoint(I);
+		Value *V = matchCmpWithSwappedAndInverse(I->getPredicate(), L, R);
 		if (!V)
 			continue;
-		if (Instruction *NewInst = dyn_cast<Instruction>(V))
-			NewInst->setDebugLoc(I->getDebugLoc());
 		I->replaceAllUsesWith(V);
+		if (I->hasName())
+			V->takeName(I);
 		RecursivelyDeleteTriviallyDeadInstructions(I);
 		Changed = true;
 	}
 	return Changed;
 }
 
-Value *Overflow::tryIntrinsic(CmpInst::Predicate Pred, Value *L, Value *R) {
-	llvm::Value *X, *Y, *A;
+Value *Overflow::matchCmp(CmpInst::Predicate Pred, Value *L, Value *R) {
+	Value *X, *Y, *A, *B;
+	ConstantInt *C;
 
-	// x >u UMAX /u y
-	if (Pred == llvm::CmpInst::ICMP_UGT
-		&& match(L, m_Value(X))
-		&& match(R, m_UDiv(m_AllOnes(), m_Value(Y)))) {
+	// x + y <u x => uadd.overflow(x, y)
+	// x + y <u y => uadd.overflow(x, y)
+	if (Pred == CmpInst::ICMP_ULT
+	    && match(L, m_Add(m_Value(X), m_Value(Y)))
+	    && match(R, m_Value(A))
+	    && (A == X || A == Y))
+		return createOverflowBit(Intrinsic::uadd_with_overflow, X, Y);
+
+	// x != (x * y) /u y => umul.overflow(x, y)
+	// x != (y * x) /u y => umul.overflow(x, y)
+	if (Pred == CmpInst::ICMP_NE
+	    && match(L, m_Value(X))
+	    && match(R, m_UDiv(m_Mul(m_Value(A), m_Value(B)), m_Value(Y)))
+	    && ((A == X && B == Y) || (A == Y && B == X)))
+		return createOverflowBit(Intrinsic::umul_with_overflow, X, Y);
+
+	// x >u UMAX - y => uadd.overflow(x, y)
+	if (Pred == CmpInst::ICMP_UGT
+	    && match(L, m_Value(X))
+	    && match(R, m_Sub(m_AllOnes(), m_Value(Y))))
+		return createOverflowBit(Intrinsic::uadd_with_overflow, X, Y);
+
+	// x >u C /u y =>
+	//    umul.overflow(x, y),                       if C == UMAX
+	//    x >u C || y >u C || umul.overflow_k(x, y), if C == UMAX_k
+	//    (zext x) * (zext y) > (zext N),            otherwise.
+	if (Pred == CmpInst::ICMP_UGT
+	    && match(L, m_Value(X))
+	    && match(R, m_UDiv(m_ConstantInt(C), m_Value(Y)))) {
+		const APInt &Val = C->getValue();
+		if (Val.isMaxValue())
 			return createOverflowBit(Intrinsic::umul_with_overflow, X, Y);
-        }
+		if ((Val + 1).isPowerOf2()) {
+			unsigned N = Val.countTrailingOnes();
+			IntegerType *T = IntegerType::get(Builder->getContext(), N);
+			return Builder->CreateOr(
+				Builder->CreateOr(
+					Builder->CreateICmpUGT(X, C),
+					Builder->CreateICmpUGT(Y, C)
+				),
+				createOverflowBit(Intrinsic::umul_with_overflow,
+					Builder->CreateTrunc(X, T),
+					Builder->CreateTrunc(Y, T)
+				)
+			);
+		}
+		unsigned N = X->getType()->getIntegerBitWidth() * 2;
+		IntegerType *T = IntegerType::get(Builder->getContext(), N);
+		return Builder->CreateICmpUGT(
+			Builder->CreateMul(
+				Builder->CreateZExt(X, T),
+				Builder->CreateZExt(Y, T)
+			),
+			Builder->CreateZExt(C, T)
+		);
+	}
 
-	// x != (x * y) /u y, x != (y * x) /u y
-	if (Pred == llvm::CmpInst::ICMP_NE
-		&& match(L, m_Value(X))
-		&& match(R, m_UDiv(m_Value(A), m_Value(Y)))
-		&& (match(A, m_Mul(m_Specific(X), m_Specific(Y)))
-			|| match(A, m_Mul(m_Specific(Y), m_Specific(X))))) {
-			return createOverflowBit(Intrinsic::umul_with_overflow, X, Y);
-        }
-
-	return 0;
+	return NULL;
 }
 
 char Overflow::ID;
