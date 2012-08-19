@@ -96,8 +96,8 @@ bool IntRewrite::runOnFunction(Function &F) {
 			V = insertSDivCheck(I);
 			break;
 		// Div by zero is not rewitten here, but done in a separate
-		// pass before -overflow (which runs before this pass), since
-		// -overflow rewrites divisions as multiplications.
+		// pass before -overflow-idiom, which runs before this pass
+		// and rewrites divisions as multiplications.
 		case Instruction::Shl:
 		case Instruction::LShr:
 		case Instruction::AShr:

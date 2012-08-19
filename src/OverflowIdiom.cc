@@ -1,4 +1,4 @@
-#define DEBUG_TYPE "overflow"
+#define DEBUG_TYPE "overflow-idiom"
 #include <llvm/Constants.h>
 #include <llvm/IRBuilder.h>
 #include <llvm/Instructions.h>
@@ -16,9 +16,9 @@ using namespace llvm::PatternMatch;
 
 namespace {
 
-struct Overflow : FunctionPass {
+struct OverflowIdiom : FunctionPass {
 	static char ID;
-	Overflow() : FunctionPass(ID) {}
+	OverflowIdiom() : FunctionPass(ID) {}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		AU.setPreservesCFG();
@@ -64,7 +64,7 @@ private:
 
 } // anonymous namespace
 
-bool Overflow::runOnFunction(Function &F) {
+bool OverflowIdiom::runOnFunction(Function &F) {
 	BuilderTy TheBuilder(F.getContext());
 	Builder = &TheBuilder;
 	bool Changed = false;
@@ -91,7 +91,7 @@ bool Overflow::runOnFunction(Function &F) {
 	return Changed;
 }
 
-Value *Overflow::matchCmp(CmpInst::Predicate Pred, Value *L, Value *R) {
+Value *OverflowIdiom::matchCmp(CmpInst::Predicate Pred, Value *L, Value *R) {
 	Value *X, *Y, *A, *B;
 	ConstantInt *C;
 
@@ -169,7 +169,7 @@ static bool isZero(Value *V) {
 //   ovfl = extract umul.overflow(v, ...)
 //   br ovfl ..., dest
 // dest: [no phi nodes]
-bool Overflow::removeRedundantZeroCheck(BasicBlock *BB) {
+bool OverflowIdiom::removeRedundantZeroCheck(BasicBlock *BB) {
 	// Check if the BB ends with a zero check.
 	BranchInst *NZBr = dyn_cast<BranchInst>(BB->getTerminator());
 	if (!NZBr || !NZBr->isConditional())
@@ -241,7 +241,7 @@ bool Overflow::removeRedundantZeroCheck(BasicBlock *BB) {
 	return true;
 }
 
-char Overflow::ID;
+char OverflowIdiom::ID;
 
-static RegisterPass<Overflow>
-X("overflow", "Rewrite overflow checking idioms using intrinsics");
+static RegisterPass<OverflowIdiom>
+X("overflow-idiom", "Rewrite overflow checking idioms using intrinsics");
