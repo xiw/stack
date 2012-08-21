@@ -49,7 +49,11 @@ struct LowerRange : FunctionPass {
 	static char ID;
 	LowerRange() : FunctionPass(ID) {}
 
-	bool runOnFunction(Function &);
+	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+		AU.setPreservesCFG();
+	}
+
+	virtual bool runOnFunction(Function &);
 };
 
 } // anonymous namespace
