@@ -1,14 +1,13 @@
-// RUN: %kcc -m32 -o - %s | %kint --check-prefix=exp32
-// RUN: %kcc -m64 -o - %s | %kint --check-prefix=exp64
-// RUN: %kcc -D__PATCH__ -m32 -o - %s | %kint --check-prefix=exp-patch
-// RUN: %kcc -D__PATCH__ -m64 -o - %s | %kint --check-prefix=exp-patch
+// RUN: %kcc -nostdinc -m32 -o - %s | %kint --check-prefix=exp32
+// RUN: %kcc -nostdinc -m64 -o - %s | %kint --check-prefix=exp64
+// RUN: %kcc -nostdinc -D__PATCH__ -m32 -o - %s | %kint --check-prefix=exp-patch
+// RUN: %kcc -nostdinc -D__PATCH__ -m64 -o - %s | %kint --check-prefix=exp-patch
 
 // http://git.kernel.org/linus/6a54435560efdab1a08f429a954df4d6c740bddf
 
-#define ENOMEM			12
-#define KVM_MAX_CPUID_ENTRIES	80
+#include "linux.h"
 
-typedef unsigned int u32;
+#define KVM_MAX_CPUID_ENTRIES	80
 
 struct kvm_cpuid2 {
 	u32 nent;
@@ -17,9 +16,6 @@ struct kvm_cpuid2 {
 struct kvm_cpuid_entry2 {
 	u32 data[10];
 };
-
-void *vmalloc(unsigned long size);
-void vfree(const void *addr);
 
 int kvm_dev_ioctl_get_supported_cpuid(struct kvm_cpuid2 *cpuid,
                                       struct kvm_cpuid_entry2 *entries)
