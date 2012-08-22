@@ -1,3 +1,6 @@
+// This pass replaces op a, b with the result of op.overflow(a, b),
+// if op.overflow exists and dominates op a, b.
+
 #define DEBUG_TYPE "overflow-combine"
 #include <llvm/IRBuilder.h>
 #include <llvm/Instructions.h>

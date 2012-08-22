@@ -1,3 +1,6 @@
+// This pass recognizes overflow checking idioms and rewrites them
+// with overflow intrinsics.
+
 #define DEBUG_TYPE "overflow-idiom"
 #include <llvm/Constants.h>
 #include <llvm/IRBuilder.h>
@@ -38,7 +41,7 @@ private:
 	}
 
 	Value *matchCmpWithSwappedAndInverse(CmpInst::Predicate Pred, Value *L, Value *R) {
-		// Try match comparision and the inverse form.
+		// Try match comparision and the swapped form.
 		if (Value *V = matchCmpWithInverse(Pred, L, R))
 			return V;
 		Pred = CmpInst::getSwappedPredicate(Pred);
