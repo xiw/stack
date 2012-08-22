@@ -13,6 +13,8 @@
 
 using namespace llvm;
 
+static void addRangeConstraints(SMTSolver &, SMTExpr, MDNode *);
+
 namespace {
 
 #define SMT    VG.SMT
@@ -214,48 +216,8 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 	SMTExpr visitLoadInst(LoadInst &I) {
 		SMTExpr E = mk_fresh(&I);
 		// Ranges are constants, so don't worry about recursion.
-		if (MDNode *MD = I.getMetadata("range")) {
-			unsigned n = MD->getNumOperands();
-			assert(n >= 2);
-			assert(n % 2 == 0);
-			// Assume no wrap.
-			ConstantInt *Lo, *Hi;
-			Lo = cast<ConstantInt>(MD->getOperand(0));
-			Hi = cast<ConstantInt>(MD->getOperand(n - 1));
-			ConstantRange R(Lo->getValue(), Hi->getValue());
-			APInt UMinVal = R.getUnsignedMin();
-			SMTExpr UMin = NULL;
-			SMTExpr UCmp0 = NULL;
-			if (!UMinVal.isMinValue()) {
-				UMin = SMT.bvconst(UMinVal);
-				UCmp0 = SMT.bvuge(E, UMin);
-				SMT.decref(E);
-				SMT.decref(UMin);
-			}
-			APInt UMaxVal = R.getUnsignedMax();
-			SMTExpr UMax = NULL;
-			SMTExpr UCmp1 = NULL;
-			if (!UMaxVal.isMaxValue()) {
-				UMax = SMT.bvconst(UMaxVal);
-				UCmp1 = SMT.bvule(E, UMax);
-				SMT.decref(E);
-				SMT.decref(UMax);
-			}
-			if (UCmp0 || UCmp1) {
-				SMTExpr Tmp;
-				if (!UCmp0) {
-					Tmp = UCmp1;
-				} else if (!UCmp1) {
-					Tmp = UCmp0;
-				} else {
-					Tmp = SMT.bvand(UCmp0, UCmp1);
-					SMT.decref(UCmp0);
-					SMT.decref(UCmp1);
-				}
-				SMT.assume(Tmp);
-				SMT.decref(Tmp);
-			}
-		}
+		if (MDNode *MD = I.getMetadata("range"))
+			addRangeConstraints(SMT, E, MD);
 		return E;
 	}
 
@@ -284,6 +246,7 @@ private:
 		}
 		return SMT.bvvar(getBitWidth(V), Name.c_str());
 	}
+
 };
 
 #undef SMT
@@ -310,4 +273,54 @@ SMTExpr ValueGen::get(Value *V) {
 	}
 	assert(E);
 	return E;
+}
+
+void addRangeConstraints(SMTSolver &SMT, SMTExpr E, MDNode *MD) {
+	unsigned n = MD->getNumOperands();
+	assert(n >= 2);
+	assert(n % 2 == 0);
+	// Start from emptyset.
+	ConstantRange R(SMT.bvwidth(E), false);
+	for (unsigned i = 0; i != n; i += 2) {
+		ConstantInt *Lo, *Hi;
+		Lo = cast<ConstantInt>(MD->getOperand(i));
+		Hi = cast<ConstantInt>(MD->getOperand(i + 1));
+		R = R.unionWith(ConstantRange(Lo->getValue(), Hi->getValue()));
+	}
+	if (R.isEmptySet() || R.isFullSet())
+		return;
+	// Add unsigned constraints.
+	APInt UMinVal = R.getUnsignedMin();
+	SMTExpr UMin = NULL;
+	SMTExpr UCmp0 = NULL;
+	if (!UMinVal.isMinValue()) {
+		UMin = SMT.bvconst(UMinVal);
+		UCmp0 = SMT.bvuge(E, UMin);
+		SMT.decref(E);
+		SMT.decref(UMin);
+	}
+	APInt UMaxVal = R.getUnsignedMax();
+	SMTExpr UMax = NULL;
+	SMTExpr UCmp1 = NULL;
+	if (!UMaxVal.isMaxValue()) {
+		UMax = SMT.bvconst(UMaxVal);
+		UCmp1 = SMT.bvule(E, UMax);
+		SMT.decref(E);
+		SMT.decref(UMax);
+	}
+	if (UCmp0 || UCmp1) {
+		SMTExpr Tmp;
+		if (!UCmp0) {
+			Tmp = UCmp1;
+		} else if (!UCmp1) {
+			Tmp = UCmp0;
+		} else {
+			Tmp = SMT.bvand(UCmp0, UCmp1);
+			SMT.decref(UCmp0);
+			SMT.decref(UCmp1);
+		}
+		SMT.assume(Tmp);
+		SMT.decref(Tmp);
+	}
+	// TODO: add signed constraints.
 }
