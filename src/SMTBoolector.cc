@@ -29,6 +29,10 @@ SMTSolver::~SMTSolver() {
 	boolector_delete(ctx);
 }
 
+void SMTSolver::assume(SMTExpr e_) {
+	boolector_assert(ctx, e);
+}
+
 SMTStatus SMTSolver::query(SMTExpr e_, SMTModel *m_) {
 	boolector_assume(ctx, e);
 	switch (boolector_sat(ctx)) {

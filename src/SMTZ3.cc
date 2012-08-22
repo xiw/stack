@@ -49,6 +49,10 @@ SMTSolver::~SMTSolver() {
 	delete ctx_;
 }
 
+void SMTSolver::assume(SMTExpr e_) {
+	Z3_assert_cnstr(ctx, bv2bool(e));
+}
+
 SMTStatus SMTSolver::query(SMTExpr e_, SMTModel *m_) {
 	Z3_push(ctx);
 	Z3_assert_cnstr(ctx, bv2bool(e));
