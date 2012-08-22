@@ -86,8 +86,8 @@ static void rewrite(Value *V, StringRef LoStr, StringRef HiStr) {
 			Lo = Lo.trunc(n);
 		if (Hi.getBitWidth() > n)
 			Hi = Hi.trunc(n);
-		MDNode *MD = MDBuilder(I->getContext()).createRange(Lo, Hi);
-		I->setMetadata("range", MD);
+		if (MDNode *MD = MDBuilder(I->getContext()).createRange(Lo, Hi + 1))
+			I->setMetadata("range", MD);
 	}
 }
 
