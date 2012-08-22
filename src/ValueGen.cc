@@ -275,6 +275,73 @@ SMTExpr ValueGen::get(Value *V) {
 	return E;
 }
 
+static void assumeAnd(SMTSolver &SMT, SMTExpr Cmp0, SMTExpr Cmp1) {
+	if (!Cmp0 && !Cmp1)
+		return;
+	SMTExpr Tmp;
+	if (!Cmp0) {
+		Tmp = Cmp1;
+	} else if (!Cmp1) {
+		Tmp = Cmp0;
+	} else {
+		Tmp = SMT.bvand(Cmp0, Cmp1);
+		SMT.decref(Cmp0);
+		SMT.decref(Cmp1);
+	}
+	SMT.assume(Tmp);
+	SMT.decref(Tmp);
+}
+
+static void assumeSignedMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange &R) {
+	APInt MinVal = R.getSignedMin();
+	APInt MaxVal = R.getSignedMax();
+	SMTExpr Min = NULL;
+	SMTExpr Cmp0 = NULL;
+	if (!MinVal.isMinSignedValue()) {
+		Min = SMT.bvconst(MinVal);
+		Cmp0 = SMT.bvsge(E, Min);
+		SMT.decref(E);
+		SMT.decref(Min);
+	}
+	SMTExpr Max = NULL;
+	SMTExpr Cmp1 = NULL;
+	if (!MaxVal.isMaxSignedValue()) {
+		Max = SMT.bvconst(MaxVal);
+		Cmp1 = SMT.bvsle(E, Max);
+		SMT.decref(E);
+		SMT.decref(Max);
+	}
+	assumeAnd(SMT, Cmp0, Cmp1);
+}
+
+static void assumeUnsignedMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange &R) {
+	APInt MinVal = R.getUnsignedMin();
+	APInt MaxVal = R.getUnsignedMax();
+	// Done by assumeSignedMinMax() if R is in [INT_MAX + 1, UINT_MAX].
+	if (MinVal.isNegative())
+		return;
+	// Done by assumeSignedMinMax() if R is in [0, INT_MAX].
+	if (MaxVal.isNonNegative())
+		return;
+	SMTExpr Min = NULL;
+	SMTExpr Cmp0 = NULL;
+	if (!MinVal.isMinValue()) {
+		Min = SMT.bvconst(MinVal);
+		Cmp0 = SMT.bvuge(E, Min);
+		SMT.decref(E);
+		SMT.decref(Min);
+	}
+	SMTExpr Max = NULL;
+	SMTExpr Cmp1 = NULL;
+	if (!MaxVal.isMaxValue()) {
+		Max = SMT.bvconst(MaxVal);
+		Cmp1 = SMT.bvule(E, Max);
+		SMT.decref(E);
+		SMT.decref(Max);
+	}
+	assumeAnd(SMT, Cmp0, Cmp1);
+}
+
 void addRangeConstraints(SMTSolver &SMT, SMTExpr E, MDNode *MD) {
 	unsigned n = MD->getNumOperands();
 	assert(n >= 2);
@@ -289,38 +356,6 @@ void addRangeConstraints(SMTSolver &SMT, SMTExpr E, MDNode *MD) {
 	}
 	if (R.isEmptySet() || R.isFullSet())
 		return;
-	// Add unsigned constraints.
-	APInt UMinVal = R.getUnsignedMin();
-	SMTExpr UMin = NULL;
-	SMTExpr UCmp0 = NULL;
-	if (!UMinVal.isMinValue()) {
-		UMin = SMT.bvconst(UMinVal);
-		UCmp0 = SMT.bvuge(E, UMin);
-		SMT.decref(E);
-		SMT.decref(UMin);
-	}
-	APInt UMaxVal = R.getUnsignedMax();
-	SMTExpr UMax = NULL;
-	SMTExpr UCmp1 = NULL;
-	if (!UMaxVal.isMaxValue()) {
-		UMax = SMT.bvconst(UMaxVal);
-		UCmp1 = SMT.bvule(E, UMax);
-		SMT.decref(E);
-		SMT.decref(UMax);
-	}
-	if (UCmp0 || UCmp1) {
-		SMTExpr Tmp;
-		if (!UCmp0) {
-			Tmp = UCmp1;
-		} else if (!UCmp1) {
-			Tmp = UCmp0;
-		} else {
-			Tmp = SMT.bvand(UCmp0, UCmp1);
-			SMT.decref(UCmp0);
-			SMT.decref(UCmp1);
-		}
-		SMT.assume(Tmp);
-		SMT.decref(Tmp);
-	}
-	// TODO: add signed constraints.
+	assumeSignedMinMax(SMT, E, R);
+	assumeUnsignedMinMax(SMT, E, R);
 }
