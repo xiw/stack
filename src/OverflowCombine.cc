@@ -15,7 +15,10 @@ namespace {
 
 struct OverflowCombine : FunctionPass {
 	static char ID;
-	OverflowCombine() : FunctionPass(ID) {}
+	OverflowCombine() : FunctionPass(ID) {
+		PassRegistry &Registery = *PassRegistry::getPassRegistry();
+		initializeDominatorTreePass(Registery);
+	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		AU.setPreservesCFG();
