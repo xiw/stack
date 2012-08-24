@@ -1,4 +1,8 @@
 #define DEBUG_TYPE "int-sat"
+#include "Diagnostic.h"
+#include "PathGen.h"
+#include "SMTSolver.h"
+#include "ValueGen.h"
 #include <llvm/BasicBlock.h>
 #include <llvm/Instructions.h>
 #include <llvm/Function.h>
@@ -9,15 +13,22 @@
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Assembly/Writer.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include "Diagnostic.h"
-#include "PathGen.h"
-#include "SMTSolver.h"
-#include "ValueGen.h"
+#include <sys/select.h>
+#include <sys/socket.h>
+#include <err.h>
+#include <signal.h>
+#include <unistd.h>
 
 using namespace llvm;
+
+static cl::opt<unsigned>
+SolverTimeout("solver-timeout",
+              cl::desc("Specify a timeout for SMT solver"),
+              cl::value_desc("seconds"));
 
 namespace {
 
@@ -69,6 +80,7 @@ void IntSat::check(CallInst *I) {
 	MDNode *MD = I->getMetadata(MD_int);
 	if (!MD)
 		return;
+	StringRef Reason = cast<MDString>(MD->getOperand(0))->getString();
 	BasicBlock *BB = I->getParent();
 	Function *F = BB->getParent();
 	if (CurF != F) {
@@ -80,15 +92,53 @@ void IntSat::check(CallInst *I) {
 	ValueGen VG(*TD, SMT);
 	PathGen PG(VG, BackEdges);
 	SMTExpr Query = PG.get(BB);
+
+	int fds[2] = {-1, -1};
+	if (SolverTimeout) {
+		socketpair(AF_LOCAL, SOCK_STREAM, 0, fds);
+		int pid = fork();
+		if (pid < 0)
+			err(1, "fork");
+		// Parent process.
+		if (pid) {
+			struct timeval tv = {SolverTimeout, 0};
+			fd_set fdset;
+			FD_ZERO(&fdset);
+			FD_SET(fds[1], &fdset);
+			select(fds[1] + 1, &fdset, NULL, NULL, &tv);
+			if (FD_ISSET(fds[1], &fdset)) {
+				SMTStatus dummy;
+				// Child done.
+				read(fds[1], &dummy, sizeof(dummy));
+				// Ack.
+				write(fds[0], &dummy, sizeof(dummy));
+				int stat_loc;
+				waitpid(pid, &stat_loc, 0);
+			} else {
+				// Child timeout.
+				kill(pid, SIGKILL);
+				*Diag << DbgLoc << "timeout - " + Reason;
+			}
+			return;
+		}
+		// Child process fall through.
+	}
+
 	SMTModel Model = 0;
 	SMTStatus Status = SMT.query(Query, &Model);
+	if (SolverTimeout) {
+		SMTStatus dummy;
+		// Notify parent.
+		write(fds[1], &Status, sizeof(Status));
+		// Acked by parent.
+		read(fds[0], &dummy, sizeof(dummy));
+	}
 	switch (Status) {
 	default: break;
 	case SMT_UNSAT:
 		return;
 	}
 	// Output location and operator.
-	StringRef Reason = cast<MDString>(MD->getOperand(0))->getString();
 	*Diag << DbgLoc << Reason;
 	// Output model.
 	if (Model) {
