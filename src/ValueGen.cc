@@ -300,7 +300,6 @@ static void assumeSignedMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange &R
 	if (!MinVal.isMinSignedValue()) {
 		Min = SMT.bvconst(MinVal);
 		Cmp0 = SMT.bvsge(E, Min);
-		SMT.decref(E);
 		SMT.decref(Min);
 	}
 	SMTExpr Max = NULL;
@@ -308,7 +307,6 @@ static void assumeSignedMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange &R
 	if (!MaxVal.isMaxSignedValue()) {
 		Max = SMT.bvconst(MaxVal);
 		Cmp1 = SMT.bvsle(E, Max);
-		SMT.decref(E);
 		SMT.decref(Max);
 	}
 	assumeAnd(SMT, Cmp0, Cmp1);
@@ -328,7 +326,6 @@ static void assumeUnsignedMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange 
 	if (!MinVal.isMinValue()) {
 		Min = SMT.bvconst(MinVal);
 		Cmp0 = SMT.bvuge(E, Min);
-		SMT.decref(E);
 		SMT.decref(Min);
 	}
 	SMTExpr Max = NULL;
@@ -336,7 +333,6 @@ static void assumeUnsignedMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange 
 	if (!MaxVal.isMaxValue()) {
 		Max = SMT.bvconst(MaxVal);
 		Cmp1 = SMT.bvule(E, Max);
-		SMT.decref(E);
 		SMT.decref(Max);
 	}
 	assumeAnd(SMT, Cmp0, Cmp1);
