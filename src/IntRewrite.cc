@@ -51,7 +51,7 @@ void insertIntTrap(Value *V, Instruction *IP, Pass *P) {
 	case Instruction::Add:
 	case Instruction::Sub:
 	case Instruction::Mul:
-		Anno = cast<BinaryOperator>(IP)->hasNoSignedWrap() ? "s" : "u" + Anno;
+		Anno = (cast<BinaryOperator>(IP)->hasNoSignedWrap() ? "s" : "u") + Anno;
 		break;
 	case Instruction::GetElementPtr:
 		Anno = "array";
