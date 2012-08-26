@@ -19,6 +19,7 @@
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <sys/select.h>
 #include <sys/socket.h>
+#include <sys/wait.h>
 #include <err.h>
 #include <signal.h>
 #include <unistd.h>
@@ -109,9 +110,11 @@ void IntSat::check(CallInst *I) {
 			if (FD_ISSET(fds[1], &fdset)) {
 				SMTStatus dummy;
 				// Child done.
-				read(fds[1], &dummy, sizeof(dummy));
+				if (read(fds[1], &dummy, sizeof(dummy)) < 0)
+					err(1, "read (parent)");
 				// Ack.
-				write(fds[0], &dummy, sizeof(dummy));
+				if (write(fds[0], &dummy, sizeof(dummy)) < 0)
+					err(1, "write (parent)");
 				int stat_loc;
 				waitpid(pid, &stat_loc, 0);
 			} else {
@@ -129,9 +132,11 @@ void IntSat::check(CallInst *I) {
 	if (SolverTimeout) {
 		SMTStatus dummy;
 		// Notify parent.
-		write(fds[1], &Status, sizeof(Status));
+		if (write(fds[1], &Status, sizeof(Status)) < 0)
+			err(1, "write (child)");
 		// Acked by parent.
-		read(fds[0], &dummy, sizeof(dummy));
+		if (read(fds[0], &dummy, sizeof(dummy)) < 0)
+			err(1, "read (child)");
 	}
 	switch (Status) {
 	default: break;
