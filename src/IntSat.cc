@@ -96,21 +96,23 @@ void IntSat::check(CallInst *I) {
 
 	int fds[2] = {-1, -1};
 	if (SolverTimeout) {
-		socketpair(AF_LOCAL, SOCK_STREAM, 0, fds);
+		if (socketpair(AF_UNIX, SOCK_STREAM, 0, fds) < 0)
+			err(1, "socketpair");
 		int pid = fork();
 		if (pid < 0)
 			err(1, "fork");
 		// Parent process.
 		if (pid) {
+			close(fds[1]);
 			struct timeval tv = {SolverTimeout, 0};
 			fd_set fdset;
 			FD_ZERO(&fdset);
-			FD_SET(fds[1], &fdset);
-			select(fds[1] + 1, &fdset, NULL, NULL, &tv);
+			FD_SET(fds[0], &fdset);
+			select(fds[0] + 1, &fdset, NULL, NULL, &tv);
 			if (FD_ISSET(fds[1], &fdset)) {
 				SMTStatus dummy;
 				// Child done.
-				if (read(fds[1], &dummy, sizeof(dummy)) < 0)
+				if (read(fds[0], &dummy, sizeof(dummy)) < 0)
 					err(1, "read (parent)");
 				// Ack.
 				if (write(fds[0], &dummy, sizeof(dummy)) < 0)
@@ -125,6 +127,7 @@ void IntSat::check(CallInst *I) {
 			return;
 		}
 		// Child process fall through.
+		close(fds[0]);
 	}
 
 	SMTModel Model = 0;
@@ -135,7 +138,7 @@ void IntSat::check(CallInst *I) {
 		if (write(fds[1], &Status, sizeof(Status)) < 0)
 			err(1, "write (child)");
 		// Acked by parent.
-		if (read(fds[0], &dummy, sizeof(dummy)) < 0)
+		if (read(fds[1], &dummy, sizeof(dummy)) < 0)
 			err(1, "read (child)");
 	}
 	switch (Status) {
@@ -158,6 +161,8 @@ void IntSat::check(CallInst *I) {
 			OS << '\n';
 		}
 	}
+	if (SolverTimeout)
+		exit(0);
 }
 
 char IntSat::ID;
