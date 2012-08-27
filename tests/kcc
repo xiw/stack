@@ -19,6 +19,10 @@ def cc(llvmcc, src, argv):
 		out = src
 	if out != '-':
 		out = os.path.splitext(out)[0] + '.ll'
+	# Remove -pg to avoid generating mcount calls.
+	argv = [x for x in argv if x != '-pg']
+	# Linux kernel hack: disable asm goto
+	argv = [x for x in argv if x != '-DCC_HAVE_ASM_GOTO']
 	more = ['-S', '-flto', '-fstrict-overflow', '-O0', '-g']
 	p1 = subprocess.Popen(llvmcc + argv + more, stdout=subprocess.PIPE)
 	opts = ['-strip-debug-declare', '-scalarrepl']
