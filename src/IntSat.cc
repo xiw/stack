@@ -31,6 +31,12 @@ SolverTimeout("solver-timeout",
               cl::desc("Specify a timeout for SMT solver"),
               cl::value_desc("seconds"));
 
+static cl::opt<bool>
+NoModelOutput("no-model",
+              cl::desc("Do not output model when SAT"),
+              cl::init(false));
+
+
 namespace {
 
 struct IntSat : ModulePass {
@@ -149,7 +155,7 @@ void IntSat::check(CallInst *I) {
 	// Output location and operator.
 	*Diag << DbgLoc << Reason;
 	// Output model.
-	if (Model) {
+	if (Model && !NoModelOutput) {
 		raw_ostream &OS = Diag->os();
 		for (ValueGen::iterator i = VG.begin(), e = VG.end(); i != e; ++i) {
 			Value *KeyV = i->first;
