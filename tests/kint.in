@@ -9,7 +9,7 @@ opt -disable-output -load=@abs_top_builddir@/src/.libs/libint.so \
 	-strip-dead-prototypes -globaldce -constmerge \
 	-lower-logical -sink -simplifycfg \
 	-sink -int-div -overflow-idiom -sink \
-	-int-rewrite -overflow-simplify \
+	-int-rewrite -overflow-simplify -int-libcalls \
 	-std-compile-opts \
 	-overflow-simplify \
 	-O3 \

@@ -7,6 +7,7 @@
 #define ENOMEM		12
 #define EFAULT		14
 #define EINVAL		22
+#define ENOPROTOOPT	92
 
 #define UINT_MAX	(~0U)
 
@@ -24,7 +25,8 @@ typedef unsigned gfp_t;
 
 void *kzalloc(size_t size, gfp_t flags);
 void kfree(void *);
-long copy_from_user(void *to, const void __user * from, unsigned long n);
 
 void *vmalloc(unsigned long size);
 void vfree(const void *addr);
+
+unsigned long copy_from_user(void *to, const void __user *from, unsigned long n);

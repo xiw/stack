@@ -33,7 +33,7 @@ private:
 
 } // anonymous namespace
 
-void insertIntTrap(Value *V, Instruction *IP, Pass *P) {
+void insertIntTrap(Value *V, StringRef Anno, Instruction *IP, Pass *P) {
 	BasicBlock *Pred = IP->getParent();
 	BasicBlock *Succ = SplitBlock(Pred, IP, P);
 	// Create a new BB containing a trap instruction.
@@ -46,23 +46,27 @@ void insertIntTrap(Value *V, Instruction *IP, Pass *P) {
 	Function *Trap = Intrinsic::getDeclaration(M, Intrinsic::debugtrap);
 	CallInst *CI = Builder.CreateCall(Trap);
 	// Embed operation name in metadata.
-	std::string Anno = IP->getOpcodeName();;
-	switch (IP->getOpcode()) {
-	case Instruction::Add:
-	case Instruction::Sub:
-	case Instruction::Mul:
-		Anno = (cast<BinaryOperator>(IP)->hasNoSignedWrap() ? "s" : "u") + Anno;
-		break;
-	case Instruction::GetElementPtr:
-		Anno = "array";
-		break;
-	}
 	MDNode *MD = MDNode::get(VMCtx, MDString::get(VMCtx, Anno));
 	CI->setMetadata("int", MD);
 	Builder.CreateBr(Succ);
 	// Create a new conditional br in Pred.
 	Pred->getTerminator()->eraseFromParent();
 	BranchInst::Create(BB, Succ, V, Pred);
+}
+
+static std::string getOpcodeName(Instruction *I) {
+	std::string Anno = I->getOpcodeName();
+	switch (I->getOpcode()) {
+	case Instruction::Add:
+	case Instruction::Sub:
+	case Instruction::Mul:
+		Anno = (cast<BinaryOperator>(I)->hasNoSignedWrap() ? "s" : "u") + Anno;
+		break;
+	case Instruction::GetElementPtr:
+		Anno = "array";
+		break;
+	}
+	return Anno;
 }
 
 bool IntRewrite::runOnFunction(Function &F) {
@@ -113,8 +117,11 @@ bool IntRewrite::runOnFunction(Function &F) {
 	}
 	// Since inserting trap will change the control flow, it's better
 	// to do it after looping over all instructions.
-	for (size_t i = 0, n = Checks.size(); i != n; ++i)
-		insertIntTrap(Checks[i].first, Checks[i].second, this);
+	for (size_t i = 0, n = Checks.size(); i != n; ++i) {
+		Value *V = Checks[i].first;
+		Instruction *I = Checks[i].second;
+		insertIntTrap(V, getOpcodeName(I), I, this);
+	}
 	return !Checks.empty();
 }
 

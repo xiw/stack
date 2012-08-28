@@ -1,5 +1,5 @@
-// RUN: %kcc -nostdinc -m32 -o - %s | %kint --check-prefix=exp
-// RUN: %kcc -nostdinc -m64 -o - %s | %kint --check-prefix=exp
+// RUN: %kcc -nostdinc -m32 -o - %s | %kint --check-prefix=exp32
+// RUN: %kcc -nostdinc -m64 -o - %s | %kint --check-prefix=exp64
 // RUN: %kcc -nostdinc -D__PATCH__ -m32 -o - %s | %kint --check-prefix=exp-patch
 // RUN: %kcc -nostdinc -D__PATCH__ -m64 -o - %s | %kint --check-prefix=exp-patch
 
@@ -37,7 +37,9 @@ long _ctl_do_mpt_command(struct MPT2SAS_ADAPTER *ioc,
 	}
 #endif
 	/* copy in request message frame from user */
-	if (copy_from_user(mpi_request, mf, karg.data_sge_offset*4)) { // exp: {{umul}}
+	if (copy_from_user(mpi_request, mf, karg.data_sge_offset*4)) { \
+		// exp32: {{umul}}{{size}} \
+		// exp64: {{umul}}
 		ret = -EFAULT;
 		goto out;
 	}

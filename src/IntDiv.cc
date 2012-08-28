@@ -21,7 +21,7 @@ private:
 
 } // anonymous namespace
 
-void insertIntTrap(Value *V, Instruction *IP, Pass *P);
+void insertIntTrap(Value *V, StringRef Anno, Instruction *IP, Pass *P);
 
 bool IntDiv::runOnFunction(Function &F) {
 	SmallVector<std::pair<Value *, Instruction *>, 4> Checks;
@@ -39,8 +39,11 @@ bool IntDiv::runOnFunction(Function &F) {
 	}
 	// Since inserting trap will change the control flow, it's better
 	// to do it after looping over all instructions.
-	for (size_t i = 0, n = Checks.size(); i != n; ++i)
-		insertIntTrap(Checks[i].first, Checks[i].second, this);
+	for (size_t i = 0, n = Checks.size(); i != n; ++i) {
+		Value *V = Checks[i].first;
+		Instruction *I = Checks[i].second;
+		insertIntTrap(V, I->getOpcodeName(), I, this);
+	}
 	return !Checks.empty();
 }
 
