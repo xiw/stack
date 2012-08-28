@@ -109,7 +109,7 @@ void IntSat::check(CallInst *I) {
 			FD_ZERO(&fdset);
 			FD_SET(fds[0], &fdset);
 			select(fds[0] + 1, &fdset, NULL, NULL, &tv);
-			if (FD_ISSET(fds[1], &fdset)) {
+			if (FD_ISSET(fds[0], &fdset)) {
 				SMTStatus dummy;
 				// Child done.
 				if (read(fds[0], &dummy, sizeof(dummy)) < 0)
@@ -117,13 +117,13 @@ void IntSat::check(CallInst *I) {
 				// Ack.
 				if (write(fds[0], &dummy, sizeof(dummy)) < 0)
 					err(1, "write (parent)");
-				int stat_loc;
-				waitpid(pid, &stat_loc, 0);
 			} else {
 				// Child timeout.
 				kill(pid, SIGKILL);
 				*Diag << DbgLoc << "timeout - " + Reason;
 			}
+			int stat_loc;
+			waitpid(pid, &stat_loc, 0);
 			return;
 		}
 		// Child process fall through.
@@ -162,7 +162,7 @@ void IntSat::check(CallInst *I) {
 		}
 	}
 	if (SolverTimeout)
-		exit(0);
+		_exit(0);
 }
 
 char IntSat::ID;
