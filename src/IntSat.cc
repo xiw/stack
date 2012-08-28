@@ -150,6 +150,8 @@ void IntSat::check(CallInst *I) {
 	switch (Status) {
 	default: break;
 	case SMT_UNSAT:
+		if (SolverTimeout)
+			_exit(0);
 		return;
 	}
 	// Output location and operator.
