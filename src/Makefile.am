@@ -16,7 +16,7 @@ libsat_la_LDFLAGS  = -L`gcc -print-file-name=` -L$(top_builddir)/lib
 
 libint_la_SOURCES = IntRewrite.cc IntDiv.cc IntSat.cc \
 	OverflowIdiom.cc OverflowCombine.cc OverflowSimplify.cc \
-	LowerLogical.cc Annotation.cc
+	LowerLogical.cc LoadElim.cc Annotation.cc
 libint_la_LIBADD  = libsat.la
 libint_la_LDFLAGS = -module
 
