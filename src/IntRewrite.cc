@@ -6,7 +6,10 @@
 #include <llvm/Metadata.h>
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/Analysis/Dominators.h>
+#include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/InstIterator.h>
@@ -21,7 +24,17 @@ namespace {
 
 struct IntRewrite : FunctionPass {
 	static char ID;
-	IntRewrite() : FunctionPass(ID) { }
+	IntRewrite() : FunctionPass(ID) {
+		PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
+		initializeDominatorTreePass(Registry);
+		initializeLoopInfoPass(Registry);
+	}
+
+	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+		AU.addRequired<DominatorTree>();
+		AU.addRequired<LoopInfo>();
+		AU.setPreservesCFG();
+	}
 
 	virtual bool runOnFunction(Function &);
 
@@ -29,10 +42,15 @@ private:
 	typedef IRBuilder<> BuilderTy;
 	BuilderTy *Builder;
 
+	DominatorTree *DT;
+	LoopInfo *LI;
+
 	bool insertOverflowCheck(Instruction *, Intrinsic::ID, Intrinsic::ID);
-	bool insertSDivCheck(Instruction *);
+	bool insertDivCheck(Instruction *);
 	bool insertShiftCheck(Instruction *);
 	bool insertArrayCheck(Instruction *);
+
+	bool isObservable(Instruction *);
 };
 
 } // anonymous namespace
@@ -41,7 +59,8 @@ static void insertIntSat(Value *V, Instruction *IP, StringRef Anno, const DebugL
 	Module *M = IP->getParent()->getParent()->getParent();
 	LLVMContext &C = M->getContext();
 	FunctionType *T = FunctionType::get(Type::getVoidTy(C), Type::getInt1Ty(C), false);
-	Constant *F = M->getOrInsertFunction("int.sat", T);
+	Function *F = cast<Function>(M->getOrInsertFunction("int.sat", T));
+	F->setDoesNotThrow();
 	CallInst *I = CallInst::Create(F, V, "", IP);
 	I->setDebugLoc(DbgLoc);
 	// Embed operation name in metadata.
@@ -60,6 +79,8 @@ void insertIntSat(Value *V, Instruction *I) {
 bool IntRewrite::runOnFunction(Function &F) {
 	BuilderTy TheBuilder(F.getContext());
 	Builder = &TheBuilder;
+	DT = &getAnalysis<DominatorTree>();
+	LI = &getAnalysis<LoopInfo>();
 	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 		Instruction *I = &*i;
@@ -84,7 +105,8 @@ bool IntRewrite::runOnFunction(Function &F) {
 				Intrinsic::umul_with_overflow);
 			break;
 		case Instruction::SDiv:
-			Changed |= insertSDivCheck(I);
+		case Instruction::UDiv:
+			Changed |= insertDivCheck(I);
 			break;
 		// Div by zero is not rewitten here, but done in a separate
 		// pass before -overflow-idiom, which runs before this pass
@@ -100,6 +122,26 @@ bool IntRewrite::runOnFunction(Function &F) {
 		}
 	}
 	return Changed;
+}
+
+bool IntRewrite::isObservable(Instruction *I) {
+	// Memory access.
+	if (I->mayReadOrWriteMemory())
+		return true;
+	// Extern call.
+	if (isa<CallInst>(I) || isa<InvokeInst>(I))
+		return true;
+	// Return value.
+	if (isa<ReturnInst>(I))
+		return true;
+	// Loop.
+	if (isa<BranchInst>(I)) {
+		BasicBlock *BB = I->getParent();
+		Loop *L = LI->getLoopFor(BB);
+		if (L && L->isLoopExiting(BB))
+			return true;
+	}
+	return false;
 }
 
 bool IntRewrite::insertOverflowCheck(Instruction *I, Intrinsic::ID SID, Intrinsic::ID UID) {
@@ -121,21 +163,62 @@ bool IntRewrite::insertOverflowCheck(Instruction *I, Intrinsic::ID SID, Intrinsi
 		// Clear NSW flag given -fwrapv.
 		cast<BinaryOperator>(I)->setHasNoSignedWrap(false);
 	}
-	// TODO: Defer the check.
-	insertIntSat(V, I, Anno);
+
+	// Defer the check.
+	SmallPtrSet<Value *, 16> Visited;
+	SmallVector<Value *, 16> Worklist;
+	typedef SmallPtrSet<BasicBlock *, 16> ObSet;
+	ObSet ObPoints;
+
+	Worklist.push_back(I);
+	Visited.insert(I);
+	while (!Worklist.empty()) {
+		Value *V = Worklist.back();
+		Worklist.pop_back();
+		for (Value::use_iterator i = V->use_begin(), e = V->use_end(); i != e; ++i) {
+			User *U = *i;
+			// Observers.
+			if (Instruction *ObInst = dyn_cast<Instruction>(U)) {
+				if (isObservable(ObInst)) {
+					BasicBlock *ObBB = ObInst->getParent();
+					ObPoints.insert(ObBB);
+					continue;
+				}
+			}
+			// Add to worklist if new.
+			if (U->use_empty())
+				continue;
+			if (Visited.insert(U))
+				Worklist.push_back(U);
+		}
+	}
+
+	const DebugLoc &DbgLoc = I->getDebugLoc();
+	BasicBlock *BB = I->getParent();
+	for (ObSet::iterator i = ObPoints.begin(), e = ObPoints.end(); i != e; ++i) {
+		BasicBlock *ObBB = *i;
+		if (!DT->dominates(BB, ObBB))
+			continue;
+		insertIntSat(V, ObBB->getTerminator(), Anno, DbgLoc);
+	}
 	return true;
 }
 
-bool IntRewrite::insertSDivCheck(Instruction *I) {
-	Value *L = I->getOperand(0), *R = I->getOperand(1);
-	IntegerType *T = cast<IntegerType>(I->getType());
-	unsigned n = T->getBitWidth();
-	Constant *SMin = ConstantInt::get(T, APInt::getSignedMinValue(n));
-	Constant *MinusOne = Constant::getAllOnesValue(T);
-	Value *V = Builder->CreateAnd(
-		Builder->CreateICmpEQ(L, SMin),
-		Builder->CreateICmpEQ(R, MinusOne)
-	);
+bool IntRewrite::insertDivCheck(Instruction *I) {
+	Value *R = I->getOperand(1);
+	// R == 0.
+	Value *V = Builder->CreateIsNull(R);
+	// L == INT_MIN && R == -1.
+	if (I->getOpcode() == Instruction::SDiv) {
+		Value *L = I->getOperand(0);
+		IntegerType *T = cast<IntegerType>(I->getType());
+		unsigned n = T->getBitWidth();
+		Constant *SMin = ConstantInt::get(T, APInt::getSignedMinValue(n));
+		Constant *MinusOne = Constant::getAllOnesValue(T);
+		V = Builder->CreateOr(V, Builder->CreateAnd(
+			Builder->CreateICmpEQ(L, SMin),
+			Builder->CreateICmpEQ(R, MinusOne)));
+	}
 	insertIntSat(V, I);
 	return true;
 }
