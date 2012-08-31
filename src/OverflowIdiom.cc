@@ -89,8 +89,6 @@ bool OverflowIdiom::runOnFunction(Function &F) {
 		RecursivelyDeleteTriviallyDeadInstructions(I);
 		Changed = true;
 	}
-	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i)
-		Changed |= removeRedundantZeroCheck(i);
 	return Changed;
 }
 
@@ -156,92 +154,6 @@ Value *OverflowIdiom::matchCmp(CmpInst::Predicate Pred, Value *L, Value *R) {
 	}
 
 	return NULL;
-}
-
-static bool isZero(Value *V) {
-	if (ConstantInt *CI = dyn_cast<ConstantInt>(V))
-		if (CI->isZero())
-			return true;
-	return false;
-}
-
-// bb:
-//   nonzero = cmp ne v, 0
-//   br nonzero, ovfl, dest
-// ovfl: [no side effect]
-//   ovfl = extract umul.overflow(v, ...)
-//   br ovfl ..., dest
-// dest: [no phi nodes]
-bool OverflowIdiom::removeRedundantZeroCheck(BasicBlock *BB) {
-	// Check if the BB ends with a zero check.
-	BranchInst *NZBr = dyn_cast<BranchInst>(BB->getTerminator());
-	if (!NZBr || !NZBr->isConditional())
-		return false;
-	ICmpInst *NZCmp = dyn_cast<ICmpInst>(NZBr->getCondition());
-	if (!NZCmp || !NZCmp->isEquality())
-		return false;
-	// Extract V from the zero check.
-	Value *V;
-	if (isZero(NZCmp->getOperand(0)))
-		V = NZCmp->getOperand(1);
-	else if (isZero(NZCmp->getOperand(1)))
-		V = NZCmp->getOperand(0);
-	else
-		return false;
-	// Extract sucessors.
-	BasicBlock *DestBB, *OvflBB;
-	Value *Cond;
-	if (NZCmp->getPredicate() == CmpInst::ICMP_EQ) {
-		DestBB = NZBr->getSuccessor(0);
-		OvflBB = NZBr->getSuccessor(1);
-		Cond = Builder->getFalse();
-	} else {
-		DestBB = NZBr->getSuccessor(1);
-		OvflBB = NZBr->getSuccessor(0);
-		Cond = Builder->getTrue();
-	}
-	// Verify DestBB doesn't have PHI nodes.
-	if (isa<PHINode>(DestBB->front()))
-		return false;
-	// Verify OvflBB ends with an overflow test.
-	BranchInst *OvflBr = dyn_cast<BranchInst>(OvflBB->getTerminator());
-	if (!OvflBr || !OvflBr->isConditional())
-		return false;
-	if (OvflBr->getSuccessor(1) != DestBB)
-		return false;
-	ExtractValueInst *OvflBit = dyn_cast<ExtractValueInst>(OvflBr->getCondition());
-	if (!OvflBit || OvflBit->getIndices() != ArrayRef<unsigned>(1))
-		return false;
-	IntrinsicInst *II = dyn_cast<IntrinsicInst>(OvflBit->getAggregateOperand());
-	if (!II || II->getNumArgOperands() != 2)
-		return false;
-	switch (II->getIntrinsicID()) {
-	default: return false;
-	case Intrinsic::sadd_with_overflow:
-	case Intrinsic::uadd_with_overflow:
-	case Intrinsic::smul_with_overflow:
-	case Intrinsic::umul_with_overflow:
-		if (V != II->getArgOperand(0) && V != II->getArgOperand(1))
-			return false;
-		break;
-	case Intrinsic::ssub_with_overflow:
-	case Intrinsic::usub_with_overflow:
-		if (V != II->getArgOperand(1))
-			return false;
-		break;
-	}
-	// Verify OvflBB doesn't have side effect.
-	TargetData *TD = getAnalysisIfAvailable<TargetData>();
-	for (BasicBlock::iterator I = BB->begin(); ; ++I) {
-		if (isa<TerminatorInst>(I))
-			break;
-		if (!isSafeToSpeculativelyExecute(I, TD))
-			return false;
-	}
-	// Make the zero check dead.
-	NZBr->setCondition(Cond);
-	RecursivelyDeleteTriviallyDeadInstructions(NZCmp);
-	return true;
 }
 
 char OverflowIdiom::ID;
