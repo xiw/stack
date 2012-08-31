@@ -7,10 +7,9 @@ opt -disable-output -load=@abs_top_builddir@/src/.libs/libint.so \
 	-scalarrepl-ssa -early-cse -simplify-libcalls -lazy-value-info \
 	-jump-threading -correlated-propagation -simplifycfg \
 	-strip-dead-prototypes -globaldce -constmerge \
-	-lower-logical -sink -simplifycfg \
-	-sink -int-div -overflow-idiom -sink \
+	-overflow-idiom -simplifycfg \
 	-int-rewrite -overflow-simplify -int-libcalls \
 	-std-compile-opts \
-	-overflow-simplify \
-	-O3 \
+	-overflow-simplify -load-elim \
+	-O2 \
 	-int-sat $@
