@@ -11,9 +11,11 @@
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/OwningPtr.h>
+#include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Assembly/Writer.h>
 #include <llvm/Support/CommandLine.h>
+#include <llvm/Support/InstIterator.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
@@ -39,43 +41,50 @@ NoModelOutput("no-model",
 
 namespace {
 
-struct IntSat : ModulePass {
+struct IntSat : FunctionPass {
 	static char ID;
-	IntSat() : ModulePass(ID) { }
+	IntSat() : FunctionPass(ID) {}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		AU.setPreservesAll();
-		AU.addRequired<TargetData>();
 	}
 
-	virtual bool runOnModule(Module &);
+	virtual bool doInitialization(Module &);
+
+	virtual bool runOnFunction(Function &);
 
 private:
-	TargetData *TD;
-	Function *CurF;
-	SmallVector<PathGen::Edge, 32> BackEdges;
+	OwningPtr<TargetData> TD;
 	OwningPtr<Diagnostic> Diag;
+	Function *Trap;
 	unsigned MD_int;
+
+	SmallVector<PathGen::Edge, 32> BackEdges;
+	SmallPtrSet<Value *, 32> ReportedBugs;
 
 	void check(CallInst *);
 };
 
 } // anonymous namespace
 
-bool IntSat::runOnModule(Module &M) {
-	Function *BugOn = M.getFunction("int.bug_on");
-	if (BugOn) {
-		TD = &getAnalysis<TargetData>();
-		CurF = 0;
-		BackEdges.clear();
-		Diag.reset(new Diagnostic(M));
-		MD_int = M.getContext().getMDKindID("int");
-		Function::use_iterator i = BugOn->use_begin(), e = BugOn->use_end();
-		for (; i != e; ++i) {
-			CallInst *CI = dyn_cast<CallInst>(*i);
-			if (CI && CI->getCalledFunction() == BugOn)
-				check(CI);
-		}
+bool IntSat::doInitialization(Module &M) {
+	TD.reset(new TargetData(&M));
+	Diag.reset(new Diagnostic(M));
+	Trap = M.getFunction("int.sat");
+	MD_int = M.getContext().getMDKindID("int");
+	return false;
+}
+
+bool IntSat::runOnFunction(Function &F) {
+	if (!Trap)
+		return false;
+	BackEdges.clear();
+	FindFunctionBackedges(F, BackEdges);
+	ReportedBugs.clear();
+	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
+		CallInst *CI = dyn_cast<CallInst>(&*i);
+		if (CI && CI->getCalledFunction() == Trap)
+			check(CI);
 	}
 	return false;
 }
@@ -88,6 +97,15 @@ void IntSat::check(CallInst *I) {
 	if (!MD)
 		return;
 	StringRef Reason = cast<MDString>(MD->getOperand(0))->getString();
+	assert(I->getNumArgOperands() >= 1);
+	Value *Cond = I->getArgOperand(0);
+	assert(Cond->getType()->isIntegerTy(1));
+	if (isa<ConstantInt>(Cond)) {
+		// TODO.
+		return;
+	}
+	if (ReportedBugs.count(Cond))
+		return;
 
 	int fds[2] = {-1, -1};
 	if (SolverTimeout) {
@@ -125,16 +143,7 @@ void IntSat::check(CallInst *I) {
 		close(fds[0]);
 	}
 
-	assert(I->getNumArgOperands() >= 1);
-	Value *Cond = I->getArgOperand(0);
-	assert(Cond->getType()->isIntegerTy(1));
 	BasicBlock *BB = I->getParent();
-	Function *F = BB->getParent();
-	if (CurF != F) {
-		CurF = F;
-		BackEdges.clear();
-		FindFunctionBackedges(*F, BackEdges);
-	}
 
 	SMTSolver SMT;
 	ValueGen VG(*TD, SMT);
@@ -161,6 +170,8 @@ void IntSat::check(CallInst *I) {
 			_exit(0);
 		return;
 	}
+	// Save to suppress furture warnings.
+	ReportedBugs.insert(Cond);
 	// Output location and operator.
 	*Diag << DbgLoc << Reason;
 	// Output model.
@@ -170,7 +181,7 @@ void IntSat::check(CallInst *I) {
 			Value *KeyV = i->first;
 			if (isa<Constant>(KeyV))
 				continue;
-			WriteAsOperand(OS, KeyV, false, F->getParent());
+			WriteAsOperand(OS, KeyV, false, Trap->getParent());
 			OS << ":\t";
 			SMT.eval(Model, i->second, OS);
 			OS << '\n';
