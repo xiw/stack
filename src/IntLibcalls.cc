@@ -61,7 +61,7 @@ static NamedParam LinuxSize[] = {
 	{0, 0}
 };
 
-void insertIntTrap(Value *V, StringRef Anno, Instruction *IP, Pass *P);
+void insertIntSat(Value *, Instruction *, const DebugLoc &, StringRef);
 
 bool IntLibcalls::runOnModule(Module &M) {
 	BuilderTy TheBuilder(M.getContext());
@@ -76,16 +76,12 @@ bool IntLibcalls::runOnModule(Module &M) {
 }
 
 void IntLibcalls::rewriteSize(Function *F) {
-	SmallVector<CallInst *, 32> Calls;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 		CallInst *I = dyn_cast<llvm::CallInst>(&*i);
-		if (I && I->getCalledFunction())
-			Calls.push_back(I);
-	}
-	for (unsigned i = 0, n = Calls.size(); i != n; ++i) {
-		CallInst *I = Calls[i];
-		rewriteSizeAt(I, LLVMSize);
-		rewriteSizeAt(I, LinuxSize);
+		if (I && I->getCalledFunction()) {
+			rewriteSizeAt(I, LLVMSize);
+			rewriteSizeAt(I, LinuxSize);
+		}
 	}
 }
 
@@ -99,7 +95,7 @@ void IntLibcalls::rewriteSizeAt(llvm::CallInst *I, NamedParam *NPs) {
 		assert(T->isIntegerTy());
 		Builder->SetInsertPoint(I);
 		Value *V = Builder->CreateICmpSLT(Arg, Constant::getNullValue(T));
-		insertIntTrap(V, "size", I, this);
+		insertIntSat(V, I, I->getDebugLoc(), "size");
 	}
 }
 

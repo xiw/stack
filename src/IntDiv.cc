@@ -2,7 +2,6 @@
 #include <llvm/IRBuilder.h>
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
-#include <llvm/ADT/SmallVector.h>
 #include <llvm/Support/InstIterator.h>
 
 using namespace llvm;
@@ -21,10 +20,10 @@ private:
 
 } // anonymous namespace
 
-void insertIntTrap(Value *V, StringRef Anno, Instruction *IP, Pass *P);
+void insertIntSat(Value *, Instruction *, const DebugLoc &, StringRef);
 
 bool IntDiv::runOnFunction(Function &F) {
-	SmallVector<std::pair<Value *, Instruction *>, 4> Checks;
+	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 		Instruction *I = &*i;
 		switch (I->getOpcode()) {
@@ -35,16 +34,10 @@ bool IntDiv::runOnFunction(Function &F) {
 		}
 		IRBuilder<> Builder(I);
 		Value *V = Builder.CreateIsNull(I->getOperand(1));
-		Checks.push_back(std::make_pair(V, I));
+		insertIntSat(V, I, I->getDebugLoc(), I->getOpcodeName());
+		Changed = true;
 	}
-	// Since inserting trap will change the control flow, it's better
-	// to do it after looping over all instructions.
-	for (size_t i = 0, n = Checks.size(); i != n; ++i) {
-		Value *V = Checks[i].first;
-		Instruction *I = Checks[i].second;
-		insertIntTrap(V, I->getOpcodeName(), I, this);
-	}
-	return !Checks.empty();
+	return Changed;
 }
 
 char IntDiv::ID;

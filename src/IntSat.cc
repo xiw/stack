@@ -63,17 +63,17 @@ private:
 } // anonymous namespace
 
 bool IntSat::runOnModule(Module &M) {
-	Function *Trap = Intrinsic::getDeclaration(&M, Intrinsic::debugtrap);
-	if (Trap) {
+	Function *BugOn = M.getFunction("int.bug_on");
+	if (BugOn) {
 		TD = &getAnalysis<TargetData>();
 		CurF = 0;
 		BackEdges.clear();
 		Diag.reset(new Diagnostic(M));
 		MD_int = M.getContext().getMDKindID("int");
-		Function::use_iterator i = Trap->use_begin(), e = Trap->use_end();
+		Function::use_iterator i = BugOn->use_begin(), e = BugOn->use_end();
 		for (; i != e; ++i) {
 			CallInst *CI = dyn_cast<CallInst>(*i);
-			if (CI && CI->getCalledFunction() == Trap)
+			if (CI && CI->getCalledFunction() == BugOn)
 				check(CI);
 		}
 	}
@@ -88,17 +88,6 @@ void IntSat::check(CallInst *I) {
 	if (!MD)
 		return;
 	StringRef Reason = cast<MDString>(MD->getOperand(0))->getString();
-	BasicBlock *BB = I->getParent();
-	Function *F = BB->getParent();
-	if (CurF != F) {
-		CurF = F;
-		BackEdges.clear();
-		FindFunctionBackedges(*F, BackEdges);
-	}
-	SMTSolver SMT;
-	ValueGen VG(*TD, SMT);
-	PathGen PG(VG, BackEdges);
-	SMTExpr Query = PG.get(BB);
 
 	int fds[2] = {-1, -1};
 	if (SolverTimeout) {
@@ -136,8 +125,25 @@ void IntSat::check(CallInst *I) {
 		close(fds[0]);
 	}
 
+	assert(I->getNumArgOperands() >= 1);
+	Value *Cond = I->getArgOperand(0);
+	assert(Cond->getType()->isIntegerTy(1));
+	BasicBlock *BB = I->getParent();
+	Function *F = BB->getParent();
+	if (CurF != F) {
+		CurF = F;
+		BackEdges.clear();
+		FindFunctionBackedges(*F, BackEdges);
+	}
+
+	SMTSolver SMT;
+	ValueGen VG(*TD, SMT);
+	PathGen PG(VG, BackEdges);
+	SMTExpr Query = SMT.bvand(VG.get(Cond), PG.get(BB));
 	SMTModel Model = 0;
 	SMTStatus Status = SMT.query(Query, &Model);
+	SMT.decref(Query);
+
 	if (SolverTimeout) {
 		SMTStatus dummy;
 		// Notify parent.
@@ -147,6 +153,7 @@ void IntSat::check(CallInst *I) {
 		if (read(fds[1], &dummy, sizeof(dummy)) < 0)
 			err(1, "read (child)");
 	}
+
 	switch (Status) {
 	default: break;
 	case SMT_UNSAT:
@@ -176,4 +183,4 @@ void IntSat::check(CallInst *I) {
 char IntSat::ID;
 
 static RegisterPass<IntSat>
-X("int-sat", "Check llvm.debugtrap calls for satisfiability", false, true);
+X("int-sat", "Check int.sat for satisfiability", false, true);

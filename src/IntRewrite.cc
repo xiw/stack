@@ -33,25 +33,16 @@ private:
 
 } // anonymous namespace
 
-void insertIntTrap(Value *V, StringRef Anno, Instruction *IP, Pass *P) {
-	BasicBlock *Pred = IP->getParent();
-	BasicBlock *Succ = SplitBlock(Pred, IP, P);
-	// Create a new BB containing a trap instruction.
-	LLVMContext &VMCtx = V->getContext();
-	Function *F = Pred->getParent();
-	BasicBlock *BB = BasicBlock::Create(VMCtx, Pred->getName() + "." + IP->getName(), F, Succ);
-	IRBuilder<> Builder(BB);
-	Builder.SetCurrentDebugLocation(IP->getDebugLoc());
-	Module *M = F->getParent();
-	Function *Trap = Intrinsic::getDeclaration(M, Intrinsic::debugtrap);
-	CallInst *CI = Builder.CreateCall(Trap);
+void insertIntSat(Value *V, Instruction *IP, const DebugLoc &DbgLoc, StringRef Anno) {
+	Module *M = IP->getParent()->getParent()->getParent();
+	LLVMContext &C = M->getContext();
+	FunctionType *T = FunctionType::get(Type::getVoidTy(C), Type::getInt1Ty(C), false);
+	Constant *F = M->getOrInsertFunction("int.sat", T);
+	CallInst *I = CallInst::Create(F, V, "", IP);
+	I->setDebugLoc(DbgLoc);
 	// Embed operation name in metadata.
-	MDNode *MD = MDNode::get(VMCtx, MDString::get(VMCtx, Anno));
-	CI->setMetadata("int", MD);
-	Builder.CreateBr(Succ);
-	// Create a new conditional br in Pred.
-	Pred->getTerminator()->eraseFromParent();
-	BranchInst::Create(BB, Succ, V, Pred);
+	MDNode *MD = MDNode::get(C, MDString::get(C, Anno));
+	I->setMetadata("int", MD);
 }
 
 static std::string getOpcodeName(Instruction *I) {
@@ -72,7 +63,7 @@ static std::string getOpcodeName(Instruction *I) {
 bool IntRewrite::runOnFunction(Function &F) {
 	BuilderTy TheBuilder(F.getContext());
 	Builder = &TheBuilder;
-	SmallVector<std::pair<Value *, Instruction *>, 16> Checks;
+	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 		Instruction *I = &*i;
 		if (!isa<BinaryOperator>(I) && !isa<GetElementPtrInst>(I))
@@ -113,16 +104,10 @@ bool IntRewrite::runOnFunction(Function &F) {
 		}
 		if (!V)
 			continue;
-		Checks.push_back(std::make_pair(V, I));
+		insertIntSat(V, I, I->getDebugLoc(), getOpcodeName(I));
+		Changed = true;
 	}
-	// Since inserting trap will change the control flow, it's better
-	// to do it after looping over all instructions.
-	for (size_t i = 0, n = Checks.size(); i != n; ++i) {
-		Value *V = Checks[i].first;
-		Instruction *I = Checks[i].second;
-		insertIntTrap(V, getOpcodeName(I), I, this);
-	}
-	return !Checks.empty();
+	return Changed;
 }
 
 Value *IntRewrite::insertOverflowCheck(Instruction *I, Intrinsic::ID SID, Intrinsic::ID UID) {
@@ -176,4 +161,4 @@ Value *IntRewrite::insertArrayCheck(Instruction *I) {
 char IntRewrite::ID;
 
 static RegisterPass<IntRewrite>
-X("int-rewrite", "Insert llvm.debugtrap calls", false, false);
+X("int-rewrite", "Insert int.sat calls", false, false);
