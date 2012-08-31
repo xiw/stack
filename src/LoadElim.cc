@@ -85,7 +85,10 @@ bool LoadElim::hoist(const SCEV *S, LoadInst *I) {
 	if (Instruction *BaseI = dyn_cast<Instruction>(BaseV))
 		IP = ++BasicBlock::iterator(BaseI);
 	else
-		IP = F->getEntryBlock().getFirstInsertionPt();
+		IP = F->getEntryBlock().begin();
+	// Skip phi nodes, if any.
+	if (isa<PHINode>(IP))
+		IP = IP->getParent()->getFirstInsertionPt();
 	// We may reuse the address if it is a simple GEP.  Otherwise
 	// expand the SCEV expression instead.
 	Value *AddrV = NULL;
