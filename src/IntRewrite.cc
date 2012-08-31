@@ -7,11 +7,15 @@
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 using namespace llvm;
+
+static cl::opt<bool>
+WrapOpt("fwrapv", cl::desc("Use two's complement for signed integers"));
 
 namespace {
 
@@ -25,15 +29,15 @@ private:
 	typedef IRBuilder<> BuilderTy;
 	BuilderTy *Builder;
 
-	Value *insertOverflowCheck(Instruction *, Intrinsic::ID, Intrinsic::ID);
-	Value *insertSDivCheck(Instruction *);
-	Value *insertShiftCheck(Value *);
-	Value *insertArrayCheck(Instruction *);
+	bool insertOverflowCheck(Instruction *, Intrinsic::ID, Intrinsic::ID);
+	bool insertSDivCheck(Instruction *);
+	bool insertShiftCheck(Instruction *);
+	bool insertArrayCheck(Instruction *);
 };
 
 } // anonymous namespace
 
-void insertIntSat(Value *V, Instruction *IP, const DebugLoc &DbgLoc, StringRef Anno) {
+static void insertIntSat(Value *V, Instruction *IP, StringRef Anno, const DebugLoc &DbgLoc) {
 	Module *M = IP->getParent()->getParent()->getParent();
 	LLVMContext &C = M->getContext();
 	FunctionType *T = FunctionType::get(Type::getVoidTy(C), Type::getInt1Ty(C), false);
@@ -45,19 +49,12 @@ void insertIntSat(Value *V, Instruction *IP, const DebugLoc &DbgLoc, StringRef A
 	I->setMetadata("int", MD);
 }
 
-static std::string getOpcodeName(Instruction *I) {
-	std::string Anno = I->getOpcodeName();
-	switch (I->getOpcode()) {
-	case Instruction::Add:
-	case Instruction::Sub:
-	case Instruction::Mul:
-		Anno = (cast<BinaryOperator>(I)->hasNoSignedWrap() ? "s" : "u") + Anno;
-		break;
-	case Instruction::GetElementPtr:
-		Anno = "array";
-		break;
-	}
-	return Anno;
+void insertIntSat(Value *V, Instruction *I, StringRef Anno) {
+	insertIntSat(V, I, Anno, I->getDebugLoc());
+}
+
+void insertIntSat(Value *V, Instruction *I) {
+	insertIntSat(V, I, I->getOpcodeName());
 }
 
 bool IntRewrite::runOnFunction(Function &F) {
@@ -69,26 +66,25 @@ bool IntRewrite::runOnFunction(Function &F) {
 		if (!isa<BinaryOperator>(I) && !isa<GetElementPtrInst>(I))
 			continue;
 		Builder->SetInsertPoint(I);
-		Value *V = NULL;
 		switch (I->getOpcode()) {
 		default: continue;
 		case Instruction::Add:
-			V = insertOverflowCheck(I,
+			Changed |= insertOverflowCheck(I,
 				Intrinsic::sadd_with_overflow,
 				Intrinsic::uadd_with_overflow);
 			break;
 		case Instruction::Sub:
-			V = insertOverflowCheck(I,
+			Changed |= insertOverflowCheck(I,
 				Intrinsic::ssub_with_overflow,
 				Intrinsic::usub_with_overflow);
 			break;
 		case Instruction::Mul:
-			V = insertOverflowCheck(I,
+			Changed |= insertOverflowCheck(I,
 				Intrinsic::smul_with_overflow,
 				Intrinsic::umul_with_overflow);
 			break;
 		case Instruction::SDiv:
-			V = insertSDivCheck(I);
+			Changed |= insertSDivCheck(I);
 			break;
 		// Div by zero is not rewitten here, but done in a separate
 		// pass before -overflow-idiom, which runs before this pass
@@ -96,48 +92,64 @@ bool IntRewrite::runOnFunction(Function &F) {
 		case Instruction::Shl:
 		case Instruction::LShr:
 		case Instruction::AShr:
-			V = insertShiftCheck(I->getOperand(1));
+			Changed |= insertShiftCheck(I);
 			break;
 		case Instruction::GetElementPtr:
-			V = insertArrayCheck(I);
+			Changed |= insertArrayCheck(I);
 			break;
 		}
-		if (!V)
-			continue;
-		insertIntSat(V, I, I->getDebugLoc(), getOpcodeName(I));
-		Changed = true;
 	}
 	return Changed;
 }
 
-Value *IntRewrite::insertOverflowCheck(Instruction *I, Intrinsic::ID SID, Intrinsic::ID UID) {
-	BinaryOperator *BO = cast<BinaryOperator>(I);
-	Intrinsic::ID ID = BO->hasNoSignedWrap()? SID: UID;
+bool IntRewrite::insertOverflowCheck(Instruction *I, Intrinsic::ID SID, Intrinsic::ID UID) {
+	bool hasNSW = cast<BinaryOperator>(I)->hasNoSignedWrap();
+	Intrinsic::ID ID = hasNSW ? SID : UID;
 	Module *M = I->getParent()->getParent()->getParent();
-	Function *F = Intrinsic::getDeclaration(M, ID, BO->getType());
-	CallInst *CI = Builder->CreateCall2(F, BO->getOperand(0), BO->getOperand(1));
-	return Builder->CreateExtractValue(CI, 1);
+	Function *F = Intrinsic::getDeclaration(M, ID, I->getType());
+	CallInst *CI = Builder->CreateCall2(F, I->getOperand(0), I->getOperand(1));
+	Value *V = Builder->CreateExtractValue(CI, 1);
+	// llvm.[s|u][add|sub|mul].with.overflow.*
+	StringRef Anno = F->getName().substr(5, 4);
+	if (hasNSW) {
+		// Insert the check eagerly for signed integer overflow,
+		// if -fwrapv is not given.
+		if (!WrapOpt) {
+			insertIntSat(V, I, Anno);
+			return true;
+		}
+		// Clear NSW flag given -fwrapv.
+		cast<BinaryOperator>(I)->setHasNoSignedWrap(false);
+	}
+	// TODO: Defer the check.
+	insertIntSat(V, I, Anno);
+	return true;
 }
 
-Value *IntRewrite::insertSDivCheck(Instruction *I) {
+bool IntRewrite::insertSDivCheck(Instruction *I) {
 	Value *L = I->getOperand(0), *R = I->getOperand(1);
 	IntegerType *T = cast<IntegerType>(I->getType());
 	unsigned n = T->getBitWidth();
 	Constant *SMin = ConstantInt::get(T, APInt::getSignedMinValue(n));
 	Constant *MinusOne = Constant::getAllOnesValue(T);
-	return Builder->CreateAnd(
+	Value *V = Builder->CreateAnd(
 		Builder->CreateICmpEQ(L, SMin),
 		Builder->CreateICmpEQ(R, MinusOne)
 	);
+	insertIntSat(V, I);
+	return true;
 }
 
-Value *IntRewrite::insertShiftCheck(Value *V) {
-	IntegerType *T = cast<IntegerType>(V->getType());
+bool IntRewrite::insertShiftCheck(Instruction *I) {
+	Value *Amount = I->getOperand(1);
+	IntegerType *T = cast<IntegerType>(Amount->getType());
 	Constant *C = ConstantInt::get(T, T->getBitWidth());
-	return Builder->CreateICmpUGE(V, C);
+	Value *V = Builder->CreateICmpUGE(Amount, C);
+	insertIntSat(V, I);
+	return true;
 }
 
-Value *IntRewrite::insertArrayCheck(Instruction *I) {
+bool IntRewrite::insertArrayCheck(Instruction *I) {
 	Value *V = NULL;
 	gep_type_iterator i = gep_type_begin(I), e = gep_type_end(I);
 	for (; i != e; ++i) {
@@ -155,7 +167,10 @@ Value *IntRewrite::insertArrayCheck(Instruction *I) {
 		else
 			V = Check;
 	}
-	return V;
+	if (!V)
+		return false;
+	insertIntSat(V, I, "array");
+	return true;
 }
 
 char IntRewrite::ID;

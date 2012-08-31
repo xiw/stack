@@ -61,7 +61,7 @@ static NamedParam LinuxSize[] = {
 	{0, 0}
 };
 
-void insertIntSat(Value *, Instruction *, const DebugLoc &, StringRef);
+void insertIntSat(Value *, Instruction *, StringRef);
 
 bool IntLibcalls::runOnModule(Module &M) {
 	BuilderTy TheBuilder(M.getContext());
@@ -95,7 +95,7 @@ void IntLibcalls::rewriteSizeAt(llvm::CallInst *I, NamedParam *NPs) {
 		assert(T->isIntegerTy());
 		Builder->SetInsertPoint(I);
 		Value *V = Builder->CreateICmpSLT(Arg, Constant::getNullValue(T));
-		insertIntSat(V, I, I->getDebugLoc(), "size");
+		insertIntSat(V, I, "size");
 	}
 }
 

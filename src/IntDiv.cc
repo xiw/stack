@@ -20,7 +20,7 @@ private:
 
 } // anonymous namespace
 
-void insertIntSat(Value *, Instruction *, const DebugLoc &, StringRef);
+void insertIntSat(Value *, Instruction *);
 
 bool IntDiv::runOnFunction(Function &F) {
 	bool Changed = false;
@@ -34,7 +34,7 @@ bool IntDiv::runOnFunction(Function &F) {
 		}
 		IRBuilder<> Builder(I);
 		Value *V = Builder.CreateIsNull(I->getOperand(1));
-		insertIntSat(V, I, I->getDebugLoc(), I->getOpcodeName());
+		insertIntSat(V, I);
 		Changed = true;
 	}
 	return Changed;
