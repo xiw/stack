@@ -186,9 +186,13 @@ bool IntRewrite::insertOverflowCheck(Instruction *I, Intrinsic::ID SID, Intrinsi
 			if (isObservable(U)) {
 				// U must be an instruction for now.
 				BasicBlock *ObBB = cast<Instruction>(U)->getParent();
-				// If the instruction's own BB is an observation point, a check
-				// will be performed there, so there is no need for other checks.
-				if (ObBB == BB) {
+				// If the instruction's own BB is an observation
+				// point, a check will be performed there, so
+				// there is no need for other checks.
+				//
+				// If ObBB is not dominated by BB (e.g., due to
+				// loops), fall back.
+				if (ObBB == BB || !DT->dominates(BB, ObBB)) {
 					insertIntSat(V, I, Anno);
 					return true;
 				}
@@ -206,8 +210,6 @@ bool IntRewrite::insertOverflowCheck(Instruction *I, Intrinsic::ID SID, Intrinsi
 	const DebugLoc &DbgLoc = I->getDebugLoc();
 	for (ObSet::iterator i = ObPoints.begin(), e = ObPoints.end(); i != e; ++i) {
 		BasicBlock *ObBB = *i;
-		if (!DT->dominates(BB, ObBB))
-			continue;
 		insertIntSat(V, ObBB->getTerminator(), Anno, DbgLoc);
 	}
 	return true;
