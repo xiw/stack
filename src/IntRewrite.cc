@@ -10,9 +10,11 @@
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/LoopInfo.h>
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/InstIterator.h>
+#include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 using namespace llvm;
@@ -44,13 +46,14 @@ private:
 
 	DominatorTree *DT;
 	LoopInfo *LI;
+	TargetData *TD;
 
 	bool insertOverflowCheck(Instruction *, Intrinsic::ID, Intrinsic::ID);
 	bool insertDivCheck(Instruction *);
 	bool insertShiftCheck(Instruction *);
 	bool insertArrayCheck(Instruction *);
 
-	bool isObservable(Instruction *);
+	bool isObservable(Value *);
 };
 
 } // anonymous namespace
@@ -81,6 +84,7 @@ bool IntRewrite::runOnFunction(Function &F) {
 	Builder = &TheBuilder;
 	DT = &getAnalysis<DominatorTree>();
 	LI = &getAnalysis<LoopInfo>();
+	TD = getAnalysisIfAvailable<TargetData>();
 	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 		Instruction *I = &*i;
@@ -124,24 +128,24 @@ bool IntRewrite::runOnFunction(Function &F) {
 	return Changed;
 }
 
-bool IntRewrite::isObservable(Instruction *I) {
-	// Memory access.
-	if (I->mayReadOrWriteMemory())
-		return true;
-	// Extern call.
-	if (isa<CallInst>(I) || isa<InvokeInst>(I))
-		return true;
-	// Return value.
-	if (isa<ReturnInst>(I))
-		return true;
-	// Loop.
-	if (isa<BranchInst>(I)) {
-		BasicBlock *BB = I->getParent();
-		Loop *L = LI->getLoopFor(BB);
-		if (L && L->isLoopExiting(BB))
-			return true;
+bool IntRewrite::isObservable(Value *V) {
+	Instruction *I = dyn_cast<Instruction>(V);
+	if (!I)
+		return false;
+	BasicBlock *BB = I->getParent();
+	switch (I->getOpcode()) {
+	default: break;
+	case Instruction::Br:
+	case Instruction::IndirectBr:
+	case Instruction::Switch:
+		if (Loop *L = LI->getLoopFor(BB)) {
+			if (L->isLoopExiting(BB))
+				return true;
+		}
+		return false;
 	}
-	return false;
+	// Default: observable if unsafe to speculately execute.
+	return !isSafeToSpeculativelyExecute(I, TD);
 }
 
 bool IntRewrite::insertOverflowCheck(Instruction *I, Intrinsic::ID SID, Intrinsic::ID UID) {
@@ -169,21 +173,27 @@ bool IntRewrite::insertOverflowCheck(Instruction *I, Intrinsic::ID SID, Intrinsi
 	SmallVector<Value *, 16> Worklist;
 	typedef SmallPtrSet<BasicBlock *, 16> ObSet;
 	ObSet ObPoints;
+	BasicBlock *BB = I->getParent();
 
 	Worklist.push_back(I);
 	Visited.insert(I);
 	while (!Worklist.empty()) {
-		Value *V = Worklist.back();
+		Value *E = Worklist.back();
 		Worklist.pop_back();
-		for (Value::use_iterator i = V->use_begin(), e = V->use_end(); i != e; ++i) {
+		for (Value::use_iterator i = E->use_begin(), e = E->use_end(); i != e; ++i) {
 			User *U = *i;
-			// Observers.
-			if (Instruction *ObInst = dyn_cast<Instruction>(U)) {
-				if (isObservable(ObInst)) {
-					BasicBlock *ObBB = ObInst->getParent();
-					ObPoints.insert(ObBB);
-					continue;
+			// Observable point.
+			if (isObservable(U)) {
+				// U must be an instruction for now.
+				BasicBlock *ObBB = cast<Instruction>(U)->getParent();
+				// If the instruction's own BB is an observation point, a check
+				// will be performed there, so there is no need for other checks.
+				if (ObBB == BB) {
+					insertIntSat(V, I, Anno);
+					return true;
 				}
+				ObPoints.insert(ObBB);
+				continue;
 			}
 			// Add to worklist if new.
 			if (U->use_empty())
@@ -194,7 +204,6 @@ bool IntRewrite::insertOverflowCheck(Instruction *I, Intrinsic::ID SID, Intrinsi
 	}
 
 	const DebugLoc &DbgLoc = I->getDebugLoc();
-	BasicBlock *BB = I->getParent();
 	for (ObSet::iterator i = ObPoints.begin(), e = ObPoints.end(); i != e; ++i) {
 		BasicBlock *ObBB = *i;
 		if (!DT->dominates(BB, ObBB))
