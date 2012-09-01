@@ -9,8 +9,6 @@
 #define IFNAMSIZ	16
 #define SO_BINDTODEVICE	25
 
-struct socket;
-
 int ax25_setsockopt(struct socket *sock, int level, int optname,
 #ifndef __PATCH__
 	char __user *optval, int optlen)

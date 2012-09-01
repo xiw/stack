@@ -7,6 +7,7 @@
 #define ENOMEM		12
 #define EFAULT		14
 #define EINVAL		22
+#define EMSGSIZE	90
 #define ENOPROTOOPT	92
 
 #define UINT_MAX	(~0U)
@@ -44,3 +45,12 @@ void *vmalloc(unsigned long size);
 void vfree(const void *addr);
 
 unsigned long copy_from_user(void *to, const void __user *from, unsigned long n);
+
+struct sock;
+struct socket;
+struct sk_buff;
+
+struct sk_buff *sock_alloc_send_skb(struct sock *sk,
+				    unsigned long size,
+				    int noblock,
+				    int *errcode);
