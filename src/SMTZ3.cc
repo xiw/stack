@@ -31,11 +31,12 @@ static inline Z3_ast bool2bv_(SMTContextImpl *ctx_, Z3_ast e0) {
 #define bv2bool(x) bv2bool_(ctx_, x)
 #define bool2bv(x) bool2bv_(ctx_, x)
 
-SMTSolver::SMTSolver() {
+SMTSolver::SMTSolver(bool modelgen) {
 	ctx_ = new SMTContextImpl;
 	Z3_config cfg = Z3_mk_config();
 	// Enable model construction.
-	Z3_set_param_value(cfg, "MODEL", "true");
+	if (modelgen)
+		Z3_set_param_value(cfg, "MODEL", "true");
 	ctx_->c = Z3_mk_context(cfg);
 	Z3_del_config(cfg);
 	// Set up constants.

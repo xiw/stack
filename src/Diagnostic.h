@@ -1,34 +1,24 @@
 #pragma once
 
-#include <llvm/ADT/OwningPtr.h>
-
 namespace llvm {
-	class DebugLoc;
-	class Module;
-	class Twine;
+	class Instruction;
 	class raw_ostream;
-} // namespace llvm
-
-class DiagnosticImpl {
-public:
-	virtual ~DiagnosticImpl() {}
-	virtual void emit(const llvm::DebugLoc &) = 0;
-	virtual void emit(const llvm::Twine &) = 0;
-	virtual llvm::raw_ostream &os() = 0;
-};
+}
 
 class Diagnostic {
 public:
-	Diagnostic(llvm::Module &);
-	Diagnostic &operator <<(const llvm::DebugLoc &DbgLoc) {
-		Diag->emit(DbgLoc);
+	Diagnostic();
+
+	llvm::raw_ostream &os() { return OS; }
+
+	void backtrace(llvm::Instruction *, const char *);
+
+	template <typename T> Diagnostic &
+	operator <<(const T &Val) {
+		OS << Val;
 		return *this;
 	}
-	Diagnostic &operator <<(const llvm::Twine &Msg) {
-		Diag->emit(Msg);
-		return *this;
-	}
-	llvm::raw_ostream &os() { return Diag->os(); }
+
 private:
-	llvm::OwningPtr<DiagnosticImpl> Diag;
+	llvm::raw_ostream &OS;
 };

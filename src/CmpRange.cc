@@ -28,11 +28,6 @@ struct CmpRange : FunctionPass {
 		AU.addRequired<ScalarEvolution>();
 	}
 
-	virtual bool doInitialization(Module &M) {
-		Diag.reset(new Diagnostic(M));
-		return false;
-	}
-
 	virtual bool runOnFunction(Function &F) {
 		SE = &getAnalysis<ScalarEvolution>();
 		inst_iterator i = inst_begin(F), e = inst_end(F);
@@ -45,7 +40,7 @@ struct CmpRange : FunctionPass {
 	}
 
 private:
-	OwningPtr<Diagnostic> Diag;
+	Diagnostic Diag;
 	ScalarEvolution *SE;
 
 	void check(ICmpInst *);
@@ -71,10 +66,12 @@ void CmpRange::check(ICmpInst *I) {
 		Reason = CMP_FALSE;
 	else
 		return;
-	*Diag << I->getDebugLoc() << Reason;
-	raw_ostream &OS = Diag->os();
-	OS << "lhs: " << *L << '\n';
-	OS << "rhs: " << *R << '\n';
+	Diag << "---";
+	Diag << "bug:   " << Reason << "\n";
+	Diag << "lhs:   " << *L << '\n';
+	Diag << "rhs:   " << *R << '\n';
+	Diag << "stack: \n";
+	Diag.backtrace(I, "  - ");
 }
 
 char CmpRange::ID;

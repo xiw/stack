@@ -18,9 +18,10 @@ using namespace llvm;
 #define lhs ((BtorExp *)lhs_)
 #define rhs ((BtorExp *)rhs_)
 
-SMTSolver::SMTSolver() {
+SMTSolver::SMTSolver(bool modelgen) {
 	ctx_ = (SMTContext)boolector_new();
-	boolector_enable_model_gen(ctx);
+	if (modelgen)
+		boolector_enable_model_gen(ctx);
 	boolector_enable_inc_usage(ctx);
 }
 

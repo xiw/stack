@@ -6,7 +6,7 @@ namespace llvm {
 } // namespace llvm
 
 enum SMTStatus {
-	SMT_UNDEF,
+	SMT_UNDEF = 0,
 	SMT_UNSAT,
 	SMT_SAT,
 	SMT_TIMEOUT,
@@ -18,7 +18,7 @@ typedef void *SMTModel;
 
 class SMTSolver {
 public:
-	SMTSolver();
+	SMTSolver(bool modelgen);
 	~SMTSolver();
 
 	void assume(SMTExpr);
