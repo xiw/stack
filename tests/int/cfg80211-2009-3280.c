@@ -1,8 +1,7 @@
-// RUN: %kcc -nostdinc -m32 -o - %s | %kint --check-prefix=exp
-// RUN: %kcc -nostdinc -m64 -o - %s | %kint --check-prefix=exp
-// RUN: %kcc -nostdinc -D__PATCH__ -m32 -o - %s | %kint --check-prefix=exp-patch
-// RUN: %kcc -nostdinc -D__PATCH__ -m64 -o - %s | %kint --check-prefix=exp-patch
-
+// RUN: %linuxcc -m32 %s | kint | kdiff %s --prefix=exp
+// RUN: %linuxcc -m64 %s | kint | kdiff %s --prefix=exp
+// RUN: %linuxcc -D__PATCH__ -m32 %s | kint | kdiff %s
+// RUN: %linuxcc -D__PATCH__ -m64 %s | kint | kdiff %s
 // http://git.kernel.org/linus/fcc6cb0c13555e78c2d47257b6d1b5e59b0c419a
 
 #include "linux.h"

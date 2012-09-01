@@ -1,5 +1,5 @@
-// RUN: %kcc -o - %s | %kint --check-prefix=exp
-// RUN: %kcc -D__PATCH__ -o - %s | %kint --check-prefix=exp-patch
+// RUN: kcc -c -o - %s | kint | kdiff %s --prefix=exp
+// RUN: kcc -D__PATCH__ -c -o - %s | kint | kdiff %s
 
 #include <assert.h>
 #include <limits.h>

@@ -1,5 +1,5 @@
-// RUN: %kcc -o - %s | %kint --check-prefix=exp
-// RUN: %kcc -D__PATCH__ -o - %s | %kint --check-prefix=-
+// RUN: kcc -c -o - %s | kint | kdiff %s --prefix=exp
+// RUN: kcc -D__PATCH__ -c -o - %s | kint | kdiff %s
 // http://code.google.com/p/chromium/issues/detail?id=117656
 
 #include <stddef.h>

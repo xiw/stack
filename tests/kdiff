@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+
+require 'getoptlong'
+require 'set'
+require 'yaml'
+
+opts = GetoptLong.new(
+	['--prefix', GetoptLong::REQUIRED_ARGUMENT]
+)
+
+prefix = 'CHECK'
+opts.each do |opt, arg|
+	case opt
+		when '--prefix'
+			prefix = arg
+	end
+end
+
+# extract expected output
+exp = Set.new
+lineno = 1
+file = ARGV.shift
+path = File.expand_path file
+File.open(file).each_line do |line|
+	if /\/\/\s*#{prefix}:(.*)$/ =~ line
+		$~[1].scan(/\{\{([^\}]+)\}\}/) do |opcode|
+			exp << [file, lineno, opcode[0]]
+		end
+	end
+	# bump lineno if not ending with a backslash
+	lineno = $. + 1 if not /\\\s*$/ =~ line
+end
+
+# parse actual output
+act = Set.new
+docs = YAML.load_stream STDIN
+docs.each do |doc|
+	next if doc['status'] != 'sat'
+	act_file, act_lineno = doc['stack'][0].split(':')[0, 2]
+	act_file = file if path == act_file
+	act_lineno = Integer act_lineno
+	act << [act_file, act_lineno, doc['opcode']]
+end
+
+exit 0 if exp == act
+
+# missing
+(exp - act).each { |e| puts "- #{e.join(':')}" }
+
+# superfluous
+(act - exp).each { |e| puts "+ #{e.join(':')}" }
+
+exit 1

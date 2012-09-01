@@ -1,6 +1,6 @@
-// RUN: %kcc -m32 -o - %s | %kint --check-prefix=exp
-// RUN: %kcc -m32 -D__PATCH__ -o - %s | %kint --check-prefix=exp-patch
-// CVE-2002-0639: http://www.openssh.com/txt/preauth.adv
+// RUN: kcc -m32 -c -o - %s | kint | kdiff %s --prefix=exp
+// RUN: kcc -D__PATCH__ -m32 -c -o - %s | kint | kdiff %s
+// http://www.openssh.com/txt/preauth.adv
 
 #include <sys/types.h>
 #include <stddef.h>

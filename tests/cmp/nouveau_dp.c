@@ -1,4 +1,4 @@
-// RUN: %kcc -o - %s | %kcmp --check-prefix=exp
+// RUN: kcc -c -o - %s | kcmp | kdiff %s
 // http://git.kernel.org/linus/44ab8cc56c45ca781371a4a77f35da19cf5db028
 
 #define DP_TRAIN_PRE_EMPHASIS_9_5	(3 << 3)
@@ -10,7 +10,7 @@ int foo(u8 lane)
 {
 	u8 lpre = (lane & 0x0c) >> 2;
 	u8 lvsw = (lane & 0x03) >> 0;
-	if (lpre == DP_TRAIN_PRE_EMPHASIS_9_5) // exp: {{comparison always false}}
+	if (lpre == DP_TRAIN_PRE_EMPHASIS_9_5) // CHECK: {{comparison always false}}
 		return -1;
 	if ((lpre << 3) == DP_TRAIN_PRE_EMPHASIS_9_5)
 		return -2;

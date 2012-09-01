@@ -1,4 +1,4 @@
-// RUN: %kcc -o - %s | %kcmp --check-prefix=exp
+// RUN: kcc -c -o - %s | kcmp | kdiff %s
 // http://git.kernel.org/linus/44b0052c5cb4e75389ed3eb9e98c29295a7dadfb
 
 #define BIT(n)		(1UL << (n))
@@ -20,7 +20,7 @@ int foo(u32 status, u32 errc)
 			return -2;
 	}
 	if (status & PCH_EPASSIVE) {
-		if (((errc & PCH_REC) >> 8) > 127) // exp: {{comparison always false}}
+		if (((errc & PCH_REC) >> 8) > 127) // CHECK: {{comparison always false}}
 			return -3;
 		if ((errc & PCH_TEC) > 127)
 			return -4;

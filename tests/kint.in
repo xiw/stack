@@ -12,4 +12,4 @@ opt -disable-output -load=@abs_top_builddir@/src/.libs/libint.so \
 	-std-compile-opts \
 	-overflow-simplify -load-elim \
 	-O2 \
-	-int-sat $@
+	-int-sat $@ 2>&1

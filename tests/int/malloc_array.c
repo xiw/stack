@@ -1,5 +1,5 @@
-// RUN: %kcc -m32 -o - %s | %kint --check-prefix=exp
-// RUN: %kcc -m64 -o - %s | %kint --check-prefix=exp
+// RUN: kcc -m32 -c -o - %s | kint | kdiff %s --prefix=exp
+// RUN: kcc -m64 -c -o - %s | kint | kdiff %s --prefix=exp
 
 #include <stdlib.h>
 #include <stdint.h>

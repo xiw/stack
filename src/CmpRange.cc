@@ -66,10 +66,12 @@ void CmpRange::check(ICmpInst *I) {
 		Reason = CMP_FALSE;
 	else
 		return;
-	Diag << "---";
-	Diag << "bug:   " << Reason << "\n";
-	Diag << "lhs:   " << *L << '\n';
-	Diag << "rhs:   " << *R << '\n';
+	Diag << "---\n";
+	Diag << "status: sat\n";
+	Diag << "opcode: " << Reason << "\n";
+	Diag << "mode: |\n";
+	Diag << "  lhs: " << *L << '\n';
+	Diag << "  rhs: " << *R << '\n';
 	Diag << "stack: \n";
 	Diag.backtrace(I, "  - ");
 }
