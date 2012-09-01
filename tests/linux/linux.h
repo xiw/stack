@@ -36,6 +36,8 @@ typedef long long		loff_t;
 #define OFFSET_MAX		INT_LIMIT(loff_t)
 #define OFFT_OFFSET_MAX		INT_LIMIT(off_t)
 
+#define PATH_MAX		4096
+
 typedef unsigned gfp_t;
 
 void *kzalloc(size_t size, gfp_t flags);
@@ -43,6 +45,8 @@ void kfree(void *);
 
 void *vmalloc(unsigned long size);
 void vfree(const void *addr);
+
+void *memcpy(void *dest, const void *src, size_t count);
 
 unsigned long copy_from_user(void *to, const void __user *from, unsigned long n);
 

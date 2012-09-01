@@ -244,6 +244,11 @@ bool IntRewrite::insertArrayCheck(Instruction *I) {
 		uint64_t n = T->getNumElements();
 		Value *Idx = i.getOperand();
 		Type *IdxTy = Idx->getType();
+		assert(IdxTy->isIntegerTy());
+		// a[0] or a[1] are weird idioms used at the end of a struct.
+		// Use the maximum signed value instead for the upper bound.
+		if (n <= 1)
+			n = INT_MAX;
 		Value *Check = Builder->CreateICmpUGT(Idx, ConstantInt::get(IdxTy, n));
 		if (V)
 			V = Builder->CreateOr(V, Check);
