@@ -4,7 +4,7 @@ noinst_LTLIBRARIES = libsat.la
 lib_LTLIBRARIES    = libint.la libcmp.la
 
 libsat_la_CPPFLAGS = -I$(top_builddir)/lib
-libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc FileCache.cc
+libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc
 if BOOLECTOR
 libsat_la_SOURCES += SMTBoolector.cc
 endif
