@@ -55,7 +55,7 @@ private:
 
 } // anonymous namespace
 
-static void insertIntSat(Value *V, Instruction *IP, StringRef Anno, const DebugLoc &DbgLoc) {
+static void insertIntSat(Value *V, Instruction *IP, StringRef Opcode, const DebugLoc &DbgLoc) {
 	Module *M = IP->getParent()->getParent()->getParent();
 	LLVMContext &C = M->getContext();
 	FunctionType *T = FunctionType::get(Type::getVoidTy(C), Type::getInt1Ty(C), false);
@@ -64,15 +64,15 @@ static void insertIntSat(Value *V, Instruction *IP, StringRef Anno, const DebugL
 	CallInst *I = CallInst::Create(F, V, "", IP);
 	I->setDebugLoc(DbgLoc);
 	// Embed operation name in metadata.
-	MDNode *MD = MDNode::get(C, MDString::get(C, Anno));
-	I->setMetadata("int", MD);
+	MDNode *MD = MDNode::get(C, MDString::get(C, Opcode));
+	I->setMetadata("opcode", MD);
 }
 
-void insertIntSat(Value *V, Instruction *I, StringRef Anno) {
-	insertIntSat(V, I, Anno, I->getDebugLoc());
+void insertIntSat(Value *V, Instruction *I, StringRef Opcode) {
+	insertIntSat(V, I, Opcode, I->getDebugLoc());
 }
 
-void insertIntSat(Value *V, Instruction *I) {
+static void insertIntSat(Value *V, Instruction *I) {
 	insertIntSat(V, I, I->getOpcodeName());
 }
 

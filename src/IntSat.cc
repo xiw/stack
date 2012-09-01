@@ -50,7 +50,7 @@ private:
 	Diagnostic Diag;
 	OwningPtr<TargetData> TD;
 	Function *Trap;
-	unsigned MD_int;
+	unsigned MD_opcode;
 
 	SmallVector<PathGen::Edge, 32> BackEdges;
 	SmallPtrSet<Value *, 32> ReportedBugs;
@@ -64,7 +64,7 @@ private:
 bool IntSat::doInitialization(Module &M) {
 	TD.reset(new TargetData(&M));
 	Trap = M.getFunction("int.sat");
-	MD_int = M.getContext().getMDKindID("int");
+	MD_opcode = M.getContext().getMDKindID("opcode");
 	return false;
 }
 
@@ -86,7 +86,7 @@ void IntSat::check(CallInst *I) {
 	const DebugLoc &DbgLoc = I->getDebugLoc();
 	if (DbgLoc.isUnknown())
 		return;
-	MDNode *MD = I->getMetadata(MD_int);
+	MDNode *MD = I->getMetadata(MD_opcode);
 	if (!MD)
 		return;
 	assert(I->getNumArgOperands() >= 1);
@@ -134,8 +134,8 @@ void IntSat::check(CallInst *I) {
 	case SMT_TIMEOUT: SMTStr = "timeout"; break;
 	}
 	Diag << "status: " << SMTStr << "\n";
-	StringRef Anno = cast<MDString>(MD->getOperand(0))->getString();
-	Diag << "opcode: " << Anno << "\n";
+	StringRef Opcode = cast<MDString>(MD->getOperand(0))->getString();
+	Diag << "opcode: " << Opcode << "\n";
 	Diag << "stack: \n";
 	Diag.backtrace(I, "  - ");
 }
