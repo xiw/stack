@@ -34,43 +34,51 @@ SMTModelOpt("smt-model", cl::desc("Output SMT model"));
 
 namespace {
 
-struct IntSat : FunctionPass {
+// Better to make this as a module pass rather than a function pass.
+// Otherwise, put `M.getFunction("int.sat")' in doInitialization() and
+// it will return NULL, since it's scheduled to run before -int-rewrite.
+struct IntSat : ModulePass {
 	static char ID;
-	IntSat() : FunctionPass(ID) {}
+	IntSat() : ModulePass(ID) {}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		AU.setPreservesAll();
 	}
 
-	virtual bool doInitialization(Module &);
-
-	virtual bool runOnFunction(Function &);
+	virtual bool runOnModule(Module &);
 
 private:
 	Diagnostic Diag;
-	OwningPtr<TargetData> TD;
 	Function *Trap;
+	OwningPtr<TargetData> TD;
 	unsigned MD_opcode;
 
 	SmallVector<PathGen::Edge, 32> BackEdges;
 	SmallPtrSet<Value *, 32> ReportedBugs;
 
+	void runOnFunction(Function &);
 	void check(CallInst *);
 	SMTStatus query(Value *, BasicBlock *);
 };
 
 } // anonymous namespace
 
-bool IntSat::doInitialization(Module &M) {
-	TD.reset(new TargetData(&M));
+bool IntSat::runOnModule(Module &M) {
 	Trap = M.getFunction("int.sat");
+	if (!Trap)
+		return false;
+	TD.reset(new TargetData(&M));
 	MD_opcode = M.getContext().getMDKindID("opcode");
+	for (Module::iterator i = M.begin(), e = M.end(); i != e; ++i) {
+		Function &F = *i;
+		if (F.empty())
+			continue;
+		runOnFunction(F);
+	}
 	return false;
 }
 
-bool IntSat::runOnFunction(Function &F) {
-	if (!Trap)
-		return false;
+void IntSat::runOnFunction(Function &F) {
 	BackEdges.clear();
 	FindFunctionBackedges(F, BackEdges);
 	ReportedBugs.clear();
@@ -79,7 +87,6 @@ bool IntSat::runOnFunction(Function &F) {
 		if (CI && CI->getCalledFunction() == Trap)
 			check(CI);
 	}
-	return false;
 }
 
 void IntSat::check(CallInst *I) {
