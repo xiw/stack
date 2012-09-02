@@ -25,7 +25,7 @@ def cc(llvmcc, src, argv):
 	argv = [x for x in argv if x != '-DCC_HAVE_ASM_GOTO']
 	more = ['-S', '-flto', '-fstrict-overflow', '-O0', '-g']
 	p1 = subprocess.Popen(llvmcc + argv + more, stdout=subprocess.PIPE)
-	opts = ['-strip-debug-declare', '-scalarrepl']
+	opts = ['-strip-debug-declare', '-simplifycfg', '-scalarrepl', '-early-cse', '-lower-expect']
 	p2 = subprocess.Popen(['opt', '-S', '-o', out] + opts, stdin=p1.stdout)
 	p1.stdout.close()
 	p2.communicate()

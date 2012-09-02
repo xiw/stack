@@ -1,7 +1,6 @@
 #!/bin/bash
 
 opt -disable-output -load=@abs_top_builddir@/src/.libs/libint.so \
-	-simplifycfg -early-cse -lower-expect \
 	-targetlibinfo -tbaa -basicaa -globalopt -ipsccp -deadargelim \
 	-simplifycfg -basiccg -prune-eh -inline -functionattrs -argpromotion \
 	-scalarrepl-ssa -early-cse -simplify-libcalls -lazy-value-info \
