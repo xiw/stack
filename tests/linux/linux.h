@@ -6,6 +6,7 @@
 
 #define ENOMEM		12
 #define EFAULT		14
+#define EBUSY		16
 #define EINVAL		22
 #define EMSGSIZE	90
 #define ENOPROTOOPT	92
