@@ -17,6 +17,9 @@
 
 #define BUG_ON(x)	if (x) __builtin_trap();
 
+#define likely(x)	__builtin_expect(!!(x), 1)
+#define unlikely(x)	__builtin_expect(!!(x), 0)
+
 typedef unsigned char		u8;
 typedef u8			uint8_t;
 
@@ -39,6 +42,18 @@ typedef long long		loff_t;
 
 #define PATH_MAX		4096
 
+#define VERIFY_READ		0
+#define VERIFY_WRITE		1
+
+#define ALIGN(x, a)		__ALIGN_MASK(x, (typeof(x))(a) - 1)
+#define __ALIGN_MASK(x, mask)	(((x) + (mask)) & ~(mask))
+
+#define PAGE_SHIFT		12
+#define PAGE_SIZE		(1UL << PAGE_SHIFT)
+#define PAGE_MASK		(~(PAGE_SIZE-1))
+
+#define PAGE_ALIGN(addr)	ALIGN(addr, PAGE_SIZE)
+
 typedef unsigned gfp_t;
 
 void *kzalloc(size_t size, gfp_t flags);
@@ -50,6 +65,10 @@ void vfree(const void *addr);
 void *memcpy(void *dest, const void *src, size_t count);
 
 unsigned long copy_from_user(void *to, const void __user *from, unsigned long n);
+
+#define access_ok(type, addr, size)	__access_ok((unsigned long)addr,size)
+
+int __access_ok(unsigned long addr, unsigned long size);
 
 struct sock;
 struct socket;
