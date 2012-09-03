@@ -56,6 +56,7 @@ typedef long long		loff_t;
 
 typedef unsigned gfp_t;
 
+void *kmalloc(size_t size, gfp_t flags);
 void *kzalloc(size_t size, gfp_t flags);
 void kfree(void *);
 
