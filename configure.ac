@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT([ksat],[0.1],[int@pdos.csail.mit.edu])
+AC_INIT([kint],[0.3],[int@pdos.csail.mit.edu])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_TESTDIR([tests])
 AC_CONFIG_HEADERS([config.h])

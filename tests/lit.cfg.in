@@ -1,4 +1,4 @@
-config.name             = 'ksat'
+config.name             = 'kint'
 config.test_format      = lit.formats.ShTest()
 config.suffixes         = ['.c']
 
