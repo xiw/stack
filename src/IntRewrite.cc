@@ -149,11 +149,17 @@ bool IntRewrite::isObservable(Value *V) {
 }
 
 bool IntRewrite::insertOverflowCheck(Instruction *I, Intrinsic::ID SID, Intrinsic::ID UID) {
+	// Skip pointer subtraction, where LLVM converts both operands into
+	// integers first.
+	Value *L = I->getOperand(0), *R = I->getOperand(1);
+	if (isa<PtrToIntInst>(L) || isa<PtrToIntInst>(R))
+		return false;
+
 	bool hasNSW = cast<BinaryOperator>(I)->hasNoSignedWrap();
 	Intrinsic::ID ID = hasNSW ? SID : UID;
 	Module *M = I->getParent()->getParent()->getParent();
 	Function *F = Intrinsic::getDeclaration(M, ID, I->getType());
-	CallInst *CI = Builder->CreateCall2(F, I->getOperand(0), I->getOperand(1));
+	CallInst *CI = Builder->CreateCall2(F, L, R);
 	Value *V = Builder->CreateExtractValue(CI, 1);
 	// llvm.[s|u][add|sub|mul].with.overflow.*
 	StringRef Anno = F->getName().substr(5, 4);
