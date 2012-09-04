@@ -1,7 +1,6 @@
 #define DEBUG_TYPE "load-elim"
 #include <llvm/Instructions.h>
 #include <llvm/Pass.h>
-#include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpander.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
@@ -16,21 +15,17 @@ struct LoadElim : FunctionPass {
 	static char ID;
 	LoadElim() : FunctionPass(ID) {
 		PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
-		//initializeAliasAnalysisAnalysisGroup(Registry);
-		//initializeDominatorTreePass(Registry);
 		initializeScalarEvolutionPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		AU.setPreservesCFG();
-		//AU.addRequired<DominatorTree>();
 		AU.addRequired<ScalarEvolution>();
 	}
 
 	virtual bool runOnFunction(Function &);
 
 private:
-	//DominatorTree *DT;
 	ScalarEvolution *SE;
 
 	bool hoist(const SCEV *, LoadInst *);
@@ -39,7 +34,6 @@ private:
 } // anonymous namespace
 
 bool LoadElim::runOnFunction(Function &F) {
-	//DT = &getAnalysis<DominatorTree>();
 	SE = &getAnalysis<ScalarEvolution>();
 	// Collect load addresses.
 	typedef DenseMap<const SCEV *, LoadInst *> AddrMapTy;
@@ -77,6 +71,7 @@ bool LoadElim::hoist(const SCEV *S, LoadInst *I) {
 	Value *BaseV = baseOf(S);
 	if (!BaseV)
 		return false;
+
 	Function *F = I->getParent()->getParent();
 	// Insert a load to the earliest point:
 	// 1) right after Base's definition, if Base is an instruction;
@@ -108,8 +103,8 @@ bool LoadElim::hoist(const SCEV *S, LoadInst *I) {
 	SSAUpdater SSA;
 	SSA.Initialize(I->getType(), I->getName());
 	// Insert load.
-	SSA.AddAvailableValue(IP->getParent(),
-	                      new LoadInst(AddrV, I->getName(), true, IP));
+	LoadInst *LoadV = new LoadInst(AddrV, I->getName(), true, IP);
+	SSA.AddAvailableValue(IP->getParent(), LoadV);
 	// Update all loads with the new inserted one.
 	for (Function::iterator bi = F->begin(), be = F->end(); bi != be; ++bi) {
 		BasicBlock *BB = bi;
@@ -121,8 +116,11 @@ bool LoadElim::hoist(const SCEV *S, LoadInst *I) {
 					V = SI->getValueOperand();
 				continue;
 			}
-			if (!V)
+			if (!V) {
+				if (I == LoadV)
+					V = LoadV;
 				continue;
+			}
 			// Rewrite loads in the same bb of an earlier store.
 			if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
 				if (!LI->isVolatile() && S == SE->getSCEV(LI->getPointerOperand())) {
@@ -141,11 +139,12 @@ bool LoadElim::hoist(const SCEV *S, LoadInst *I) {
 		for (Value::use_iterator ui = LI->use_begin(), ue = LI->use_end(); ui != ue; ) {
 			Use &U = ui.getUse();
 			ui++;
-			SSA.RewriteUseAfterInsertions(U);
+			SSA.RewriteUse(U);
 		}
 		assert(LI->use_empty());
 		LI->eraseFromParent();
 	}
+
 	return true;
 }
 
