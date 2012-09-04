@@ -1,5 +1,8 @@
 // RUN: kcc -c -o - %s | kint | kdiff %s --prefix=exp
 // RUN: kcc -D__PATCH__ -c -o - %s | kint | kdiff %s
+//
+// CWE-190: Integer Overflow or Wraparound
+// http://www.kb.cert.org/vuls/id/192995
 
 #include <assert.h>
 #include <limits.h>

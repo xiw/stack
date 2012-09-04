@@ -13,3 +13,6 @@ if 'LLVMCC' in os.environ:
 
 path = os.path.pathsep.join( (config.test_exec_root, config.environment['PATH']) )
 config.environment['PATH'] = path
+
+linuxcc = 'kcc -nostdinc -c -o -'
+config.substitutions.append( ('%linuxcc', linuxcc) )

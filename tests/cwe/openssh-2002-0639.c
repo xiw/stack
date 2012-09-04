@@ -1,5 +1,7 @@
 // RUN: kcc -m32 -c -o - %s | kint | kdiff %s --prefix=exp
 // RUN: kcc -D__PATCH__ -m32 -c -o - %s | kint | kdiff %s
+//
+// CWE-190: Integer Overflow or Wraparound
 // http://www.openssh.com/txt/preauth.adv
 
 #include <sys/types.h>

@@ -39,5 +39,5 @@ int bcm_tx_setup(struct bcm_msg_head *msg_head, struct bcm_op *op)
 		}
 	}
 
-	return msg_head->nframes * CFSIZ + MHSIZ; // exp32: {{umul}}{{uadd}}
+	return 0;
 }
