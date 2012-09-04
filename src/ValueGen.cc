@@ -221,6 +221,20 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 		return E;
 	}
 
+	SMTExpr visitPtrToIntInst(PtrToIntInst &I) {
+		Value *V = I.getOperand(0);
+		SMTExpr E = get(V);
+		unsigned PtrSize = getBitWidth(V);
+		unsigned IntSize = getBitWidth(&I);
+		if (IntSize > PtrSize)
+			return SMT.zero_extend(IntSize - PtrSize, E);
+		if (IntSize < PtrSize)
+			return SMT.extract(IntSize - 1, 0, E);
+		// IntSize == PtrSize.
+		SMT.incref(E);
+		return E;
+	}
+
 private:
 	ValueGen &VG;
 
