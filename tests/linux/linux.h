@@ -8,6 +8,7 @@
 #define EFAULT		14
 #define EBUSY		16
 #define EINVAL		22
+#define ERANGE		34
 #define EMSGSIZE	90
 #define ENOPROTOOPT	92
 
@@ -20,16 +21,24 @@
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)
 
+typedef signed char		s8;
 typedef unsigned char		u8;
+typedef s8			int8_t;
 typedef u8			uint8_t;
 
+typedef signed short		s16;
 typedef unsigned short		u16;
+typedef s16			int16_t;
 typedef u16			uint16_t;
 
+typedef signed int		s32;
 typedef unsigned int		u32;
+typedef s32			int32_t;
 typedef u32			uint32_t;
 
+typedef signed long long	s64;
 typedef unsigned long long	u64;
+typedef s64			int64_t;
 typedef u64			uint64_t;
 
 typedef unsigned long		size_t;
