@@ -67,7 +67,6 @@ void CmpRange::check(ICmpInst *I) {
 	else
 		return;
 	Diag << "---\n";
-	Diag << "status: sat\n";
 	Diag << "opcode: " << Reason << "\n";
 	Diag << "mode: |\n";
 	Diag << "  lhs: " << *L << '\n';
