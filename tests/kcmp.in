@@ -1,4 +1,4 @@
 #!/bin/bash
 
 opt -disable-output -load=@abs_top_builddir@/src/.libs/libcmp.so \
-	-cmp-range $@ 2>&1
+	-cmp-tautology $@ 2>&1

@@ -1,4 +1,4 @@
-#define DEBUG_TYPE "cmp-range"
+#define DEBUG_TYPE "cmp-tautology"
 #include <llvm/Instructions.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/OwningPtr.h>
@@ -16,9 +16,9 @@ typedef const char *CmpStatus;
 static CmpStatus CMP_FALSE = "comparison always false";
 static CmpStatus CMP_TRUE = "comparison always true";
 
-struct CmpRange : FunctionPass {
+struct CmpTautology : FunctionPass {
 	static char ID;
-	CmpRange() : FunctionPass(ID) {
+	CmpTautology() : FunctionPass(ID) {
 		PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
 		initializeScalarEvolutionPass(Registry);
 	}
@@ -48,7 +48,7 @@ private:
 
 } // anonymous namespace
 
-void CmpRange::check(ICmpInst *I) {
+void CmpTautology::check(ICmpInst *I) {
 	if (!SE->isSCEVable(I->getOperand(0)->getType()))
 		return;
 	const SCEV *L = SE->getSCEV(I->getOperand(0));
@@ -75,7 +75,7 @@ void CmpRange::check(ICmpInst *I) {
 	Diag.backtrace(I, "  - ");
 }
 
-char CmpRange::ID;
+char CmpTautology::ID;
 
-static RegisterPass<CmpRange>
-X("cmp-range", "Detecting bogus comparisons via ranges", false, true);
+static RegisterPass<CmpTautology>
+X("cmp-tautology", "Detecting tautological comparisons", false, true);
