@@ -1,4 +1,4 @@
-config.name             = 'kint'
+config.name             = "@PACKAGE@"
 config.test_format      = lit.formats.ShTest()
 config.suffixes         = ['.c']
 
