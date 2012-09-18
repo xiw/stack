@@ -96,14 +96,6 @@ Value *OverflowIdiom::matchCmp(CmpInst::Predicate Pred, Value *L, Value *R) {
 	Value *X, *Y, *A, *B;
 	ConstantInt *C;
 
-	// x + y <u x => uadd.overflow(x, y)
-	// x + y <u y => uadd.overflow(x, y)
-	if (Pred == CmpInst::ICMP_ULT
-	    && match(L, m_Add(m_Value(X), m_Value(Y)))
-	    && match(R, m_Value(A))
-	    && (A == X || A == Y))
-		return createOverflowBit(Intrinsic::uadd_with_overflow, X, Y);
-
 	// x != (x * y) /u y => umul.overflow(x, y)
 	// x != (y * x) /u y => umul.overflow(x, y)
 	if (Pred == CmpInst::ICMP_NE
@@ -111,12 +103,6 @@ Value *OverflowIdiom::matchCmp(CmpInst::Predicate Pred, Value *L, Value *R) {
 	    && match(R, m_UDiv(m_Mul(m_Value(A), m_Value(B)), m_Value(Y)))
 	    && ((A == X && B == Y) || (A == Y && B == X)))
 		return createOverflowBit(Intrinsic::umul_with_overflow, X, Y);
-
-	// x >u UMAX - y => uadd.overflow(x, y)
-	if (Pred == CmpInst::ICMP_UGT
-	    && match(L, m_Value(X))
-	    && match(R, m_Sub(m_AllOnes(), m_Value(Y))))
-		return createOverflowBit(Intrinsic::uadd_with_overflow, X, Y);
 
 	// x >u C /u y =>
 	//    umul.overflow(x, y),                       if C == UMAX
