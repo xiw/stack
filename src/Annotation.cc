@@ -1,7 +1,7 @@
 #include <llvm/Module.h>
 #include <llvm/Instructions.h>
-#include <llvm/IntrinsicInst.h>
 #include <llvm/Metadata.h>
+#include <llvm/Constants.h>
 #include <llvm/Pass.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/Support/InstIterator.h>
@@ -9,8 +9,8 @@
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Transforms/Utils/Local.h>
-#include <llvm/Support/Path.h>
 
+#include "Annotation.h"
 
 using namespace llvm;
 
@@ -33,11 +33,6 @@ public:
 }
 
 
-static inline bool isFunctionPointer(Type *Ty) {
-	PointerType *PTy = dyn_cast<PointerType>(Ty);
-	return PTy && PTy->getElementType()->isFunctionTy();
-}
-
 static inline bool needAnnotation(Value *V) {
 	if (PointerType *PTy = dyn_cast<PointerType>(V->getType())) {
 		Type *Ty = PTy->getElementType();
@@ -46,21 +41,11 @@ static inline bool needAnnotation(Value *V) {
 	return false;
 }
 
-static inline std::string getScopeName(GlobalValue *GV) {
-	if (GlobalValue::isExternalLinkage(GV->getLinkage()))
-		return GV->getName();
-	else {
-		std::string prefix = sys::path::filename(
-			GV->getParent()->getModuleIdentifier());
-		return "local." + prefix + "." + GV->getName().str();
-	}
-}
-
 std::string AnnotationPass::getAnnotation(Value *V) {
 	std::string id;
 
 	if (GlobalVariable *GV = dyn_cast<GlobalVariable>(V))
-		id = "var." + getScopeName(GV);
+		id = getVarId(GV);
 	else {
 		User::op_iterator is, ie; // GEP indices
 		Type *PTy = NULL;         // Pointer type
@@ -82,10 +67,8 @@ std::string AnnotationPass::getAnnotation(Value *V) {
 			SmallVector<Value *, 4> Idx(is, ie);
 			Type *Ty = GetElementPtrInst::getIndexedType(PTy, Idx);
 			ConstantInt *Offset = dyn_cast<ConstantInt>(ie->get());
-			if (Offset && isa<StructType>(Ty)) {
-				id = Ty->getStructName().str() + "." +
-					Twine(Offset->getLimitedValue()).str();
-			}
+			if (Offset && isa<StructType>(Ty))
+				id = getStructId(Ty, Offset->getLimitedValue());
 		}
 	}
 
@@ -97,25 +80,60 @@ bool AnnotationPass::runOnFunction(Function &F) {
 	LLVMContext &VMCtx = F.getContext();
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 		Instruction *I = &*i;
-		std::string Anno;
 
-		if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
-			llvm::Value *V = LI->getPointerOperand();
-			if (needAnnotation(V))
-				Anno = getAnnotation(V);
-		} else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
-			llvm::Value *V = SI->getPointerOperand();
-			if (needAnnotation(V))
-				Anno = getAnnotation(V);
+		if (isa<LoadInst>(I) || isa<StoreInst>(I)) {
+			// annotate load/stores
+			std::string Anno;
+			if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
+				llvm::Value *V = LI->getPointerOperand();
+				if (needAnnotation(V))
+					Anno = getAnnotation(V);
+			} else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
+				Value *V = SI->getPointerOperand();
+				if (needAnnotation(V))
+					Anno = getAnnotation(V);
+			}
+
+			if (Anno.empty())
+				continue;
+
+			MDNode *MD = MDNode::get(VMCtx, MDString::get(VMCtx, Anno));
+			I->setMetadata("id", MD);
+			Changed = true;
+
+		} else if (CallInst *CI = dyn_cast<CallInst>(I)) {
+			// annotate taints
+			Function *CF = CI->getCalledFunction();
+			if (!CF)
+				continue;
+
+			Value *V = NULL;
+			bool Replace;
+			if (CF->getName().startswith("__kint_taint_u")) {
+				// 1st arg is the tainted value
+				V = CI->getArgOperand(0);
+				Replace = true;
+			} else if (CF->getName() == "__kint_taint_any") {
+				// 2nd arg is the tainted value
+				V = CI->getArgOperand(1);
+				Replace = false;
+			}
+
+			// skip non-instruction taints (args, etc.)
+			Instruction *I = dyn_cast_or_null<Instruction>(V);
+			if (!I)
+				continue;
+			MDNode *MD = MDNode::get(VMCtx, MDString::get(VMCtx, CF->getName()));
+			I->setMetadata("taint", MD);
+
+			// erase __kint_taint_* calls
+			if (Replace) {
+				assert(CI->getType() == V->getType());
+				CI->replaceAllUsesWith(V);
+			}
+			CI->eraseFromParent();
+			Changed = true;
 		}
-
-		if (Anno.empty())
-			continue;
-
-		// Annotation should be in the form of key:value.
-		MDNode *MD = MDNode::get(VMCtx, MDString::get(VMCtx, Anno));
-		I->setMetadata("id", MD);
-		Changed = true;
 	}
 	return Changed;
 }
