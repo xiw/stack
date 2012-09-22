@@ -21,7 +21,7 @@ static CmpStatus CMP_XY_EXT = "zext(x * y) cmp z";
 struct CmpOverflow : FunctionPass {
 	static char ID;
 	CmpOverflow() : FunctionPass(ID) {
-		PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
+		PassRegistry &Registry = *PassRegistry::getPassRegistry();
 		initializeScalarEvolutionPass(Registry);
 	}
 

@@ -17,7 +17,7 @@ static CmpStatus CMP_TRUE = "comparison always true";
 struct CmpTautology : FunctionPass {
 	static char ID;
 	CmpTautology() : FunctionPass(ID) {
-		PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
+		PassRegistry &Registry = *PassRegistry::getPassRegistry();
 		initializeScalarEvolutionPass(Registry);
 	}
 
@@ -54,7 +54,7 @@ void CmpTautology::check(ICmpInst *I) {
 	if (isa<SCEVConstant>(L) && isa<SCEVConstant>(R))
 		return;
 	// Ignore loop variables.
-	if (isa<llvm::SCEVAddRecExpr>(L) || isa<llvm::SCEVAddRecExpr>(R))
+	if (isa<SCEVAddRecExpr>(L) || isa<SCEVAddRecExpr>(R))
 		return;
 	CmpStatus Reason;
 	if (SE->isKnownPredicate(I->getPredicate(), L, R))

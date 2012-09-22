@@ -25,7 +25,7 @@ private:
 	BuilderTy *Builder;
 
 	void rewriteSize(Function *F);
-	void rewriteSizeAt(llvm::CallInst *I, NamedParam *NPs);
+	void rewriteSizeAt(CallInst *I, NamedParam *NPs);
 };
 
 } // anonymous namespace
@@ -77,7 +77,7 @@ bool IntLibcalls::runOnModule(Module &M) {
 
 void IntLibcalls::rewriteSize(Function *F) {
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
-		CallInst *I = dyn_cast<llvm::CallInst>(&*i);
+		CallInst *I = dyn_cast<CallInst>(&*i);
 		if (I && I->getCalledFunction()) {
 			rewriteSizeAt(I, LLVMSize);
 			rewriteSizeAt(I, LinuxSize);
@@ -85,7 +85,7 @@ void IntLibcalls::rewriteSize(Function *F) {
 	}
 }
 
-void IntLibcalls::rewriteSizeAt(llvm::CallInst *I, NamedParam *NPs) {
+void IntLibcalls::rewriteSizeAt(CallInst *I, NamedParam *NPs) {
 	StringRef Name = I->getCalledFunction()->getName();
 	for (NamedParam *NP = NPs; NP->Name; ++NP) {
 		if (Name != NP->Name)
