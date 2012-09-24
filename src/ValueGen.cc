@@ -25,9 +25,7 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 		: VG(VG) {}
 
 	SMTExpr analyze(Value *V) {
-		if (!(V->getType()->isIntegerTy()
-		      || V->getType()->isPointerTy()
-		      || V->getType()->isFunctionTy())) {
+		if (!ValueGen::isAnalyzable(V)) {
 			V->dump();
 			assert(0 && "Unknown type!");
 		}
@@ -274,6 +272,16 @@ ValueGen::ValueGen(TargetData &TD, SMTSolver &SMT)
 ValueGen::~ValueGen() {
 	for (iterator i = Cache.begin(), e = Cache.end(); i != e; ++i)
 		SMT.decref(i->second);
+}
+
+bool ValueGen::isAnalyzable(llvm::Value *V) {
+	return isAnalyzable(V->getType());
+}
+
+bool ValueGen::isAnalyzable(llvm::Type *T) {
+	return T->isIntegerTy()
+		|| T->isPointerTy()
+		|| T->isFunctionTy();
 }
 
 SMTExpr ValueGen::get(Value *V) {
