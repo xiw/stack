@@ -21,7 +21,7 @@ libint_la_SOURCES = IntRewrite.cc IntLibcalls.cc IntSat.cc \
 libint_la_LIBADD  = libsat.la
 libint_la_LDFLAGS = -module
 
-libcmp_la_SOURCES = CmpRange.cc
+libcmp_la_SOURCES = CmpTautology.cc CmpOverflow.cc
 libcmp_la_LIBADD  = libsat.la
 libcmp_la_LDFLAGS = -module
 

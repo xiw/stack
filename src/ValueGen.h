@@ -5,6 +5,7 @@
 
 namespace llvm {
 	class TargetData;
+	class Type;
 	class Value;
 } // namespace llvm
 
@@ -20,6 +21,8 @@ public:
 	ValueGen(llvm::TargetData &, SMTSolver &);
 	~ValueGen();
 
+	static bool isAnalyzable(llvm::Value *);
+	static bool isAnalyzable(llvm::Type *);
 	SMTExpr get(llvm::Value *);
 
 	iterator begin() { return Cache.begin(); }

@@ -60,6 +60,12 @@ SMTExpr PathGen::getPHIGuard(BasicBlock *BB, BasicBlock *Pred) {
 		if (!I)
 			break;
 		Value *V = I->getIncomingValueForBlock(Pred);
+		// Skip undef.
+		if (isa<UndefValue>(V))
+			continue;
+		// Skip non-integral types.
+		if (!ValueGen::isAnalyzable(V))
+			continue;
 		// Generate I == V.
 		SMTExpr PN = SMT.eq(VG.get(I), VG.get(V));
 		SMTExpr Tmp = SMT.bvand(E, PN);

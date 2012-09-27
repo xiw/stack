@@ -14,7 +14,7 @@ namespace {
 struct LoadElim : FunctionPass {
 	static char ID;
 	LoadElim() : FunctionPass(ID) {
-		PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
+		PassRegistry &Registry = *PassRegistry::getPassRegistry();
 		initializeScalarEvolutionPass(Registry);
 	}
 
@@ -39,7 +39,7 @@ bool LoadElim::runOnFunction(Function &F) {
 	typedef DenseMap<const SCEV *, LoadInst *> AddrMapTy;
 	AddrMapTy AddrMap;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
-		LoadInst *I = llvm::dyn_cast<llvm::LoadInst>(&*i);
+		LoadInst *I = dyn_cast<LoadInst>(&*i);
 		if (I && !I->isVolatile()) {
 			const SCEV *S = SE->getSCEV(I->getPointerOperand());
 			AddrMap.insert(std::make_pair(S, I));

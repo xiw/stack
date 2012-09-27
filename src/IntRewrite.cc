@@ -27,7 +27,7 @@ namespace {
 struct IntRewrite : FunctionPass {
 	static char ID;
 	IntRewrite() : FunctionPass(ID) {
-		PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
+		PassRegistry &Registry = *PassRegistry::getPassRegistry();
 		initializeDominatorTreePass(Registry);
 		initializeLoopInfoPass(Registry);
 	}

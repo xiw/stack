@@ -35,7 +35,7 @@ end
 act = Set.new
 docs = YAML.load_stream STDIN
 docs.each do |doc|
-	next if doc['status'] != 'sat'
+	next if doc['status'] == 'unsat'
 	act_file, act_lineno = doc['stack'][0].split(':')[0, 2]
 	act_file = file if path == act_file
 	act_lineno = Integer act_lineno

@@ -1,13 +1,11 @@
-#define DEBUG_TYPE "cmp-range"
+#define DEBUG_TYPE "cmp-tautology"
 #include <llvm/Instructions.h>
 #include <llvm/Pass.h>
-#include <llvm/ADT/OwningPtr.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Support/raw_ostream.h>
 #include "Diagnostic.h"
-
 using namespace llvm;
 
 namespace {
@@ -16,10 +14,10 @@ typedef const char *CmpStatus;
 static CmpStatus CMP_FALSE = "comparison always false";
 static CmpStatus CMP_TRUE = "comparison always true";
 
-struct CmpRange : FunctionPass {
+struct CmpTautology : FunctionPass {
 	static char ID;
-	CmpRange() : FunctionPass(ID) {
-		PassRegistry &Registry = *llvm::PassRegistry::getPassRegistry();
+	CmpTautology() : FunctionPass(ID) {
+		PassRegistry &Registry = *PassRegistry::getPassRegistry();
 		initializeScalarEvolutionPass(Registry);
 	}
 
@@ -32,9 +30,8 @@ struct CmpRange : FunctionPass {
 		SE = &getAnalysis<ScalarEvolution>();
 		inst_iterator i = inst_begin(F), e = inst_end(F);
 		for (; i != e; ++i) {
-			if (ICmpInst *ICI = dyn_cast<ICmpInst>(&*i)) {
+			if (ICmpInst *ICI = dyn_cast<ICmpInst>(&*i))
 				check(ICI);
-			}
 		}
 		return false;
 	}
@@ -48,7 +45,7 @@ private:
 
 } // anonymous namespace
 
-void CmpRange::check(ICmpInst *I) {
+void CmpTautology::check(ICmpInst *I) {
 	if (!SE->isSCEVable(I->getOperand(0)->getType()))
 		return;
 	const SCEV *L = SE->getSCEV(I->getOperand(0));
@@ -57,7 +54,7 @@ void CmpRange::check(ICmpInst *I) {
 	if (isa<SCEVConstant>(L) && isa<SCEVConstant>(R))
 		return;
 	// Ignore loop variables.
-	if (isa<llvm::SCEVAddRecExpr>(L) || isa<llvm::SCEVAddRecExpr>(R))
+	if (isa<SCEVAddRecExpr>(L) || isa<SCEVAddRecExpr>(R))
 		return;
 	CmpStatus Reason;
 	if (SE->isKnownPredicate(I->getPredicate(), L, R))
@@ -67,7 +64,6 @@ void CmpRange::check(ICmpInst *I) {
 	else
 		return;
 	Diag << "---\n";
-	Diag << "status: sat\n";
 	Diag << "opcode: " << Reason << "\n";
 	Diag << "mode: |\n";
 	Diag << "  lhs: " << *L << '\n';
@@ -76,7 +72,7 @@ void CmpRange::check(ICmpInst *I) {
 	Diag.backtrace(I, "  - ");
 }
 
-char CmpRange::ID;
+char CmpTautology::ID;
 
-static RegisterPass<CmpRange>
-X("cmp-range", "Detecting bogus comparisons via ranges", false, true);
+static RegisterPass<CmpTautology>
+X("cmp-tautology", "Detecting tautological comparisons", false, true);
