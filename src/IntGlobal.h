@@ -63,7 +63,7 @@ public:
 class CallGraphPass : public IterativeModulePass {
 private:
 	bool runOnFunction(llvm::Function *);
-	void processInitializers(llvm::Constant *, llvm::GlobalValue *);
+	void processInitializers(llvm::Module *, llvm::Constant *, llvm::GlobalValue *);
 	bool mergeFuncSet(FuncSet &S, const std::string &Id);
 	bool mergeFuncSet(FuncSet &Dst, const FuncSet &Src);
 	bool findFunctions(llvm::Value *, FuncSet &);

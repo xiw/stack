@@ -14,7 +14,8 @@
 using namespace llvm;
 
 // collect function pointer assignments in global initializers
-void CallGraphPass::processInitializers(Constant *I, GlobalValue *V) {
+void
+CallGraphPass::processInitializers(Module *M, Constant *I, GlobalValue *V) {
 	// structs
 	if (ConstantStruct *CS = dyn_cast<ConstantStruct>(I)) {
 		StructType *STy = CS->getType();
@@ -24,11 +25,11 @@ void CallGraphPass::processInitializers(Constant *I, GlobalValue *V) {
 			Type *ETy = STy->getElementType(i);
 			if (ETy->isStructTy() || ETy->isArrayTy()) {
 				// nested array or struct
-				processInitializers(CS->getOperand(i), NULL);
+				processInitializers(M, CS->getOperand(i), NULL);
 			} else if (isFunctionPointer(ETy)) {
 				// found function pointers in struct fields
 				if (Function *F = dyn_cast<Function>(CS->getOperand(i))) {
-					std::string Id = getStructId(STy, i);
+					std::string Id = getStructId(STy, M, i);
 					Ctx->FuncPtrs[Id].insert(F);
 				}
 			}
@@ -37,7 +38,7 @@ void CallGraphPass::processInitializers(Constant *I, GlobalValue *V) {
 		// array of structs
 		if (CA->getType()->getElementType()->isStructTy())
 			for (unsigned i = 0; i != CA->getNumOperands(); ++i)
-				processInitializers(CA->getOperand(i), NULL);
+				processInitializers(M, CA->getOperand(i), NULL);
 	} else if (Function *F = dyn_cast<Function>(I)) {
 		// global function pointer variables
 		if (V) {
@@ -197,7 +198,7 @@ bool CallGraphPass::doInitialization(Module *M) {
 	Module::global_iterator i, e;
 	for (i = M->global_begin(), e = M->global_end(); i != e; ++i) {
 		if (i->hasInitializer())
-			processInitializers(i->getInitializer(), &*i);
+			processInitializers(M, i->getInitializer(), &*i);
 	}
 
 	// collect global function definitions
@@ -251,7 +252,7 @@ void CallGraphPass::dumpFuncPtrs() {
 }
 
 void CallGraphPass::dumpCallees() {
-	//raw_ostream &OS = dbgs();
+	raw_ostream &OS = dbgs();
 	for (CalleeMap::iterator i = Ctx->Callees.begin(), 
 		 e = Ctx->Callees.end(); i != e; ++i) {
 		 
@@ -261,17 +262,11 @@ void CallGraphPass::dumpCallees() {
 		 	continue;
 
 		CI->dump();
-		/*
-		DILocation L(CI->getDebugLoc().getAsMDNode(CI->getContext()));
-		OS << "      in " << L.getFilename() 
-			<< ":" << llvm::utostr(L.getLineNumber()) << "\n";
-	
 		for (FuncSet::iterator j = v.begin(), ej = v.end();
 			 j != ej; ++j) {
 			OS << "         " << ((*j)->hasInternalLinkage() ? "f" : "F")
 				<< " " << (*j)->getName() << "\n";
 		}
-		*/
 	}
 }
 

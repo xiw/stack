@@ -95,7 +95,7 @@ int main(int argc, char **argv)
 	CallGraphPass CGPass(&GlobalCtx);
 	CGPass.run(Modules);
 
-	CGPass.dumpFuncPtrs();
+	//CGPass.dumpFuncPtrs();
 	CGPass.dumpCallees();
 
 	return 0;

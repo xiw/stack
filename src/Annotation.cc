@@ -18,6 +18,7 @@ namespace {
 
 class AnnotationPass : public FunctionPass {
 protected:
+	Module *M;
 	std::string getAnnotation(Value *V);
 public:
 	static char ID;
@@ -48,7 +49,7 @@ std::string AnnotationPass::getAnnotation(Value *V) {
 		id = getVarId(GV);
 	else {
 		User::op_iterator is, ie; // GEP indices
-		Type *PTy = NULL;         // Pointer type
+		Type *PTy = NULL;         // Type of pointer in GEP
 		if (GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(V)) {
 			// GEP instruction
 			is = GEP->idx_begin();
@@ -68,7 +69,7 @@ std::string AnnotationPass::getAnnotation(Value *V) {
 			Type *Ty = GetElementPtrInst::getIndexedType(PTy, Idx);
 			ConstantInt *Offset = dyn_cast<ConstantInt>(ie->get());
 			if (Offset && isa<StructType>(Ty))
-				id = getStructId(Ty, Offset->getLimitedValue());
+				id = getStructId(Ty, M, Offset->getLimitedValue());
 		}
 	}
 
@@ -140,6 +141,7 @@ bool AnnotationPass::runOnFunction(Function &F) {
 
 bool AnnotationPass::doInitialization(Module &M)
 {
+	this->M = &M;
 	return true;
 }
 

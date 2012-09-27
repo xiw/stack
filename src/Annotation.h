@@ -4,6 +4,7 @@
 #include <llvm/Metadata.h>
 #include <llvm/Support/Path.h>
 #include <string>
+#include <llvm/Support/Debug.h>
 
 static inline bool isFunctionPointer(llvm::Type *Ty) {
 	llvm::PointerType *PTy = llvm::dyn_cast<llvm::PointerType>(Ty);
@@ -14,10 +15,21 @@ static inline std::string getScopeName(llvm::GlobalValue *GV) {
 	if (llvm::GlobalValue::isExternalLinkage(GV->getLinkage()))
 		return GV->getName();
 	else {
-		std::string prefix = llvm::sys::path::stem(
+		llvm::StringRef moduleName = llvm::sys::path::stem(
 			GV->getParent()->getModuleIdentifier());
-		return "local." + prefix + "." + GV->getName().str();
+		return "_" + moduleName.str() + "." + GV->getName().str();
 	}
+}
+
+// prefix anonymous struct name with module name
+static inline std::string getScopeName(llvm::Type *Ty, llvm::Module *M) {
+	if (Ty->getStructName().startswith("struct.anon")) {
+		llvm::StringRef rest = Ty->getStructName().substr(6);
+		llvm::StringRef moduleName = llvm::sys::path::stem(
+			M->getModuleIdentifier());
+		return "struct._" + moduleName.str() + rest.str();
+	}
+	return Ty->getStructName().str();
 }
 
 static inline llvm::StringRef getLoadStoreId(llvm::Instruction *I) {
@@ -26,8 +38,9 @@ static inline llvm::StringRef getLoadStoreId(llvm::Instruction *I) {
 	return llvm::StringRef();
 }
 
-static inline std::string getStructId(llvm::Type *Ty, unsigned offset) {
-	return Ty->getStructName().str() + "." + llvm::Twine(offset).str();
+static inline std::string
+getStructId(llvm::Type *Ty, llvm::Module *M, unsigned offset) {
+	return getScopeName(Ty, M) + "." + llvm::Twine(offset).str();
 }
 
 static inline std::string getVarId(llvm::GlobalValue *GV) {
