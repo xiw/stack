@@ -83,6 +83,9 @@ SMTExpr PathGen::getTermGuard(TerminatorInst *I, BasicBlock *BB) {
 		return getTermGuard(cast<BranchInst>(I), BB);
 	case Instruction::Switch:
 		return getTermGuard(cast<SwitchInst>(I), BB);
+	case Instruction::IndirectBr:
+	case Instruction::Invoke:
+		return SMT.bvtrue();
 	}
 }
 

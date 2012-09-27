@@ -80,6 +80,7 @@ AC_CONFIG_FILES([
 AC_CONFIG_LINKS([
 	tests/kcc:tests/kcc
 	tests/kgcc:tests/kgcc
+	tests/kg++:tests/kg++
 	tests/kdiff:tests/kdiff
 ])
 AC_CONFIG_FILES([tests/kint],[chmod a+x tests/kint])
