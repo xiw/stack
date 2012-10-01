@@ -1,3 +1,4 @@
+#include <llvm/DebugInfo.h>
 #include <llvm/Pass.h>
 #include <llvm/Instructions.h>
 #include <llvm/Support/Debug.h>
@@ -5,7 +6,6 @@
 #include <llvm/Module.h>
 #include <llvm/Constants.h>
 #include <llvm/ADT/StringExtras.h>
-#include <llvm/Analysis/DebugInfo.h>
 #include <llvm/Analysis/CallGraph.h>
 
 #include "Annotation.h"
