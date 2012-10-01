@@ -14,9 +14,9 @@ using namespace llvm;
 
 #define ctx ((Btor *)ctx_)
 #define m   ((Btor *)m_)
-#define e   ((BtorExp *)e_)
-#define lhs ((BtorExp *)lhs_)
-#define rhs ((BtorExp *)rhs_)
+#define e   ((BtorNode *)e_)
+#define lhs ((BtorNode *)lhs_)
+#define rhs ((BtorNode *)rhs_)
 
 SMTSolver::SMTSolver(bool modelgen) {
 	ctx_ = (SMTContext)boolector_new();
@@ -217,12 +217,12 @@ SMTExpr SMTSolver::bvurem(SMTExpr lhs_, SMTExpr rhs_) {
 }
 
 // Shift operations use log2n bits for shifting amount. 
-template <BtorExp *(*F)(Btor *, BtorExp *,  BtorExp *)>
-static inline SMTExpr shift(Btor *btor,  BtorExp *e0,  BtorExp *e1) {
+template <BtorNode *(*F)(Btor *, BtorNode *,  BtorNode *)>
+static inline SMTExpr shift(Btor *btor,  BtorNode *e0,  BtorNode *e1) {
 	unsigned n = boolector_get_width(btor, e1);
 	assert(!(n & (n - 1)) && "TODO");
 	unsigned amount = __builtin_ctz(n);
-	BtorExp *log2w = boolector_slice(btor, e1, amount - 1, 0);
+	BtorNode *log2w = boolector_slice(btor, e1, amount - 1, 0);
 	SMTExpr tmp = F(btor, e0, log2w);
 	boolector_release(btor, log2w);
 	return tmp;

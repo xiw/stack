@@ -50,7 +50,7 @@ if test "x$enable_z3" = "xyes"; then
 	AM_CONDITIONAL(Z3,true)
 else
 	SMT_LIB=libboolector.a
-	SMT_LIBADD=-lboolector
+	SMT_LIBADD="-lboolector -llgl"
 	AC_MSG_RESULT([Boolector])
 	AC_SEARCH_LIBS([zlibVersion],[z],,[AC_MSG_FAILURE([zlib not found])])
 	AM_CONDITIONAL(BOOLECTOR,true)
