@@ -5,24 +5,19 @@ import subprocess
 import sys
 
 def cc(llvmcc, src, argv):
-	out = ''
-	outing = False
-	for i, a in enumerate(argv):
-		if outing:
-			out = a
-			argv[i] = '-'
-			outing = False
-		if a == '-o':
-			outing = True
+	out = [i for i, x in enumerate(argv) if x == '-o']
 	if not out:
-		argv += ['-o', '-']
 		out = src
+	else:
+		out = argv[out[-1] + 1]
 	if out != '-':
 		out = os.path.splitext(out)[0] + '.ll'
+	argv += ['-o', '-']
 	# Remove -pg to avoid generating mcount calls.
 	argv = [x for x in argv if x != '-pg']
-	# Linux kernel hack: disable asm goto
+	# Linux kernel hack: disable asm goto.
 	argv = [x for x in argv if x != '-DCC_HAVE_ASM_GOTO']
+	# Use -fstrict-overflow to distinguish signed/unsigned integers.
 	more = ['-S', '-flto', '-fstrict-overflow', '-O0', '-g']
 	p1 = subprocess.Popen(llvmcc + argv + more, stdout=subprocess.PIPE)
 	opts = ['-strip-debug-declare', '-simplifycfg', '-scalarrepl', '-early-cse', '-lower-expect']
