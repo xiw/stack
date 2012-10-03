@@ -2,7 +2,11 @@ AM_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall -Wno-unknown-pragmas
 
 noinst_LTLIBRARIES = libsat.la
 lib_LTLIBRARIES    = libint.la libcmp.la
-bin_PROGRAMS = intglobal
+bin_PROGRAMS       = intglobal
+
+all-local: libint.la libcmp.la
+	@ln -f $(builddir)/.libs/libint.so $(top_builddir)/lib/libint.so
+	@ln -f $(builddir)/.libs/libcmp.so $(top_builddir)/lib/libcmp.so
 
 libsat_la_CPPFLAGS = -I$(top_builddir)/lib
 libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc
