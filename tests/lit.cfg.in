@@ -11,8 +11,10 @@ import os, os.path
 if 'LLVMCC' in os.environ:
 	config.environment['LLVMCC'] = os.getenv('LLVMCC')
 
-path = os.path.pathsep.join( ("@abs_top_builddir@/bin", config.test_exec_root, config.environment['PATH']) )
+path = os.path.pathsep.join( ("@abs_top_builddir@/bin", config.test_source_root, config.environment['PATH']) )
 config.environment['PATH'] = path
 
-linuxcc = 'kcc -nostdinc -c -o -'
+cc      = 'kint-cc1 -c -o -'
+linuxcc = 'kint-cc1 -nostdinc -c -o -'
+config.substitutions.append( ('%cc', cc) )
 config.substitutions.append( ('%linuxcc', linuxcc) )

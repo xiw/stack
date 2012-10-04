@@ -1,9 +1,8 @@
-// RUN: kcc -m32 -c -o - %s | kint | kdiff %s --prefix=exp
-// RUN: kcc -m64 -c -o - %s | kint | kdiff %s --prefix=exp
-// RUN: kcc -D__PATCH__ -m32 -c -o - %s | kint | kdiff %s
-// RUN: kcc -D__PATCH__ -m64 -c -o - %s | kint | kdiff %s
+// RUN: %cc -m32 %s | intck | diagdiff %s --prefix=exp
+// RUN: %cc -m64 %s | intck | diagdiff %s --prefix=exp
+// RUN: %cc -D__PATCH__ -m32 %s | intck | diagdiff %s
+// RUN: %cc -D__PATCH__ -m64 %s | intck | diagdiff %s
 //
-// CWE-190: Integer Overflow or Wraparound
 // http://git.gnome.org/browse/evolution-data-server/commit/camel/camel-lock-helper.c?id=0d1d403fab78b869867d50fcc6ee95f503925318
 
 #include <stdio.h>

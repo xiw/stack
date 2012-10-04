@@ -1,7 +1,7 @@
-// RUN: %linuxcc -m32 %s | kint | kdiff %s --prefix=exp
-// RUN: %linuxcc -m64 %s | kint | kdiff %s --prefix=exp
-// RUN: %linuxcc -D__PATCH__ -m32 %s | kint | kdiff %s
-// RUN: %linuxcc -D__PATCH__ -m64 %s | kint | kdiff %s
+// RUN: %linuxcc -m32 %s | intck | diagdiff %s --prefix=exp
+// RUN: %linuxcc -m64 %s | intck | diagdiff %s --prefix=exp
+// RUN: %linuxcc -D__PATCH__ -m32 %s | intck | diagdiff %s
+// RUN: %linuxcc -D__PATCH__ -m64 %s | intck | diagdiff %s
 // http://git.kernel.org/linus/b7058842c940ad2c08dd829b21e5c92ebe3b8758
 
 #include "linux.h"

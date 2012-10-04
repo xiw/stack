@@ -1,4 +1,4 @@
-// RUN: kcc -c -o - %s | kcmp | kdiff %s
+// RUN: %cc %s | cmpck | diagdiff %s
 // http://git.kernel.org/linus/44ab8cc56c45ca781371a4a77f35da19cf5db028
 
 #define DP_TRAIN_PRE_EMPHASIS_9_5	(3 << 3)

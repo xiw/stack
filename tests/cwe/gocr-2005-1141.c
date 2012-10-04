@@ -1,6 +1,5 @@
-// RUN: kcc -c -o - %s | kint | kdiff %s --prefix=exp
+// RUN: %cc %s | intck | diagdiff %s --prefix=exp
 //
-// CWE-190: Integer Overflow or Wraparound
 // http://www.overflow.pl/adv/gocr.txt
 // http://jocr.cvs.sourceforge.net/viewvc/jocr/jocr/src/pnm.c?r1=1.22&r2=1.23
 //

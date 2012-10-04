@@ -1,5 +1,5 @@
-// RUN: %linuxcc %s | kint | kdiff %s --prefix=exp
-// RUN: %linuxcc -D__PATCH__ %s | kint | kdiff %s
+// RUN: %linuxcc %s | intck | diagdiff %s --prefix=exp
+// RUN: %linuxcc -D__PATCH__ %s | intck | diagdiff %s
 // http://git.kernel.org/linus/83e0bbcbe2145f160fbaa109b0439dae7f4a38a9
 
 #include "linux.h"
