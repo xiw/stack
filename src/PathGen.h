@@ -7,6 +7,7 @@
 namespace llvm {
 	class BasicBlock;
 	class BranchInst;
+	class DominatorTree;
 	class SwitchInst;
 	class TerminatorInst;
 } // namespace llvm
@@ -21,15 +22,18 @@ public:
 	typedef llvm::SmallVectorImpl<Edge> EdgeVec;
 
 	PathGen(ValueGen &, const EdgeVec &);
+	PathGen(ValueGen &, const EdgeVec &, llvm::DominatorTree &DT);
 	~PathGen();
 
 	SMTExpr get(llvm::BasicBlock *);
 
 private:
 	ValueGen &VG;
-	const EdgeVec &BackEdges;
+	const EdgeVec &Backedges;
+	llvm::DominatorTree *DT;
 	BBExprMap Cache;
 
+	bool isBackedge(llvm::BasicBlock *, llvm::BasicBlock *);
 	SMTExpr getTermGuard(llvm::TerminatorInst *I, llvm::BasicBlock *BB);
 	SMTExpr getTermGuard(llvm::BranchInst *I, llvm::BasicBlock *BB);
 	SMTExpr getTermGuard(llvm::SwitchInst *I, llvm::BasicBlock *BB);

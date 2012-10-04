@@ -2,6 +2,7 @@
 #include "ValueGen.h"
 #include <llvm/Constants.h>
 #include <llvm/Instructions.h>
+#include <llvm/Analysis/Dominators.h>
 #include <llvm/Support/CFG.h>
 
 using namespace llvm;
@@ -9,11 +10,22 @@ using namespace llvm;
 #define SMT VG.SMT
 
 PathGen::PathGen(ValueGen &VG, const EdgeVec &BE)
-	: VG(VG), BackEdges(BE) {}
+	: VG(VG), Backedges(BE), DT(NULL) {}
+
+PathGen::PathGen(ValueGen &VG, const EdgeVec &Backedges, DominatorTree &DT)
+	: VG(VG), Backedges(Backedges), DT(&DT) {}
 
 PathGen::~PathGen() {
 	for (iterator i = Cache.begin(), e = Cache.end(); i != e; ++i)
 		SMT.decref(i->second);
+}
+
+static BasicBlock *findCommonDominator(BasicBlock *BB, DominatorTree *DT) {
+	pred_iterator i = pred_begin(BB), e = pred_end(BB);
+	BasicBlock *Dom = *i;
+	for (++i; i != e; ++i)
+		Dom = DT->findNearestCommonDominator(Dom, *i);
+	return Dom;
 }
 
 SMTExpr PathGen::get(BasicBlock *BB) {
@@ -26,15 +38,21 @@ SMTExpr PathGen::get(BasicBlock *BB) {
 		Cache[BB] = G;
 		return G;
 	}
+	pred_iterator i, e = pred_end(BB);
+	if (DT) {
+		// Fall back to common ancestors if any back edges.
+		for (i = pred_begin(BB); i != e; ++i) {
+			if (isBackedge(*i, BB))
+				return get(findCommonDominator(BB, DT));
+		}
+	}
+	// The guard is the disjunction of predecessors' guards.
 	// Initialize to false.
 	G = SMT.bvfalse();
-	// The guard is the disjunction of predecessors' guards.
-	pred_iterator i = pred_begin(BB), e = pred_end(BB);
-	for (; i != e; ++i) {
+	for (i = pred_begin(BB); i != e; ++i) {
 		BasicBlock *Pred = *i;
 		// Skip back edges.
-		if (std::find(BackEdges.begin(), BackEdges.end(),
-				Edge(Pred, BB)) != BackEdges.end())
+		if (!DT && isBackedge(Pred, BB))
 			continue;
 		SMTExpr Term = getTermGuard(Pred->getTerminator(), BB);
 		SMTExpr PN = getPHIGuard(BB, Pred);
@@ -50,6 +68,11 @@ SMTExpr PathGen::get(BasicBlock *BB) {
 	}
 	Cache[BB] = G;
 	return G;
+}
+
+bool PathGen::isBackedge(llvm::BasicBlock *From, llvm::BasicBlock *To) {
+	return std::find(Backedges.begin(), Backedges.end(), Edge(From, To))
+		!= Backedges.end();
 }
 
 SMTExpr PathGen::getPHIGuard(BasicBlock *BB, BasicBlock *Pred) {

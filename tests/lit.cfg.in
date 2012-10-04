@@ -11,7 +11,11 @@ import os, os.path
 if 'LLVMCC' in os.environ:
 	config.environment['LLVMCC'] = os.getenv('LLVMCC')
 
-path = os.path.pathsep.join( ("@abs_top_builddir@/bin", config.test_source_root, config.environment['PATH']) )
+llvm_obj_root = lit.util.capture(['llvm-config', '--obj-root']).strip()
+llvm_build_mode = lit.util.capture(['llvm-config', '--build-mode']).strip()
+llvm_bindir = os.path.join(llvm_obj_root, llvm_build_mode, 'bin')
+kint_bindir = os.path.join("@abs_top_builddir@", 'bin')
+path = os.path.pathsep.join( (kint_bindir, config.test_source_root, llvm_bindir, config.environment['PATH']) )
 config.environment['PATH'] = path
 
 cc      = 'kint-cc1 -c -o -'
