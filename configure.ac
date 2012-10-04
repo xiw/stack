@@ -74,5 +74,6 @@ AC_CONFIG_LINKS([
 	bin/kint-build:tests/kint-build
 	bin/intck:src/intck
 	bin/cmpck:src/cmpck
+	bin/antiopt:src/antiopt
 ])
 AC_OUTPUT
