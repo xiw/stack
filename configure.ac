@@ -71,6 +71,7 @@ AC_CONFIG_LINKS([
 	bin/kint-cc1:tests/kint-cc1
 	bin/kint-gcc:tests/kint-gcc
 	bin/kint-g++:tests/kint-g++
+	bin/kint-build:tests/kint-build
 	tests/kdiff:tests/kdiff
 	bin/intck:src/intck
 	bin/cmpck:src/cmpck

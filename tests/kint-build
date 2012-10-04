@@ -1,0 +1,4 @@
+#!/bin/bash
+DIR=$(dirname "${BASH_SOURCE[0]}")
+ABS_DIR=$(cd "${DIR}"; pwd)
+CC="${ABS_DIR}/kint-gcc" CXX="${ABS_DIR}/kint-g++" "$@"
