@@ -3,6 +3,7 @@ AM_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall
 noinst_LTLIBRARIES = libsat.la
 lib_LTLIBRARIES    = libintck.la libcmpck.la
 bin_PROGRAMS       = intglobal
+EXTRA_DIST         = intck cmpck
 
 all-local: libintck.la libcmpck.la
 	@ln -f $(builddir)/.libs/libintck.so $(top_builddir)/lib/libintck.so

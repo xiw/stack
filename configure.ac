@@ -64,14 +64,14 @@ AC_CONFIG_FILES([
 	Makefile
 	lib/Makefile
 	src/Makefile
-	tests/Makefile
-	tests/lit.cfg
+	test/Makefile
+	test/lit.cfg
 ])
 AC_CONFIG_LINKS([
-	bin/kint-cc1:tests/kint-cc1
-	bin/kint-gcc:tests/kint-gcc
-	bin/kint-g++:tests/kint-g++
-	bin/kint-build:tests/kint-build
+	bin/kint-cc1:test/kint-cc1
+	bin/kint-gcc:test/kint-gcc
+	bin/kint-g++:test/kint-g++
+	bin/kint-build:test/kint-build
 	bin/intck:src/intck
 	bin/cmpck:src/cmpck
 ])

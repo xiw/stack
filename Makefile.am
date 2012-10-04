@@ -1,4 +1,4 @@
-SUBDIRS = lib src tests
+SUBDIRS = lib src test
 
 intck_bin_distdir = intck-$(PACKAGE_VERSION)-bin
 
