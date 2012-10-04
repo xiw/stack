@@ -1,5 +1,5 @@
 #!/bin/bash
 
 DIR=$(dirname "${BASH_SOURCE[0]}")
-opt -disable-output -load=${DIR}/../lib/libcmp.so \
+opt -disable-output -load=${DIR}/../lib/libcmpck.so \
 	-cmp-tautology -cmp-overflow $@ 2>&1

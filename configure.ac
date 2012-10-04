@@ -3,7 +3,6 @@
 
 AC_INIT([kint],[0.3],[int@pdos.csail.mit.edu])
 AC_CONFIG_AUX_DIR([build-aux])
-AC_CONFIG_TESTDIR([tests])
 AC_CONFIG_HEADERS([config.h])
 
 AM_INIT_AUTOMAKE([foreign -Wall -Werror])
@@ -31,15 +30,11 @@ case $build_os in
   linux*)
 	AM_CONDITIONAL(LINUX,true)
 	;;
-  *)
-	AC_MSG_ERROR([platform not supported])
-	;;
 esac
 
 # Checks for SMT.
-AM_CONDITIONAL(Z3,false)
-AM_CONDITIONAL(BOOLECTOR,false)
 AC_MSG_CHECKING([for SMT solver])
+AM_CONDITIONAL(Z3,false)
 AC_ARG_ENABLE([z3],
 	AS_HELP_STRING([--enable-z3],[Use Z3 as SMT solver]))
 if test "x$enable_z3" = "xyes"; then
@@ -53,16 +48,11 @@ else
 	SMT_LIBADD="-lboolector -llgl"
 	AC_MSG_RESULT([Boolector])
 	AC_SEARCH_LIBS([zlibVersion],[z],,[AC_MSG_FAILURE([zlib not found])])
-	AM_CONDITIONAL(BOOLECTOR,true)
 fi
 AC_SUBST([SMT_LIB])
 AC_SUBST([SMT_LIBADD])
 
 # Checks for libraries.
-if test "$SMT_LIB" = "libz3.a"; then
-	AC_CHECK_LIB([gmp],[__gmpz_init],,
-		[AC_MSG_ERROR([libgmp not found, required by Z3])])
-fi
 
 # Checks for header files.
 
@@ -78,11 +68,11 @@ AC_CONFIG_FILES([
 	tests/lit.cfg
 ])
 AC_CONFIG_LINKS([
-	bin/kcc:tests/kcc
-	bin/kgcc:tests/kgcc
-	bin/kg++:tests/kg++
+	bin/kint-cc1:tests/kint-cc1
+	bin/kint-gcc:tests/kint-gcc
+	bin/kint-g++:tests/kint-g++
 	tests/kdiff:tests/kdiff
-	bin/kint:src/kint
-	bin/kcmp:src/kcmp
+	bin/intck:src/intck
+	bin/cmpck:src/cmpck
 ])
 AC_OUTPUT

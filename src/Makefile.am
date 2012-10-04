@@ -1,34 +1,32 @@
-AM_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall -Wno-unknown-pragmas
+AM_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall
 
 noinst_LTLIBRARIES = libsat.la
-lib_LTLIBRARIES    = libint.la libcmp.la
+lib_LTLIBRARIES    = libintck.la libcmpck.la
 bin_PROGRAMS       = intglobal
 
-all-local: libint.la libcmp.la
-	@ln -f $(builddir)/.libs/libint.so $(top_builddir)/lib/libint.so
-	@ln -f $(builddir)/.libs/libcmp.so $(top_builddir)/lib/libcmp.so
+all-local: libintck.la libcmpck.la
+	@ln -f $(builddir)/.libs/libintck.so $(top_builddir)/lib/libintck.so
+	@ln -f $(builddir)/.libs/libcmpck.so $(top_builddir)/lib/libcmpck.so
 
 libsat_la_CPPFLAGS = -I$(top_builddir)/lib
 libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc
-if BOOLECTOR
-libsat_la_SOURCES += SMTBoolector.cc
-endif
 if Z3
 libsat_la_SOURCES += SMTZ3.cc
+else
+libsat_la_SOURCES += SMTBoolector.cc
 endif
 libsat_la_LIBADD   = $(SMT_LIBADD)
 libsat_la_LDFLAGS  = -L`gcc -print-file-name=` -L$(top_builddir)/lib
 
-libint_la_SOURCES = IntRewrite.cc IntLibcalls.cc IntSat.cc \
+libintck_la_SOURCES = IntRewrite.cc IntLibcalls.cc IntSat.cc \
 	OverflowIdiom.cc OverflowSimplify.cc \
 	LoadElim.cc Annotation.cc
-libint_la_LIBADD  = libsat.la
-libint_la_LDFLAGS = -module
+libintck_la_LIBADD  = libsat.la
+libintck_la_LDFLAGS = -module
 
-libcmp_la_SOURCES = CmpTautology.cc CmpOverflow.cc
-libcmp_la_LIBADD  = libsat.la
-libcmp_la_LDFLAGS = -module
-
+libcmpck_la_SOURCES = CmpTautology.cc CmpOverflow.cc
+libcmpck_la_LIBADD  = libsat.la
+libcmpck_la_LDFLAGS = -module
 
 intglobal_LDFLAGS = `llvm-config --ldflags` -lLLVM-`llvm-config --version`
 intglobal_SOURCES = IntGlobal.cc CallGraph.cc
