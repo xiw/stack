@@ -11,13 +11,9 @@ all-local: libintck.la libcmpck.la
 
 libsat_la_CPPFLAGS = -I$(top_builddir)/lib
 libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc
-if Z3
-libsat_la_SOURCES += SMTZ3.cc
-else
 libsat_la_SOURCES += SMTBoolector.cc
-endif
-libsat_la_LIBADD   = $(SMT_LIBADD)
-libsat_la_LDFLAGS  = -L`gcc -print-file-name=` -L$(top_builddir)/lib
+libsat_la_LIBADD   = -lboolector -llgl
+libsat_la_LDFLAGS  = -L$(top_builddir)/lib
 
 libintck_la_SOURCES = IntRewrite.cc IntLibcalls.cc IntSat.cc \
 	OverflowIdiom.cc OverflowSimplify.cc \
