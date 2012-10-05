@@ -3,7 +3,9 @@
 namespace llvm {
 	class Instruction;
 	class raw_ostream;
-}
+	class Twine;
+} // namespace llvm
+
 
 class Diagnostic {
 public:
@@ -11,7 +13,10 @@ public:
 
 	llvm::raw_ostream &os() { return OS; }
 
-	void backtrace(llvm::Instruction *, const char *);
+	void bug(const llvm::Twine &);
+
+	void backtrace(llvm::Instruction *);
+	void status(unsigned);
 
 	template <typename T> Diagnostic &
 	operator <<(const T &Val) {

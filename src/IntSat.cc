@@ -51,7 +51,7 @@ private:
 	Diagnostic Diag;
 	Function *Trap;
 	OwningPtr<TargetData> TD;
-	unsigned MD_opcode;
+	unsigned MD_bug;
 
 	SmallVector<PathGen::Edge, 32> BackEdges;
 	SmallPtrSet<Value *, 32> ReportedBugs;
@@ -68,7 +68,7 @@ bool IntSat::runOnModule(Module &M) {
 	if (!Trap)
 		return false;
 	TD.reset(new TargetData(&M));
-	MD_opcode = M.getContext().getMDKindID("opcode");
+	MD_bug = M.getContext().getMDKindID("bug");
 	for (Module::iterator i = M.begin(), e = M.end(); i != e; ++i) {
 		Function &F = *i;
 		if (F.empty())
@@ -90,12 +90,6 @@ void IntSat::runOnFunction(Function &F) {
 }
 
 void IntSat::check(CallInst *I) {
-	const DebugLoc &DbgLoc = I->getDebugLoc();
-	if (DbgLoc.isUnknown())
-		return;
-	MDNode *MD = I->getMetadata(MD_opcode);
-	if (!MD)
-		return;
 	assert(I->getNumArgOperands() >= 1);
 	Value *V = I->getArgOperand(0);
 	assert(V->getType()->isIntegerTy(1));
@@ -104,7 +98,14 @@ void IntSat::check(CallInst *I) {
 	if (ReportedBugs.count(V))
 		return;
 
-	Diag << "---\n";
+	const DebugLoc &DbgLoc = I->getDebugLoc();
+	if (DbgLoc.isUnknown())
+		return;
+	MDNode *MD = I->getMetadata(MD_bug);
+	if (!MD)
+		return;
+	Diag.bug(cast<MDString>(MD->getOperand(0))->getString());
+
 	BasicBlock *BB = I->getParent();
 	SMTStatus SMTRes;
 	if (!SMTTimeoutOpt) {
@@ -132,19 +133,9 @@ void IntSat::check(CallInst *I) {
 	if (SMTRes == SMT_SAT)
 		ReportedBugs.insert(V);
 
-	// Output location and operator.
-	const char *SMTStr;
-	switch (SMTRes) {
-	default:          SMTStr = "undef";   break;
-	case SMT_UNSAT:   SMTStr = "unsat";   break;
-	case SMT_SAT:     SMTStr = "sat";     break;
-	case SMT_TIMEOUT: SMTStr = "timeout"; break;
-	}
-	Diag << "status: " << SMTStr << "\n";
-	StringRef Opcode = cast<MDString>(MD->getOperand(0))->getString();
-	Diag << "opcode: " << Opcode << "\n";
-	Diag << "stack: \n";
-	Diag.backtrace(I, "  - ");
+	// Output location.
+	Diag.status(SMTRes);
+	Diag.backtrace(I);
 }
 
 SMTStatus IntSat::query(Value *V, BasicBlock *BB) {
