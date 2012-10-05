@@ -6,8 +6,8 @@ bin_PROGRAMS       = intglobal
 EXTRA_DIST         = intck cmpck
 
 all-local: libintck.la libcmpck.la
-	@ln -f $(builddir)/.libs/libintck.so $(top_builddir)/lib/libintck.so
-	@ln -f $(builddir)/.libs/libcmpck.so $(top_builddir)/lib/libcmpck.so
+	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libintck.so
+	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libcmpck.so
 
 libsat_la_CPPFLAGS = -I$(top_builddir)/lib
 libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc

@@ -19,6 +19,6 @@ path = os.path.pathsep.join( (kint_bindir, config.test_source_root, llvm_bindir,
 config.environment['PATH'] = path
 
 cc      = 'kint-cc1 -c -o -'
-linuxcc = 'kint-cc1 -nostdinc -c -o -'
+linuxcc = 'kint-cc1 -nostdinc -fno-builtin -c -o -'
 config.substitutions.append( ('%cc', cc) )
 config.substitutions.append( ('%linuxcc', linuxcc) )
