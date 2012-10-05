@@ -12,6 +12,3 @@ Then build kint.
 	$ mkdir build
 	$ ../configure
 	$ make
-
-By default kint uses the Boolector SMT solver.  Add --enable-z3 to
-configure if you would like to use Z3 instead.

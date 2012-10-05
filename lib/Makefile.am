@@ -4,7 +4,7 @@ endif
 if DARWIN
 Z3        = z3-osx-4.1-x64
 endif
-BOOLECTOR = boolector-1.5.115-5d546c8-120922
+BOOLECTOR = boolector-1.5.116-eeaf10b-121004
 LINGELING = lingeling-al6-080d45d-120922
 
 all-local: $(SMT_LIB)
