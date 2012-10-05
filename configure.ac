@@ -15,50 +15,9 @@ m4_ifdef([AM_PROG_AR],[AM_PROG_AR])
 AC_PROG_LN_S
 AC_PROG_MKDIR_P
 AC_PROG_SED
-AC_CHECK_PROG([CURL],[wget],[wget -O -],[curl])
 
 LT_INIT([disable-static pic-only])
 AC_PROG_LIBTOOL
-
-# Checks for OS.
-AM_CONDITIONAL(LINUX,false)
-AM_CONDITIONAL(DARWIN,false)
-case $build_os in
-  darwin*)
-	AM_CONDITIONAL(DARWIN,true)
-	;;
-  linux*)
-	AM_CONDITIONAL(LINUX,true)
-	;;
-esac
-
-# Checks for SMT.
-AC_MSG_CHECKING([for SMT solver])
-AM_CONDITIONAL(Z3,false)
-AC_ARG_ENABLE([z3],
-	AS_HELP_STRING([--enable-z3],[Use Z3 as SMT solver]))
-if test "x$enable_z3" = "xyes"; then
-	SMT_LIB=libz3.a
-	SMT_LIBADD="-lz3 -lgomp -lgmp"
-	AC_MSG_RESULT([Z3])
-	AC_SEARCH_LIBS([__gmpz_init],[gmp],,[AC_MSG_FAILURE([gmp not found])])
-	AM_CONDITIONAL(Z3,true)
-else
-	SMT_LIB=libboolector.a
-	SMT_LIBADD="-lboolector -llgl"
-	AC_MSG_RESULT([Boolector])
-	AC_SEARCH_LIBS([zlibVersion],[z],,[AC_MSG_FAILURE([zlib not found])])
-fi
-AC_SUBST([SMT_LIB])
-AC_SUBST([SMT_LIBADD])
-
-# Checks for libraries.
-
-# Checks for header files.
-
-# Checks for typedefs, structures, and compiler characteristics.
-
-# Checks for library functions.
 
 AC_CONFIG_FILES([
 	Makefile
