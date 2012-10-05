@@ -1,5 +1,7 @@
 SUBDIRS = lib src test
 
+EXTRA_DIST = INSTALL
+
 intck_bin_distdir = intck-$(PACKAGE_VERSION)-bin
 
 intck-bin:

@@ -1,0 +1,14 @@
+Build the latest LLVM & Clang, as detailed at
+
+	http://clang.llvm.org/get_started.html
+
+We use the following parameters to LLVM's configure.
+
+	--enable-optimized --enable-targets=host --enable-bindings=none --enable-shared --enable-debug-symbols
+
+Then build kint.
+
+	$ autoreconf -fvi
+	$ mkdir build
+	$ ../configure
+	$ make

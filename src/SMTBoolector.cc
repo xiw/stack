@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 extern "C" {
 #include <boolector/boolector.h>
 }
@@ -17,6 +18,16 @@ using namespace llvm;
 #define e   ((BtorNode *)e_)
 #define lhs ((BtorNode *)lhs_)
 #define rhs ((BtorNode *)rhs_)
+
+// Boolector 1.5 is much slower due to the new SAT backend.
+// Use the workaround to disable preprocessing for performance.
+namespace {
+	struct SMTWorkaround {
+		SMTWorkaround() { ::setenv("LGLPLAIN", "1", 1); }
+	};
+}
+
+static SMTWorkaround X;
 
 SMTSolver::SMTSolver(bool modelgen) {
 	ctx_ = (SMTContext)boolector_new();
