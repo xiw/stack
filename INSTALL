@@ -1,12 +1,17 @@
-Build the latest LLVM & Clang, as detailed at
+To build kint, you need LLVM and Clang.  One option is to install recent
+versions of LLVM and Clang from Debian or Ubuntu:
+
+	$ apt-get install llvm-3.1-dev clang
+
+Another option is to build the latest LLVM & Clang, as detailed at:
 
 	http://clang.llvm.org/get_started.html
 
-We use the following parameters to LLVM's configure.
+We use the following parameters to LLVM's configure:
 
 	--enable-optimized --enable-targets=host --enable-bindings=none --enable-shared --enable-debug-symbols
 
-Then build kint.
+Then build kint:
 
 	$ autoreconf -fvi
 	$ mkdir build
