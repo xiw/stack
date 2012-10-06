@@ -10,5 +10,5 @@ Then build kint.
 
 	$ autoreconf -fvi
 	$ mkdir build
-	$ ../configure
-	$ make
+	$ ( cd build && ../configure )
+	$ ( cd build && make )
