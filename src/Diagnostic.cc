@@ -41,13 +41,13 @@ void Diagnostic::bug(const Twine &Str) {
 	OS << "---\n" << "bug: " << Str << "\n";
 }
 
-void Diagnostic::status(unsigned int Status) {
+void Diagnostic::status(int Status) {
 	const char *Str;
 	switch (Status) {
-	default:          Str = "undef";   break;
+	case SMT_UNDEF:   Str = "undef";   break;
 	case SMT_UNSAT:   Str = "unsat";   break;
 	case SMT_SAT:     Str = "sat";     break;
-	case SMT_TIMEOUT: Str = "timeout"; break;
+	default:          Str = "timeout"; break;
 	}
 	OS << "status: " << Str << "\n";
 }

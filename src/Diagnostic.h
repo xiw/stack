@@ -16,7 +16,7 @@ public:
 	void bug(const llvm::Twine &);
 
 	void backtrace(llvm::Instruction *);
-	void status(unsigned);
+	void status(int);
 
 	template <typename T> Diagnostic &
 	operator <<(const T &Val) {

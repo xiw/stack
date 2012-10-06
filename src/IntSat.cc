@@ -18,16 +18,8 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <sys/time.h>
-#include <sys/wait.h>
-#include <err.h>
 
 using namespace llvm;
-
-static cl::opt<unsigned>
-SMTTimeoutOpt("smt-timeout",
-              cl::desc("Specify a timeout for SMT solver"),
-              cl::value_desc("milliseconds"));
 
 static cl::opt<bool>
 SMTModelOpt("smt-model", cl::desc("Output SMT model"));
@@ -106,28 +98,12 @@ void IntSat::check(CallInst *I) {
 		return;
 	Diag.bug(cast<MDString>(MD->getOperand(0))->getString());
 
-	BasicBlock *BB = I->getParent();
-	SMTStatus SMTRes;
-	if (!SMTTimeoutOpt) {
+	int SMTRes;
+	if (SMTFork() == 0) {
+		BasicBlock *BB = I->getParent();
 		SMTRes = query(V, BB);
-	} else {
-		int pid = fork();
-		if (pid < 0)
-			err(1, "fork");
-		// Child process.
-		if (pid == 0) {
-			struct itimerval itv = {{0, 0}, {SMTTimeoutOpt / 1000, SMTTimeoutOpt % 1000 * 1000}};
-			setitimer(ITIMER_VIRTUAL, &itv, NULL);
-			_exit(query(V, BB));
-		}
-		// Parent process.
-		int status;
-		waitpid(pid, &status, 0);
-		if (WIFEXITED(status))
-			SMTRes = (SMTStatus)WEXITSTATUS(status);
-		else
-			SMTRes = SMT_TIMEOUT;
 	}
+	SMTJoin(&SMTRes);
 
 	// Save to suppress furture warnings.
 	if (SMTRes == SMT_SAT)
