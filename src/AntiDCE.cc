@@ -49,7 +49,8 @@ private:
 	TargetData *TD;
 	SmallVector<PathGen::Edge, 32> Backedges;
 
-	bool runOnBlock(BasicBlock *BB);
+	int shouldKeepCode(BasicBlock *BB);
+	void markAsDead(BasicBlock *BB);
 };
 
 } // anonymous namespace
@@ -77,20 +78,26 @@ bool AntiDCE::runOnFunction(Function &F) {
 	FindFunctionBackedges(F, Backedges);
 	bool Changed = false;
 	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i) {
-		if (runOnBlock(i)) {
-			// Update DT & PDT if any optimization performed.
-			Changed = true;
-			DT->DT->recalculate(F);
-			PDT->DT->recalculate(F);
-			Backedges.clear();
-			FindFunctionBackedges(F, Backedges);
-		}
+		BasicBlock *BB = i;
+		int Keep;
+		if (SMTFork() == 0)
+			Keep = shouldKeepCode(BB);
+		SMTJoin(&Keep);
+		if (Keep)
+			continue;
+		Changed = true;
+		markAsDead(BB);
+		// Update DT & PDT if any optimization performed.
+		DT->DT->recalculate(F);
+		PDT->DT->recalculate(F);
+		Backedges.clear();
+		FindFunctionBackedges(F, Backedges);
 	}
 	Backedges.clear();
 	return Changed;
 }
 
-bool AntiDCE::runOnBlock(BasicBlock *BB) {
+int AntiDCE::shouldKeepCode(BasicBlock *BB) {
 	SMTSolver SMT(false);
 	ValueGen VG(*TD, SMT);
 	Function *F = BB->getParent();
@@ -99,7 +106,7 @@ bool AntiDCE::runOnBlock(BasicBlock *BB) {
 	SMTExpr R = PG.get(BB);
 	// Ignore dead path.
 	if (SMT.query(R) == SMT_UNSAT)
-		return false;
+		return 1;
 	// Collect undefined behavior assertions.
 	SmallVector<SMTExpr, 16> UBs;
 	for (Function::iterator bi = F->begin(), be = F->end(); bi != be; ++bi) {
@@ -119,7 +126,7 @@ bool AntiDCE::runOnBlock(BasicBlock *BB) {
 		}
 	}
 	if (UBs.empty())
-		return false;
+		return 1;
 	SMTExpr U = SMT.bvfalse();
 	// Compute R and U.
 	for (unsigned i = 0, n = UBs.size(); i != n; ++i) {
@@ -133,18 +140,20 @@ bool AntiDCE::runOnBlock(BasicBlock *BB) {
 	SMT.decref(NotU);
 	SMTStatus Status = SMT.query(Q);
 	SMT.decref(Q);
-	if (Status != SMT_UNSAT)
-		return false;
+	if (Status == SMT_UNSAT)
+		return 0;
+	return 1;
+}
+
+void AntiDCE::markAsDead(BasicBlock *BB) {
 	// Prove BB is dead; output warning message.
-	Diag << "---\n";
-	Diag << "opcode: " << DEBUG_TYPE << '\n';
+	Diag.bug(DEBUG_TYPE);
 	Diag << "model: |\n  " << BB->getName() << ":\n";
 	for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ++i)
 		Diag << *i << '\n';
 	for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ++i) {
 		if (!i->getDebugLoc().isUnknown()) {
-			Diag << "stack: \n";
-			Diag.backtrace(i, "  - ");
+			Diag.backtrace(i);
 			break;
 		}
 	}
@@ -162,7 +171,6 @@ bool AntiDCE::runOnBlock(BasicBlock *BB) {
 	}
 	// Mark it as unreachable.
 	new UnreachableInst(BB->getContext(), BB);
-	return true;
 }
 
 char AntiDCE::ID;
