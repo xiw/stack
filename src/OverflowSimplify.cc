@@ -1,6 +1,6 @@
 #define DEBUG_TYPE "overflow-simplify"
 #include <llvm/Constants.h>
-#include <llvm/IRBuilder.h>
+#include "NomadicHeaders.h"
 #include <llvm/Instructions.h>
 #include <llvm/IntrinsicInst.h>
 #include <llvm/Pass.h>

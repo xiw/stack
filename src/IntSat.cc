@@ -3,6 +3,7 @@
 #include "PathGen.h"
 #include "SMTSolver.h"
 #include "ValueGen.h"
+#include <llvm/Constants.h>
 #include <llvm/BasicBlock.h>
 #include <llvm/Instructions.h>
 #include <llvm/Function.h>

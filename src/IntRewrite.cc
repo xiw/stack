@@ -1,5 +1,5 @@
 #define DEBUG_TYPE "int-rewrite"
-#include <llvm/IRBuilder.h>
+#include "NomadicHeaders.h"
 #include <llvm/Instructions.h>
 #include <llvm/Intrinsics.h>
 #include <llvm/LLVMContext.h>

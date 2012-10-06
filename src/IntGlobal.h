@@ -1,6 +1,6 @@
 #pragma once
 
-#include <llvm/DebugInfo.h>
+#include "NomadicHeaders.h"
 #include <llvm/Module.h>
 #include <llvm/Instructions.h>
 #include <llvm/ADT/DenseMap.h>

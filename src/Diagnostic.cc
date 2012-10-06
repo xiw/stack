@@ -1,6 +1,6 @@
 #include "Diagnostic.h"
 #include "SMTSolver.h"
-#include <llvm/DebugInfo.h>
+#include "NomadicHeaders.h"
 #include <llvm/Instruction.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/Support/Path.h>
