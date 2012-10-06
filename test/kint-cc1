@@ -32,6 +32,9 @@ def main():
 	# Keep silence if no -c (e.g., -E).
 	if '-c' not in argv:
 		return
+	# Keep silence for make depend.
+	if any(a in argv for a in ['-E', '-M', '-MM']):
+		return
 	src = [a for a in argv if os.path.splitext(a)[1] in ['.c', '.cc', '.cpp', '.cxx']]
 	# Keep silence if only '-' is given; otherwise we need to duplicate
 	# data from stdin for the next consumer (e.g., gcc).
