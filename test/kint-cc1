@@ -15,6 +15,8 @@ def cc(llvmcc, src, argv):
 	argv += ['-o', '-']
 	# Remove -pg to avoid generating mcount calls.
 	argv = [x for x in argv if x != '-pg']
+	# Remove warning flags.
+	argv = [x for x in argv if not x.startswith('-W')]
 	# Linux kernel hack: disable asm goto.
 	argv = [x for x in argv if x != '-DCC_HAVE_ASM_GOTO']
 	# Use -fstrict-overflow to distinguish signed/unsigned integers.
