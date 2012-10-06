@@ -63,13 +63,11 @@ void CmpTautology::check(ICmpInst *I) {
 		Reason = CMP_FALSE;
 	else
 		return;
-	Diag << "---\n";
-	Diag << "opcode: " << Reason << "\n";
-	Diag << "mode: |\n";
+	Diag.bug(Reason);
+	Diag << "model: |\n";
 	Diag << "  lhs: " << *L << '\n';
 	Diag << "  rhs: " << *R << '\n';
-	Diag << "stack: \n";
-	Diag.backtrace(I, "  - ");
+	Diag.backtrace(I);
 }
 
 char CmpTautology::ID;

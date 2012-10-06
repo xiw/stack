@@ -97,11 +97,9 @@ void CmpOverflow::check(ICmpInst *I) {
 	if (!Status) Status = checkAxB(L, R);
 	if (!Status) Status = checkXY(L, R);
 	if (!Status) return;
-	Diag << "---\n";
-	Diag << "opcode: " << "bad overflow check" << "\n";
+	Diag.bug("bad overflow check");
 	Diag << "mode: |\n  " << Status << "\n";
-	Diag << "stack: \n";
-	Diag.backtrace(I, "  - ");
+	Diag.backtrace(I);
 }
 
 CmpStatus CmpOverflow::checkAxB(const SCEV *L, const SCEV *R) {

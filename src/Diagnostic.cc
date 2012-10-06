@@ -1,4 +1,5 @@
 #include "Diagnostic.h"
+#include "SMTSolver.h"
 #include <llvm/DebugInfo.h>
 #include <llvm/Instruction.h>
 #include <llvm/ADT/SmallString.h>
@@ -17,8 +18,12 @@ static void getPath(SmallVectorImpl<char> &Path, const MDNode *MD) {
 		sys::path::append(Path, DIScope(MD).getDirectory(), Filename);
 }
 
-void Diagnostic::backtrace(Instruction *I, const char *Prefix) {
+void Diagnostic::backtrace(Instruction *I) {
+	const char *Prefix = " - ";
 	MDNode *MD = I->getDebugLoc().getAsMDNode(I->getContext());
+	if (!MD)
+		return;
+	OS << "stack: \n";
 	DILocation Loc(MD);
 	for (;;) {
 		SmallString<64> Path;
@@ -30,4 +35,19 @@ void Diagnostic::backtrace(Instruction *I, const char *Prefix) {
 		if (!Loc.Verify())
 			break;
 	}
+}
+
+void Diagnostic::bug(const Twine &Str) {
+	OS << "---\n" << "bug: " << Str << "\n";
+}
+
+void Diagnostic::status(int Status) {
+	const char *Str;
+	switch (Status) {
+	case SMT_UNDEF:   Str = "undef";   break;
+	case SMT_UNSAT:   Str = "unsat";   break;
+	case SMT_SAT:     Str = "sat";     break;
+	default:          Str = "timeout"; break;
+	}
+	OS << "status: " << Str << "\n";
 }

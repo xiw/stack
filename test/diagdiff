@@ -23,8 +23,8 @@ file = ARGV.shift
 path = File.expand_path file
 File.open(file).each_line do |line|
 	if /\/\/\s*#{prefix}:(.*)$/ =~ line
-		$~[1].scan(/\{\{([^\}]+)\}\}/) do |opcode|
-			exp << [file, lineno, opcode[0]]
+		$~[1].scan(/\{\{([^\}]+)\}\}/) do |bug|
+			exp << [file, lineno, bug[0]]
 		end
 	end
 	# bump lineno if not ending with a backslash
@@ -39,7 +39,7 @@ docs.each do |doc|
 	act_file, act_lineno = doc['stack'][0].split(':')[0, 2]
 	act_file = file if path == act_file
 	act_lineno = Integer act_lineno
-	act << [act_file, act_lineno, doc['opcode']]
+	act << [act_file, act_lineno, doc['bug']]
 end
 
 exit 0 if exp == act

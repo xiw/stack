@@ -6,15 +6,18 @@ namespace llvm {
 } // namespace llvm
 
 enum SMTStatus {
-	SMT_UNDEF = 0,
+	SMT_TIMEOUT = -1,
+	SMT_UNDEF,
 	SMT_UNSAT,
 	SMT_SAT,
-	SMT_TIMEOUT,
 };
 
 typedef struct SMTContextImpl *SMTContext;
 typedef void *SMTExpr;
 typedef void *SMTModel;
+
+int SMTFork();
+void SMTJoin(int *);
 
 class SMTSolver {
 public:

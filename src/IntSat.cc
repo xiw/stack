@@ -18,16 +18,8 @@
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <sys/time.h>
-#include <sys/wait.h>
-#include <err.h>
 
 using namespace llvm;
-
-static cl::opt<unsigned>
-SMTTimeoutOpt("smt-timeout",
-              cl::desc("Specify a timeout for SMT solver"),
-              cl::value_desc("milliseconds"));
 
 static cl::opt<bool>
 SMTModelOpt("smt-model", cl::desc("Output SMT model"));
@@ -51,7 +43,7 @@ private:
 	Diagnostic Diag;
 	Function *Trap;
 	OwningPtr<TargetData> TD;
-	unsigned MD_opcode;
+	unsigned MD_bug;
 
 	SmallVector<PathGen::Edge, 32> BackEdges;
 	SmallPtrSet<Value *, 32> ReportedBugs;
@@ -68,7 +60,7 @@ bool IntSat::runOnModule(Module &M) {
 	if (!Trap)
 		return false;
 	TD.reset(new TargetData(&M));
-	MD_opcode = M.getContext().getMDKindID("opcode");
+	MD_bug = M.getContext().getMDKindID("bug");
 	for (Module::iterator i = M.begin(), e = M.end(); i != e; ++i) {
 		Function &F = *i;
 		if (F.empty())
@@ -90,12 +82,6 @@ void IntSat::runOnFunction(Function &F) {
 }
 
 void IntSat::check(CallInst *I) {
-	const DebugLoc &DbgLoc = I->getDebugLoc();
-	if (DbgLoc.isUnknown())
-		return;
-	MDNode *MD = I->getMetadata(MD_opcode);
-	if (!MD)
-		return;
 	assert(I->getNumArgOperands() >= 1);
 	Value *V = I->getArgOperand(0);
 	assert(V->getType()->isIntegerTy(1));
@@ -104,47 +90,28 @@ void IntSat::check(CallInst *I) {
 	if (ReportedBugs.count(V))
 		return;
 
-	Diag << "---\n";
-	BasicBlock *BB = I->getParent();
-	SMTStatus SMTRes;
-	if (!SMTTimeoutOpt) {
+	const DebugLoc &DbgLoc = I->getDebugLoc();
+	if (DbgLoc.isUnknown())
+		return;
+	MDNode *MD = I->getMetadata(MD_bug);
+	if (!MD)
+		return;
+	Diag.bug(cast<MDString>(MD->getOperand(0))->getString());
+
+	int SMTRes;
+	if (SMTFork() == 0) {
+		BasicBlock *BB = I->getParent();
 		SMTRes = query(V, BB);
-	} else {
-		int pid = fork();
-		if (pid < 0)
-			err(1, "fork");
-		// Child process.
-		if (pid == 0) {
-			struct itimerval itv = {{0, 0}, {SMTTimeoutOpt / 1000, SMTTimeoutOpt % 1000 * 1000}};
-			setitimer(ITIMER_VIRTUAL, &itv, NULL);
-			_exit(query(V, BB));
-		}
-		// Parent process.
-		int status;
-		waitpid(pid, &status, 0);
-		if (WIFEXITED(status))
-			SMTRes = (SMTStatus)WEXITSTATUS(status);
-		else
-			SMTRes = SMT_TIMEOUT;
 	}
+	SMTJoin(&SMTRes);
 
 	// Save to suppress furture warnings.
 	if (SMTRes == SMT_SAT)
 		ReportedBugs.insert(V);
 
-	// Output location and operator.
-	const char *SMTStr;
-	switch (SMTRes) {
-	default:          SMTStr = "undef";   break;
-	case SMT_UNSAT:   SMTStr = "unsat";   break;
-	case SMT_SAT:     SMTStr = "sat";     break;
-	case SMT_TIMEOUT: SMTStr = "timeout"; break;
-	}
-	Diag << "status: " << SMTStr << "\n";
-	StringRef Opcode = cast<MDString>(MD->getOperand(0))->getString();
-	Diag << "opcode: " << Opcode << "\n";
-	Diag << "stack: \n";
-	Diag.backtrace(I, "  - ");
+	// Output location.
+	Diag.status(SMTRes);
+	Diag.backtrace(I);
 }
 
 SMTStatus IntSat::query(Value *V, BasicBlock *BB) {
