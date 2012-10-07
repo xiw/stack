@@ -16,15 +16,6 @@ AC_PROG_LN_S
 AC_PROG_MKDIR_P
 AC_PROG_SED
 
-# Check for nomadic LLVM header files.
-AC_LANG_PUSH([C++])
-CPPFLAGS_LLVM_SAVE="$CPPFLAGS"
-CPPFLAGS="$CPPFLAGS $(llvm-config --cxxflags)"
-AC_CHECK_HEADERS([llvm/DebugInfo.h llvm/Analysis/DebugInfo.h \
-                  llvm/IRBuilder.h llvm/Support/IRBuilder.h])
-CPPFLAGS="$CPPFLAGS_LLVM_SAVE"
-AC_LANG_POP
-
 LT_INIT([disable-static pic-only])
 AC_PROG_LIBTOOL
 
