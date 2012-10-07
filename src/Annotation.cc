@@ -149,6 +149,6 @@ bool AnnotationPass::doInitialization(Module &M)
 char AnnotationPass::ID;
 
 static RegisterPass<AnnotationPass>
-X("anno", "add annotation for load/stores");
+X("anno", "add id annotation for load/stores; add taint annotation for calls");
 
 

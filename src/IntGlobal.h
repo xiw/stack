@@ -90,14 +90,18 @@ private:
 	bool checkTaintSource(llvm::Value *);
 	bool markTaint(const std::string &Id, bool isSource);
 
+	bool isTaintSource(const std::string &sID);
+	bool checkTaintSource(llvm::Instruction *I);
+	bool checkTaintSource(llvm::Function *F);
+
 	typedef llvm::SmallPtrSet<llvm::Value *, 16> ValueTaintSet;
 	ValueTaintSet VTS;
 
 public:
 	TaintPass(GlobalContext *Ctx_)
 		: IterativeModulePass(Ctx_, "Taint") { }
-	virtual bool doFinalization(llvm::Module *);
 	virtual bool doModulePass(llvm::Module *);
+	virtual bool doFinalization(llvm::Module *);
 };
 
 

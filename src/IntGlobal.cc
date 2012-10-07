@@ -96,7 +96,10 @@ int main(int argc, char **argv)
 	CGPass.run(Modules);
 
 	//CGPass.dumpFuncPtrs();
-	CGPass.dumpCallees();
+	//CGPass.dumpCallees();
+
+	TaintPass TPass(&GlobalCtx);
+	TPass.run(Modules);
 
 	return 0;
 }

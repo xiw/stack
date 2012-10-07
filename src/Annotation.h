@@ -60,4 +60,25 @@ static inline std::string getRetId(llvm::Function *F) {
 	return "ret." + getScopeName(F);
 }
 
+static inline std::string getValueId(llvm::Value *V);
+static inline std::string getRetId(llvm::CallInst *CI) {
+	if (llvm::Function *CF = CI->getCalledFunction())
+		return getRetId(CF);
+	else {
+		std::string sID = getValueId(CI->getCalledValue());
+		if (sID != "")
+			return "ret." + sID;
+	}
+	return "";
+}
+
+static inline std::string getValueId(llvm::Value *V) {
+	if (llvm::Argument *A = llvm::dyn_cast<llvm::Argument>(V))
+		return getArgId(A);
+	else if (llvm::CallInst *CI = llvm::dyn_cast<llvm::CallInst>(V))
+		return getRetId(CI);
+	else if (llvm::isa<llvm::LoadInst>(V) || llvm::isa<llvm::StoreInst>(V))
+		return getLoadStoreId(llvm::dyn_cast<llvm::Instruction>(V));
+	return "";
+}
 
