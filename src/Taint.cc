@@ -8,8 +8,8 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Analysis/CallGraph.h>
-#include <llvm/DebugInfo.h>
 
+#include "NomadicHeaders.h"
 #include "Annotation.h"
 #include "IntGlobal.h"
 
