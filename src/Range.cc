@@ -216,17 +216,14 @@ CRange RangePass::visitCastInst(CastInst *CI)
 	unsigned bits = dyn_cast<IntegerType>(
 								CI->getDestTy())->getBitWidth();
 	
-	// pointer to int could be any value
-	if (CI->getOpcode() == CastInst::PtrToInt)
-		return CRange(bits, true);
-	
-	CRange CR = getRange(CI->getParent(), CI->getOperand(0));
+	BasicBlock *BB = CI->getParent();
+	Value *V = CI->getOperand(0);
 	switch (CI->getOpcode()) {
-		default: CI->dump(); llvm_unreachable("unknown cast inst");
-		case CastInst::Trunc:    return CR.zextOrTrunc(bits);
-		case CastInst::ZExt:     return CR.zextOrTrunc(bits);
-		case CastInst::SExt:     return CR.signExtend(bits);
-		case CastInst::BitCast:  return CR;
+		case CastInst::Trunc:    return getRange(BB, V).zextOrTrunc(bits);
+		case CastInst::ZExt:     return getRange(BB, V).zextOrTrunc(bits);
+		case CastInst::SExt:     return getRange(BB, V).signExtend(bits);
+		case CastInst::BitCast:  return getRange(BB, V);
+		default:                 return CRange(bits, true);
 	}
 }
 
@@ -240,8 +237,7 @@ CRange RangePass::visitSelectInst(SelectInst *SI)
 
 CRange RangePass::visitPHINode(PHINode *PHI)
 {
-	IntegerType *Ty = dyn_cast<IntegerType>(PHI->getType());
-	assert(Ty);
+	IntegerType *Ty = cast<IntegerType>(PHI->getType());
 	CRange CR(Ty->getBitWidth(), false);
 	
 	for (unsigned i = 0, n = PHI->getNumIncomingValues(); i < n; ++i) {
@@ -423,7 +419,7 @@ void RangePass::visitTerminator(TerminatorInst *I, BasicBlock *BB,
 	else if (SwitchInst *SI = dyn_cast<SwitchInst>(I))
 		visitSwitchInst(SI, BB, VRM);
 	else {
-		I->dump(); llvm_unreachable("Unknown terminator!");
+		// ignore: I->dump(); llvm_unreachable("Unknown terminator!");
 	}
 }
 
