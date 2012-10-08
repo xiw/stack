@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "IntGlobal.h"
+#include "Annotation.h"
 
 using namespace llvm;
 
@@ -25,17 +26,20 @@ InputFilenames(cl::Positional, cl::OneOrMore,
 static cl::opt<bool>
 Verbose("v", cl::desc("Print information about actions taken"));
 
-std::vector<Module *> Modules;
+static cl::opt<bool>
+Writeback("u", cl::desc("Write back annotated bitcode"));
+
+ModuleList Modules;
 GlobalContext GlobalCtx;
 
 #define Diag if (Verbose) llvm::errs()
 
-void IterativeModulePass::run(std::vector<llvm::Module *> modules) {
+void IterativeModulePass::run(ModuleList &modules) {
 
-	std::vector<llvm::Module *>::iterator i, e;
+	ModuleList::iterator i, e;
 	Diag << "[" << ID << "] Initializing " << modules.size() << " modules ";
 	for (i = modules.begin(), e = modules.end(); i != e; ++i) {
-		doInitialization(*i);
+		doInitialization(i->first);
 		Diag << ".";
 	}
 
@@ -45,9 +49,9 @@ void IterativeModulePass::run(std::vector<llvm::Module *> modules) {
 		changed = 0;
 		for (i = modules.begin(), e = modules.end(); i != e; ++i) {
 			Diag << "\n\n[" << ID << " / " << iter << "] ";
-			Diag << "'" << (*i)->getModuleIdentifier() << "'";
+			Diag << "'" << i->first->getModuleIdentifier() << "'";
 
-			bool ret = doModulePass(*i);
+			bool ret = doModulePass(i->first);
 			if (ret) {
 				++changed;
 				Diag << " [CHANGED]\n";
@@ -59,8 +63,27 @@ void IterativeModulePass::run(std::vector<llvm::Module *> modules) {
 
 	Diag << "\n[" << ID << "] Postprocessing ...\n";
 	for (i = modules.begin(), e = modules.end(); i != e; ++i)
-		doFinalization(*i);
+		doFinalization(i->first, i->second);
 	Diag << "[" << ID << "] Done!\n";
+}
+
+void doWriteback(Module *M, StringRef name)
+{
+	if (Writeback) {
+		std::string err;
+		OwningPtr<tool_output_file> out(
+			new tool_output_file(name.data(), err, raw_fd_ostream::F_Binary));
+		if (!err.empty()) {
+			Diag << "Cannot write back to " << name << ": " << err << "\n";
+			return;
+		}
+		M->print(out->os(), NULL);
+		out->keep();
+	}
+}
+
+void annotate(Module *M, const std::string &name)
+{
 }
 
 int main(int argc, char **argv)
@@ -88,7 +111,15 @@ int main(int argc, char **argv)
 		}
 
 		Diag << "Loading '" << InputFilenames[i] << "'\n";
-		Modules.push_back(M);
+
+		// annotate
+		static AnnotationPass AnnoPass;
+		AnnoPass.doInitialization(*M);
+		for (Module::iterator j = M->begin(), je = M->end(); j != je; ++j)
+			AnnoPass.runOnFunction(*j);
+		doWriteback(M, InputFilenames[i].c_str());
+
+		Modules.push_back(std::make_pair(M, InputFilenames[i]));
 	}
 	
 	// Main workflow
@@ -96,7 +127,11 @@ int main(int argc, char **argv)
 	CGPass.run(Modules);
 
 	//CGPass.dumpFuncPtrs();
-	CGPass.dumpCallees();
+	//CGPass.dumpCallees();
+
+	TaintPass TPass(&GlobalCtx);
+	TPass.run(Modules);
+	TPass.dumpTaints();
 
 	return 0;
 }

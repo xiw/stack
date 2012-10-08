@@ -16,6 +16,7 @@
 #include <sstream>
 #include <string>
 
+typedef std::vector< std::pair<llvm::Module *, llvm::StringRef> > ModuleList;
 typedef llvm::SmallPtrSet<llvm::Function *, 8> FuncSet;
 typedef std::map<llvm::StringRef, llvm::Function *> FuncMap;
 typedef std::map<std::string, FuncSet> FuncPtrMap;
@@ -50,14 +51,14 @@ public:
 		{ return true; }
 
 	// run on each module after iterative pass
-	virtual bool doFinalization(llvm::Module *M)
+	virtual bool doFinalization(llvm::Module *M, llvm::StringRef)
 		{ return true; }
 
 	// iterative pass
 	virtual bool doModulePass(llvm::Module *M)
 		{ return false; }
 
-	virtual void run(std::vector<llvm::Module *> modules);
+	virtual void run(ModuleList &modules);
 };
 
 class CallGraphPass : public IterativeModulePass {
@@ -75,7 +76,7 @@ public:
 	CallGraphPass(GlobalContext *Ctx_)
 		: IterativeModulePass(Ctx_, "CallGraph") { }
 	virtual bool doInitialization(llvm::Module *);
-	virtual bool doFinalization(llvm::Module *);
+	virtual bool doFinalization(llvm::Module *, llvm::StringRef);
 	virtual bool doModulePass(llvm::Module *);
 
 	// debug
@@ -90,14 +91,22 @@ private:
 	bool checkTaintSource(llvm::Value *);
 	bool markTaint(const std::string &Id, bool isSource);
 
+	bool isTaintSource(const std::string &sID);
+	bool checkTaintSource(llvm::Instruction *I);
+	bool checkTaintSource(llvm::Function *F);
+
 	typedef llvm::SmallPtrSet<llvm::Value *, 16> ValueTaintSet;
 	ValueTaintSet VTS;
 
 public:
 	TaintPass(GlobalContext *Ctx_)
 		: IterativeModulePass(Ctx_, "Taint") { }
-	virtual bool doFinalization(llvm::Module *);
 	virtual bool doModulePass(llvm::Module *);
+	virtual bool doFinalization(llvm::Module *, llvm::StringRef);
+
+	// debug
+	void dumpTaints();
 };
 
 
+void doWriteback(llvm::Module *M, llvm::StringRef name);

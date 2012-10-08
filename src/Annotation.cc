@@ -14,25 +14,6 @@
 
 using namespace llvm;
 
-namespace {
-
-class AnnotationPass : public FunctionPass {
-protected:
-	Module *M;
-	std::string getAnnotation(Value *V);
-public:
-	static char ID;
-	AnnotationPass() : FunctionPass(ID) { }
-
-	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-		AU.setPreservesCFG();
-	}
-	virtual bool runOnFunction(Function &);
-	virtual bool doInitialization(Module &);
-};
-
-}
-
 
 static inline bool needAnnotation(Value *V) {
 	if (PointerType *PTy = dyn_cast<PointerType>(V->getType())) {
@@ -149,6 +130,6 @@ bool AnnotationPass::doInitialization(Module &M)
 char AnnotationPass::ID;
 
 static RegisterPass<AnnotationPass>
-X("anno", "add annotation for load/stores");
+X("anno", "add id annotation for load/stores; add taint annotation for calls");
 
 
