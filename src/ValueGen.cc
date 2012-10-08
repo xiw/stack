@@ -298,12 +298,15 @@ SMTExpr ValueGen::get(Value *V) {
 }
 
 static void assumeMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange &R) {
-	SMTExpr Min = SMT.bvconst(R.getUnsignedMin());
-	SMTExpr Max = SMT.bvconst(R.getUnsignedMax());
-	SMTExpr Cmp0 = SMT.bvuge(E, Min);
-	SMTExpr Cmp1 = SMT.bvule(E, Max);
-	SMT.decref(Min);
-	SMT.decref(Max);
+	if (R.isFullSet() || R.isEmptySet())
+		return;
+
+	SMTExpr Lo = SMT.bvconst(R.getLower());
+	SMTExpr Hi = SMT.bvconst(R.getUpper());
+	SMTExpr Cmp0 = SMT.bvuge(E, Lo);
+	SMTExpr Cmp1 = SMT.bvule(E, Hi);
+	SMT.decref(Lo);
+	SMT.decref(Hi);
 
 	SMTExpr Cond;
 	if (R.isWrappedSet())
