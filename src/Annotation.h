@@ -1,6 +1,7 @@
 #include <llvm/Module.h>
 #include <llvm/Type.h>
 #include <llvm/Instructions.h>
+#include <llvm/IntrinsicInst.h>
 #include <llvm/Metadata.h>
 #include <llvm/Support/Path.h>
 #include <string>
@@ -91,9 +92,12 @@ static inline std::string getRetId(llvm::CallInst *CI) {
 static inline std::string getValueId(llvm::Value *V) {
 	if (llvm::Argument *A = llvm::dyn_cast<llvm::Argument>(V))
 		return getArgId(A);
-	else if (llvm::CallInst *CI = llvm::dyn_cast<llvm::CallInst>(V))
+	else if (llvm::CallInst *CI = llvm::dyn_cast<llvm::CallInst>(V)) {
+		if (llvm::Function *F = CI->getCalledFunction())
+			if (F->getName().startswith("kint_arg.i"))
+				return getLoadStoreId(CI);
 		return getRetId(CI);
-	else if (llvm::isa<llvm::LoadInst>(V) || llvm::isa<llvm::StoreInst>(V))
+	} else if (llvm::isa<llvm::LoadInst>(V) || llvm::isa<llvm::StoreInst>(V))
 		return getLoadStoreId(llvm::dyn_cast<llvm::Instruction>(V));
 	return "";
 }

@@ -72,6 +72,7 @@ bool TaintPass::checkTaintSource(Instruction *I)
 			return false;
 
 		VTS.insert(I);
+		changed |= markTaint(getValueId(I), true);
 		// mark all struct members as taint
 		if (PointerType *PTy = dyn_cast<PointerType>(I->getType())) {
 			if (StructType *STy = dyn_cast<StructType>(PTy->getElementType())) {
@@ -83,26 +84,10 @@ bool TaintPass::checkTaintSource(Instruction *I)
 	return changed;
 }
 
-bool TaintPass::checkTaintSource(Function *F)
-{
-	bool changed = false;
-	// system call arguements
-	if (F->getName().startswith("sys_") && !F->isVarArg()) {
-		for (Function::arg_iterator i = F->arg_begin(), e = F->arg_end();
-			 i != e; ++i) {
-			changed |= markTaint(getArgId(&*i), true);
-		}
-	}
-	return changed;
-}
-
 // Propagate taint within a function
 bool TaintPass::runOnFunction(Function *F)
 {
 	bool changed = false;
-	
-	// Looking for taint sources in arguments
-	changed |= checkTaintSource(F);
 	
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 		bool tainted = false;
@@ -161,13 +146,14 @@ bool TaintPass::runOnFunction(Function *F)
 // write back
 bool TaintPass::doFinalization(Module *M, StringRef Name) {
 	LLVMContext &VMCtx = M->getContext();
+	MDNode *MD = MDNode::get(VMCtx, MDString::get(VMCtx, ""));
 	for (Module::iterator f = M->begin(), fe = M->end(); f != fe; ++f) {
 		Function *F = &*f;
 		for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 			Instruction *I = &*i;
 			if (isTaint(I)) {
-				MDNode *MD = MDNode::get(VMCtx, MDString::get(VMCtx, ""));
-				I->setMetadata("taint", MD);
+				if (!I->getMetadata("taint"))
+					I->setMetadata("taint", MD);
 			} else if (MDNode *MD = I->getMetadata("taint")) {
 				StringRef src = llvm::dyn_cast<MDString>(
 									MD->getOperand(0))->getString();
