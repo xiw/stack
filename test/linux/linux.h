@@ -13,8 +13,15 @@
 #define ERANGE		34
 #define EMSGSIZE	90
 #define ENOPROTOOPT	92
+#define EUCLEAN		117
 
+#define INT_MIN		((int)(1U << (sizeof(int) * 8 - 1)))
+#define INT_MAX		(~INT_MIN)
 #define UINT_MAX	(~0U)
+
+#define LONG_MIN	((long)(1UL << (sizeof(long) * 8 - 1)))
+#define LONG_MAX	(~LONG_MIN)
+#define ULONG_MAX	(~0UL)
 
 #define GFP_KERNEL	(0x10u | 0x40u | 0x80u)
 
