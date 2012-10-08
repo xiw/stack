@@ -10,6 +10,8 @@
 #define XFS_ERROR(e)		(e)
 #define XFS_IFINLINE		0x01
 #define XFS_ILOCK_SHARED	(1<<3)
+#define MAXPATHLEN		1024
+#define EFSCORRUPTED		EUCLEAN
 
 typedef int64_t xfs_fsize_t;
 
