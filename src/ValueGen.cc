@@ -297,67 +297,23 @@ SMTExpr ValueGen::get(Value *V) {
 	return E;
 }
 
-static void assumeAnd(SMTSolver &SMT, SMTExpr Cmp0, SMTExpr Cmp1) {
-	if (!Cmp0 && !Cmp1)
-		return;
-	SMTExpr Tmp;
-	if (!Cmp0) {
-		Tmp = Cmp1;
-	} else if (!Cmp1) {
-		Tmp = Cmp0;
-	} else {
-		Tmp = SMT.bvand(Cmp0, Cmp1);
-		SMT.decref(Cmp0);
-		SMT.decref(Cmp1);
-	}
-	SMT.assume(Tmp);
-	SMT.decref(Tmp);
-}
+static void assumeMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange &R) {
+	SMTExpr Min = SMT.bvconst(R.getUnsignedMin());
+	SMTExpr Max = SMT.bvconst(R.getUnsignedMax());
+	SMTExpr Cmp0 = SMT.bvuge(E, Min);
+	SMTExpr Cmp1 = SMT.bvule(E, Max);
+	SMT.decref(Min);
+	SMT.decref(Max);
 
-static void assumeSignedMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange &R) {
-	APInt MinVal = R.getSignedMin();
-	APInt MaxVal = R.getSignedMax();
-	SMTExpr Min = NULL;
-	SMTExpr Cmp0 = NULL;
-	if (!MinVal.isMinSignedValue()) {
-		Min = SMT.bvconst(MinVal);
-		Cmp0 = SMT.bvsge(E, Min);
-		SMT.decref(Min);
-	}
-	SMTExpr Max = NULL;
-	SMTExpr Cmp1 = NULL;
-	if (!MaxVal.isMaxSignedValue()) {
-		Max = SMT.bvconst(MaxVal);
-		Cmp1 = SMT.bvsle(E, Max);
-		SMT.decref(Max);
-	}
-	assumeAnd(SMT, Cmp0, Cmp1);
-}
-
-static void assumeUnsignedMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange &R) {
-	APInt MinVal = R.getUnsignedMin();
-	APInt MaxVal = R.getUnsignedMax();
-	// Done by assumeSignedMinMax() if R is in [INT_MAX + 1, UINT_MAX].
-	if (MinVal.isNegative())
-		return;
-	// Done by assumeSignedMinMax() if R is in [0, INT_MAX].
-	if (MaxVal.isNonNegative())
-		return;
-	SMTExpr Min = NULL;
-	SMTExpr Cmp0 = NULL;
-	if (!MinVal.isMinValue()) {
-		Min = SMT.bvconst(MinVal);
-		Cmp0 = SMT.bvuge(E, Min);
-		SMT.decref(Min);
-	}
-	SMTExpr Max = NULL;
-	SMTExpr Cmp1 = NULL;
-	if (!MaxVal.isMaxValue()) {
-		Max = SMT.bvconst(MaxVal);
-		Cmp1 = SMT.bvule(E, Max);
-		SMT.decref(Max);
-	}
-	assumeAnd(SMT, Cmp0, Cmp1);
+	SMTExpr Cond;
+	if (R.isWrappedSet())
+		Cond = SMT.bvor(Cmp0, Cmp1);
+	else
+		Cond = SMT.bvand(Cmp0, Cmp1);
+	SMT.decref(Cmp0);
+	SMT.decref(Cmp1);
+	SMT.assume(Cond);
+	SMT.decref(Cond);
 }
 
 void addRangeConstraints(SMTSolver &SMT, SMTExpr E, MDNode *MD) {
@@ -374,6 +330,5 @@ void addRangeConstraints(SMTSolver &SMT, SMTExpr E, MDNode *MD) {
 	}
 	if (R.isEmptySet() || R.isFullSet())
 		return;
-	assumeSignedMinMax(SMT, E, R);
-	assumeUnsignedMinMax(SMT, E, R);
+	assumeMinMax(SMT, E, R);
 }
