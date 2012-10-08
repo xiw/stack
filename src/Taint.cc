@@ -8,8 +8,8 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Analysis/CallGraph.h>
-#include <llvm/DebugInfo.h>
 
+#include "NomadicHeaders.h"
 #include "Annotation.h"
 #include "IntGlobal.h"
 
@@ -66,18 +66,18 @@ bool TaintPass::checkTaintSource(Instruction *I)
 	Module *M = I->getParent()->getParent()->getParent();
 	bool changed = false;
 
-	MDNode *MD = I->getMetadata("taint");
-	StringRef src = llvm::dyn_cast<MDString>(MD->getOperand(0))->getString();
+	if (MDNode *MD = I->getMetadata("taint")) {
+		StringRef s = llvm::dyn_cast<MDString>(MD->getOperand(0))->getString();
+		if (s == "")
+			return false;
 
-	if (src == "")
-		return false;
-
-	VTS.insert(I);
-	// mark all struct members as taint
-	if (PointerType *PTy = dyn_cast<PointerType>(I->getType())) {
-		if (StructType *STy = dyn_cast<StructType>(PTy->getElementType())) {
-			for (unsigned i = 0; i < STy->getNumElements(); ++i)
-				changed |= markTaint(getStructId(STy, M, i), true);
+		VTS.insert(I);
+		// mark all struct members as taint
+		if (PointerType *PTy = dyn_cast<PointerType>(I->getType())) {
+			if (StructType *STy = dyn_cast<StructType>(PTy->getElementType())) {
+				for (unsigned i = 0; i < STy->getNumElements(); ++i)
+					changed |= markTaint(getStructId(STy, M, i), true);
+			}
 		}
 	}
 	return changed;
@@ -159,7 +159,7 @@ bool TaintPass::runOnFunction(Function *F)
 }
 
 // write back
-bool TaintPass::doFinalization(Module *M) {
+bool TaintPass::doFinalization(Module *M, StringRef Name) {
 	LLVMContext &VMCtx = M->getContext();
 	for (Module::iterator f = M->begin(), fe = M->end(); f != fe; ++f) {
 		Function *F = &*f;
@@ -171,11 +171,12 @@ bool TaintPass::doFinalization(Module *M) {
 			} else if (MDNode *MD = I->getMetadata("taint")) {
 				StringRef src = llvm::dyn_cast<MDString>(
 									MD->getOperand(0))->getString();
-				if (src != "")
+				if (src == "")
 					I->setMetadata("taint", NULL);
 			}
 		}
 	}
+	doWriteback(M, Name);
 	return true;
 }
 
@@ -191,4 +192,11 @@ bool TaintPass::doModulePass(Module *M) {
 	return ret;
 }
 
-
+// debug
+void TaintPass::dumpTaints() {
+	raw_ostream &OS = dbgs();
+	for (TaintSet::iterator i = Ctx->Taints.begin(), 
+		 e = Ctx->Taints.end(); i != e; ++i) {
+		OS << (i->second ? "S " : "  ") << i->first << "\n";
+	}
+}

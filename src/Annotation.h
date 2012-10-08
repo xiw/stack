@@ -6,6 +6,22 @@
 #include <string>
 #include <llvm/Support/Debug.h>
 
+class AnnotationPass : public llvm::FunctionPass {
+protected:
+	llvm::Module *M;
+	std::string getAnnotation(llvm::Value *V);
+public:
+	static char ID;
+	AnnotationPass() : FunctionPass(ID) { }
+
+	virtual void getAnalysisUsage(llvm::AnalysisUsage &AU) const {
+		AU.setPreservesCFG();
+	}
+	virtual bool runOnFunction(llvm::Function &);
+	virtual bool doInitialization(llvm::Module &);
+};
+
+
 static inline bool isFunctionPointer(llvm::Type *Ty) {
 	llvm::PointerType *PTy = llvm::dyn_cast<llvm::PointerType>(Ty);
 	return PTy && PTy->getElementType()->isFunctionTy();

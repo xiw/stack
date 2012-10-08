@@ -17,7 +17,7 @@ libsat_la_LDFLAGS  = -L$(top_builddir)/lib
 
 libintck_la_SOURCES = IntRewrite.cc IntLibcalls.cc IntSat.cc \
 	OverflowIdiom.cc OverflowSimplify.cc \
-	LoadElim.cc Annotation.cc
+	LoadElim.cc
 libintck_la_LIBADD  = libsat.la
 libintck_la_LDFLAGS = -module
 
@@ -26,4 +26,4 @@ libcmpck_la_LIBADD  = libsat.la
 libcmpck_la_LDFLAGS = -module
 
 intglobal_LDFLAGS = `llvm-config --ldflags` -lLLVM-`llvm-config --version`
-intglobal_SOURCES = IntGlobal.cc CallGraph.cc Taint.cc
+intglobal_SOURCES = IntGlobal.cc Annotation.cc CallGraph.cc Taint.cc
