@@ -21,7 +21,7 @@ def cc(llvmcc, src, argv):
 	argv = [x for x in argv if x != '-DCC_HAVE_ASM_GOTO']
 	# Use -fstrict-overflow to distinguish signed/unsigned integers.
 	more = ['-S', '-flto', '-fstrict-overflow', '-O0', '-g']
-	p1 = subprocess.Popen(llvmcc + argv + more, stdout=subprocess.PIPE)
+	p1 = subprocess.Popen(llvmcc + argv + more + [src], stdout=subprocess.PIPE)
 	opts = ['-strip-debug-declare', '-simplifycfg', '-scalarrepl', '-early-cse', '-lower-expect']
 	p2 = subprocess.Popen(['opt', '-S', '-o', out] + opts, stdin=p1.stdout)
 	p1.stdout.close()
@@ -31,18 +31,20 @@ def cc(llvmcc, src, argv):
 def main():
 	llvmcc = os.getenv('LLVMCC', 'clang').split(' ', 1)
 	argv = sys.argv[1:]
-	# Keep silence if no -c (e.g., -E).
-	if '-c' not in argv:
-		return
-	# Keep silence for make depend.
+	exts = ['.c', '.cc', '.cpp', '.cxx', '.C']
+	# Keep silence for preprocesssing and make depend.
 	if any(a in argv for a in ['-E', '-M', '-MM']):
 		return
-	src = [a for a in argv if os.path.splitext(a)[1] in ['.c', '.cc', '.cpp', '.cxx']]
+	# Extrace input source files.
+	srcs = [a for a in argv if os.path.splitext(a)[1] in exts]
 	# Keep silence if only '-' is given; otherwise we need to duplicate
 	# data from stdin for the next consumer (e.g., gcc).
-	if not src:
+	if not srcs:
 		return
-	rc = cc(llvmcc, src[0], list(argv))
+	# Remove source files froma args.
+	argv = [x for x in argv if x not in srcs]
+	for s in srcs:
+		rc = cc(llvmcc, s, list(argv))
 	sys.exit(rc)
 
 if __name__ == '__main__':
