@@ -1,8 +1,9 @@
 #define DEBUG_TYPE "load-elim"
+#include <llvm/IRBuilder.h>
 #include <llvm/Instructions.h>
 #include <llvm/Pass.h>
+#include <llvm/ADT/STLExtras.h>
 #include <llvm/Analysis/ScalarEvolution.h>
-#include <llvm/Analysis/ScalarEvolutionExpander.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/Transforms/Utils/SSAUpdater.h>
 #include <llvm/Support/InstIterator.h>
@@ -28,47 +29,48 @@ struct LoadElim : FunctionPass {
 private:
 	ScalarEvolution *SE;
 
-	bool hoist(const SCEV *, LoadInst *);
+	bool hoist(LoadInst *);
 };
 
 } // anonymous namespace
 
 bool LoadElim::runOnFunction(Function &F) {
 	SE = &getAnalysis<ScalarEvolution>();
-	// Collect load addresses.
-	typedef DenseMap<const SCEV *, LoadInst *> AddrMapTy;
-	AddrMapTy AddrMap;
+	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 		LoadInst *I = dyn_cast<LoadInst>(&*i);
-		if (I && !I->isVolatile()) {
-			const SCEV *S = SE->getSCEV(I->getPointerOperand());
-			AddrMap.insert(std::make_pair(S, I));
-		}
+		if (I && !I->isVolatile())
+			Changed |= hoist(I);
 	}
-	bool Changed = false;
-	for (AddrMapTy::iterator i = AddrMap.begin(), e = AddrMap.end(); i != e; ++i)
-		Changed |= hoist(i->first, i->second);
 	return Changed;
 }
 
-static Value *baseOf(const SCEV *S) {
+static std::pair<Value *, const SCEVConstant *>
+extractPointerBaseAndOffset(const SCEV *S) {
+	Value *V = NULL;
+	const SCEVConstant *Offset = NULL;
 	// p + 0.
 	if (const SCEVUnknown *Unknown = dyn_cast<SCEVUnknown>(S))
-		return Unknown->getValue();
+		return std::make_pair(Unknown->getValue(), Offset);
 	// p + offset.
 	if (const SCEVAddExpr *Add = dyn_cast<SCEVAddExpr>(S)) {
 		if (Add->getNumOperands() == 2) {
-			const SCEV *L = Add->getOperand(0);
-			const SCEV *R = Add->getOperand(1);
-			if (isa<SCEVConstant>(L) && isa<SCEVUnknown>(R))
-				return cast<SCEVUnknown>(R)->getValue();
+			const SCEVConstant *L = dyn_cast<SCEVConstant>(Add->getOperand(0));
+			const SCEVUnknown *R = dyn_cast<SCEVUnknown>(Add->getOperand(1));
+			if (L && R)
+				return std::make_pair(R->getValue(), L);
 		}
 	}
-	return NULL;
+	return std::make_pair(V, Offset);
 }
 
-bool LoadElim::hoist(const SCEV *S, LoadInst *I) {
-	Value *BaseV = baseOf(S);
+bool LoadElim::hoist(LoadInst *I) {
+	if (I->use_empty())
+		return false;
+	const SCEV *S = SE->getSCEV(I->getPointerOperand());
+	Value *BaseV;
+	const SCEVConstant *Offset;
+	tie(BaseV, Offset) = extractPointerBaseAndOffset(S);
 	if (!BaseV)
 		return false;
 
@@ -84,36 +86,34 @@ bool LoadElim::hoist(const SCEV *S, LoadInst *I) {
 	// Skip phi nodes, if any.
 	if (isa<PHINode>(IP))
 		IP = IP->getParent()->getFirstInsertionPt();
-	// We may reuse the address if it is a simple GEP.  Otherwise
-	// expand the SCEV expression instead.
-	Value *AddrV = NULL;
-	if (GetElementPtrInst *GEP = dyn_cast<GetElementPtrInst>(I->getPointerOperand())) {
-		if (GEP->hasAllConstantIndices()) {
-			if (GEP == IP)
-				IP = ++BasicBlock::iterator(IP);
-			else
-				GEP->moveBefore(IP);
-			AddrV = GEP;
-		}
+	IRBuilder<> Builder(IP);
+	Value *AddrV = BaseV;
+	// Offset is based on the type of char *.
+	if (Offset) {
+		PointerType *PT = cast<PointerType>(BaseV->getType());
+		Type *Int8Ty = Type::getInt8PtrTy(PT->getContext(), PT->getAddressSpace());
+		AddrV = Builder.CreatePointerCast(AddrV, Int8Ty);
+		AddrV = Builder.CreateGEP(AddrV, Offset->getValue());
 	}
-	if (!AddrV) {
-		SCEVExpander Expander(*SE, "");
-		AddrV = Expander.expandCodeFor(S, I->getPointerOperand()->getType(), IP);
-	}
+	AddrV = Builder.CreatePointerCast(AddrV, I->getPointerOperand()->getType());
 	SSAUpdater SSA;
-	SSA.Initialize(I->getType(), I->getName());
+	Type *T = I->getType();
+	SSA.Initialize(T, I->getPointerOperand()->getName());
 	// Insert load.
-	LoadInst *LoadV = new LoadInst(AddrV, I->getName(), true, IP);
-	SSA.AddAvailableValue(IP->getParent(), LoadV);
+	LoadInst *LoadV = Builder.CreateLoad(AddrV, true);
 	// Update all loads with the new inserted one.
 	for (Function::iterator bi = F->begin(), be = F->end(); bi != be; ++bi) {
 		BasicBlock *BB = bi;
 		Value *V = NULL;
-		for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ) {
-			Instruction *I = i++;
+		for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ++i) {
+			Instruction *I = i;
 			if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
-				if (S == SE->getSCEV(SI->getPointerOperand()))
-					V = SI->getValueOperand();
+				Value *StoreV = SI->getValueOperand();
+				if (StoreV->getType() != T)
+					continue;
+				if (S != SE->getSCEV(SI->getPointerOperand()))
+					continue;
+				V = StoreV;
 				continue;
 			}
 			if (!V) {
@@ -123,26 +123,32 @@ bool LoadElim::hoist(const SCEV *S, LoadInst *I) {
 			}
 			// Rewrite loads in the same bb of an earlier store.
 			if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
-				if (!LI->isVolatile() && S == SE->getSCEV(LI->getPointerOperand())) {
-					I->replaceAllUsesWith(V);
-					I->eraseFromParent();
-				}
+				if (LI->isVolatile())
+					continue;
+				if (LI->getType() != T)
+					continue;
+				if (S != SE->getSCEV(LI->getPointerOperand()))
+					continue;
+				I->replaceAllUsesWith(V);
+				continue;
 			}
 		}
 		if (V)
 			SSA.AddAvailableValue(BB, V);
 	}
-	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
-		LoadInst *LI = dyn_cast<LoadInst>(&*i++);
-		if (!LI || LI->isVolatile() || S != SE->getSCEV(LI->getPointerOperand()))
+	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
+		LoadInst *LI = dyn_cast<LoadInst>(&*i);
+		if (!LI || LI->isVolatile() || LI->use_empty())
+			continue;
+		if (LI->getType() != T)
+			continue;
+		if (S != SE->getSCEV(LI->getPointerOperand()))
 			continue;
 		for (Value::use_iterator ui = LI->use_begin(), ue = LI->use_end(); ui != ue; ) {
 			Use &U = ui.getUse();
 			ui++;
 			SSA.RewriteUse(U);
 		}
-		assert(LI->use_empty());
-		LI->eraseFromParent();
 	}
 
 	return true;
