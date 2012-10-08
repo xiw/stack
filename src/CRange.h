@@ -1,13 +1,14 @@
 #pragma once
 
+#include <llvm/Support/Debug.h>
 #include <llvm/Support/ConstantRange.h>
 
 // llvm::ConstantRange fixup.
 class CRange : public llvm::ConstantRange {
 	typedef llvm::APInt APInt;
 	typedef llvm::ConstantRange super;
-	CRange(uint32_t BitWidth, bool isFullSet) : super(BitWidth, isFullSet) {}
 public:
+	CRange(uint32_t BitWidth, bool isFullSet) : super(BitWidth, isFullSet) {}
 	// Constructors.
 	CRange(const super &CR) : super(CR) {}
 	CRange(const APInt &Value)
@@ -24,17 +25,22 @@ public:
 		return super::makeICmpRegion(Pred, other);
 	}
 
-	CRange sadd(const CRange &RHS) const {
-		unsigned N = getBitWidth();
-		if (isEmptySet() || RHS.isEmptySet())
-			return makeEmptySet(N);
-		APInt NewLower = getLower().sext(N + 1) + RHS.getLower().sext(N + 1);
-		APInt NewUpper = (getUpper() - 1).sext(N + 1) + (RHS.getUpper() - 1).sext(N + 1) + 1;
-		// Intersect with [INT_MIN, INT_MAX].
-		return CRange(NewLower, NewUpper)
-			.intersectWith(makeFullSet(N).signExtend(N + 1))
-			.truncate(N);
+	void match(const CRange &R) {
+		if (this->getBitWidth() != R.getBitWidth()) {
+			llvm::dbgs() << "warning: range " << *this << " " 
+				<< this->getBitWidth() << " and " << R << " "
+				<< R.getBitWidth() << " unmatch\n";
+			*this = this->zextOrTrunc(R.getBitWidth());
+		}
 	}
+
+	bool safeUnion(const CRange &R) {
+		CRange V = R, Old = *this;
+		V.match(*this);
+		*this = this->unionWith(V);
+		return Old != *this;
+	}
+
 
 	CRange sdiv(const CRange &RHS) const {
 		if (isEmptySet() || RHS.isEmptySet())
@@ -42,4 +48,5 @@ public:
 		// FIXME: too conservative.
 		return makeFullSet(getBitWidth());
 	}
+
 };

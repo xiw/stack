@@ -24,25 +24,7 @@ static cl::opt<std::string>
 WatchID("w", cl::desc("Watch sID"), 
 			   cl::value_desc("sID"));
 
-
-void conv_and_warn_if_unmatch(ConstantRange &V1, ConstantRange &V2)
-{
-	if (V1.getBitWidth() != V2.getBitWidth()) {
-		dbgs() << "warning: range " << V1 << " " << V1.getBitWidth()
-			<< " and " << V2 << " " << V2.getBitWidth() << " unmatch\n";
-		V2 = V2.zextOrTrunc(V1.getBitWidth());
-	}
-}
-
-bool RangePass::safeUnion(ConstantRange &CR, const ConstantRange &R)
-{
-	ConstantRange V = R, Old = CR;
-	conv_and_warn_if_unmatch(CR, V);
-	CR = CR.unionWith(V);
-	return Old != CR;
-}
-
-bool RangePass::unionRange(StringRef sID, const ConstantRange &R,
+bool RangePass::unionRange(StringRef sID, const CRange &R,
 						   Value *V = NULL)
 {
 	if (R.isEmptySet())
@@ -58,7 +40,7 @@ bool RangePass::unionRange(StringRef sID, const ConstantRange &R,
 	bool changed = true;
 	RangeMap::iterator it = Ctx->IntRanges.find(sID);
 	if (it != Ctx->IntRanges.end()) {
-		changed = safeUnion(it->second, R);
+		changed = it->second.safeUnion(R);
 		if (changed && sID == WatchID)
 			dbgs() << sID << " + " << R << " = " << it->second << "\n";
 	} else {
@@ -72,7 +54,7 @@ bool RangePass::unionRange(StringRef sID, const ConstantRange &R,
 }
 
 bool RangePass::unionRange(BasicBlock *BB, Value *V,
-						   const ConstantRange &R)
+						   const CRange &R)
 {
 	if (R.isEmptySet())
 		return false;
@@ -81,17 +63,17 @@ bool RangePass::unionRange(BasicBlock *BB, Value *V,
 	ValueRangeMap &VRM = FuncVRMs[BB];
 	ValueRangeMap::iterator it = VRM.find(V);
 	if (it != VRM.end())
-		changed = safeUnion(it->second, R);
+		changed = it->second.safeUnion(R);
 	else
 		VRM.insert(std::make_pair(V, R));
 	return changed;
 }
 
-ConstantRange RangePass::getRange(BasicBlock *BB, Value *V)
+CRange RangePass::getRange(BasicBlock *BB, Value *V)
 {
 	// constants
 	if (ConstantInt *C = dyn_cast<ConstantInt>(V))
-		return ConstantRange(C->getValue());
+		return CRange(C->getValue());
 	
 	ValueRangeMap &VRM = FuncVRMs[BB];
 	ValueRangeMap::iterator invrm = VRM.find(V);
@@ -106,8 +88,8 @@ ConstantRange RangePass::getRange(BasicBlock *BB, Value *V)
 	assert(Ty != NULL);
 	
 	// not found in VRM, lookup global range, return empty set by default
-	ConstantRange CR(Ty->getBitWidth(), false);
-	ConstantRange Fullset(Ty->getBitWidth(), true);
+	CRange CR(Ty->getBitWidth(), false);
+	CRange Fullset(Ty->getBitWidth(), true);
 	
 	RangeMap &IRM = Ctx->IntRanges;
 	TaintPass TI(Ctx);
@@ -125,7 +107,7 @@ ConstantRange RangePass::getRange(BasicBlock *BB, Value *V)
 				}
 				RangeMap::iterator it;
 				if ((it = IRM.find(sID)) != IRM.end())
-					safeUnion(CR, it->second);
+					CR.safeUnion(it->second);
 			}
 		}
 	} else {
@@ -205,18 +187,18 @@ bool RangePass::doInitialization(Module *M)
 }
 
 
-ConstantRange RangePass::visitBinaryOp(BinaryOperator *BO)
+CRange RangePass::visitBinaryOp(BinaryOperator *BO)
 {
-	ConstantRange L = getRange(BO->getParent(), BO->getOperand(0));
-	ConstantRange R = getRange(BO->getParent(), BO->getOperand(1));
-	conv_and_warn_if_unmatch(L, R);
+	CRange L = getRange(BO->getParent(), BO->getOperand(0));
+	CRange R = getRange(BO->getParent(), BO->getOperand(1));
+	R.match(L);
 	switch (BO->getOpcode()) {
 		default: BO->dump(); llvm_unreachable("Unknown binary operator!");
 		case Instruction::Add:  return L.add(R);
 		case Instruction::Sub:  return L.sub(R);
 		case Instruction::Mul:  return L.multiply(R);
 		case Instruction::UDiv: return L.udiv(R);
-		case Instruction::SDiv: return L; // FIXME
+		case Instruction::SDiv: return L.sdiv(R);
 		case Instruction::URem: return R; // FIXME
 		case Instruction::SRem: return R; // FIXME
 		case Instruction::Shl:  return L.shl(R);
@@ -229,16 +211,16 @@ ConstantRange RangePass::visitBinaryOp(BinaryOperator *BO)
 }
 
 
-ConstantRange RangePass::visitCastInst(CastInst *CI)
+CRange RangePass::visitCastInst(CastInst *CI)
 {	
 	unsigned bits = dyn_cast<IntegerType>(
 								CI->getDestTy())->getBitWidth();
 	
 	// pointer to int could be any value
 	if (CI->getOpcode() == CastInst::PtrToInt)
-		return ConstantRange(bits, true);
+		return CRange(bits, true);
 	
-	ConstantRange CR = getRange(CI->getParent(), CI->getOperand(0));
+	CRange CR = getRange(CI->getParent(), CI->getOperand(0));
 	switch (CI->getOpcode()) {
 		default: CI->dump(); llvm_unreachable("unknown cast inst");
 		case CastInst::Trunc:    return CR.zextOrTrunc(bits);
@@ -248,26 +230,26 @@ ConstantRange RangePass::visitCastInst(CastInst *CI)
 	}
 }
 
-ConstantRange RangePass::visitSelectInst(SelectInst *SI)
+CRange RangePass::visitSelectInst(SelectInst *SI)
 {
-	ConstantRange T = getRange(SI->getParent(), SI->getTrueValue());
-	ConstantRange F = getRange(SI->getParent(), SI->getFalseValue());
-	safeUnion(T, F);
+	CRange T = getRange(SI->getParent(), SI->getTrueValue());
+	CRange F = getRange(SI->getParent(), SI->getFalseValue());
+	T.safeUnion(F);
 	return T;
 }
 
-ConstantRange RangePass::visitPHINode(PHINode *PHI)
+CRange RangePass::visitPHINode(PHINode *PHI)
 {
 	IntegerType *Ty = dyn_cast<IntegerType>(PHI->getType());
 	assert(Ty);
-	ConstantRange CR(Ty->getBitWidth(), false);
+	CRange CR(Ty->getBitWidth(), false);
 	
 	for (unsigned i = 0, n = PHI->getNumIncomingValues(); i < n; ++i) {
 		BasicBlock *Pred = PHI->getIncomingBlock(i);
 		// skip back edges
 		if (isBackEdge(Edge(Pred, PHI->getParent())))
 			continue;
-		safeUnion(CR, getRange(Pred, PHI->getIncomingValue(i)));
+		CR.safeUnion(getRange(Pred, PHI->getIncomingValue(i)));
 	}
 	return CR;
 }
@@ -306,7 +288,7 @@ bool RangePass::visitStoreInst(StoreInst *SI)
 	std::string sID = getValueId(SI);
 	Value *V = SI->getValueOperand();
 	if (V->getType()->isIntegerTy() && sID != "") {
-		ConstantRange CR = getRange(SI->getParent(), V);
+		CRange CR = getRange(SI->getParent(), V);
 		unionRange(SI->getParent(), SI->getPointerOperand(), CR);
 		return unionRange(sID, CR, SI);
 	}
@@ -340,7 +322,7 @@ bool RangePass::updateRangeFor(Instruction *I)
 	if (!Ty)
 		return changed;
 	
-	ConstantRange CR(Ty->getBitWidth(), true);
+	CRange CR(Ty->getBitWidth(), true);
 	if (BinaryOperator *BO = dyn_cast<BinaryOperator>(I)) {
 		CR = visitBinaryOp(BO);
 	} else if (CastInst *CI = dyn_cast<CastInst>(I)) {
@@ -380,15 +362,15 @@ void RangePass::visitBranchInst(BranchInst *BI, BasicBlock *BB,
 	if (!LHS->getType()->isIntegerTy() || !RHS->getType()->isIntegerTy())
 		return;
 	
-	ConstantRange LCR = getRange(ICI->getParent(), LHS);
-	ConstantRange RCR = getRange(ICI->getParent(), RHS);
-	conv_and_warn_if_unmatch(LCR, RCR);
+	CRange LCR = getRange(ICI->getParent(), LHS);
+	CRange RCR = getRange(ICI->getParent(), RHS);
+	RCR.match(LCR);
 
 	if (BI->getSuccessor(0) == BB) {
 		// true target
-		ConstantRange PLCR = ConstantRange::makeICmpRegion(
+		CRange PLCR = CRange::makeICmpRegion(
 									ICI->getSwappedPredicate(), LCR);
-		ConstantRange PRCR = ConstantRange::makeICmpRegion(
+		CRange PRCR = CRange::makeICmpRegion(
 									ICI->getPredicate(), RCR);
 		VRM.insert(std::make_pair(LHS, LCR.intersectWith(PRCR)));
 		VRM.insert(std::make_pair(RHS, LCR.intersectWith(PLCR)));
@@ -396,10 +378,10 @@ void RangePass::visitBranchInst(BranchInst *BI, BasicBlock *BB,
 		// false target, use inverse predicate
 		// N.B. why there's no getSwappedInversePredicate()...
 		ICI->swapOperands();
-		ConstantRange PLCR = ConstantRange::makeICmpRegion(
+		CRange PLCR = CRange::makeICmpRegion(
 									ICI->getInversePredicate(), RCR);
 		ICI->swapOperands();
-		ConstantRange PRCR = ConstantRange::makeICmpRegion(
+		CRange PRCR = CRange::makeICmpRegion(
 									ICI->getInversePredicate(), RCR);
 		VRM.insert(std::make_pair(LHS, LCR.intersectWith(PRCR)));
 		VRM.insert(std::make_pair(RHS, LCR.intersectWith(PLCR)));
@@ -414,21 +396,21 @@ void RangePass::visitSwitchInst(SwitchInst *SI, BasicBlock *BB,
 	if (!Ty)
 		return;
 	
-	ConstantRange VCR = getRange(SI->getParent(), V);
-	ConstantRange CR(Ty->getBitWidth(), false);
+	CRange VCR = getRange(SI->getParent(), V);
+	CRange CR(Ty->getBitWidth(), false);
 						   
 	if (SI->getDefaultDest() != BB) {
 		// union all values that goes to BB
 		for (SwitchInst::CaseIt i = SI->case_begin(), e = SI->case_end();
 			 i != e; ++i) {
 			if (i.getCaseSuccessor() == BB)
-				safeUnion(CR, i.getCaseValue()->getValue());
+				CR.safeUnion(i.getCaseValue()->getValue());
 		}
 	} else {
 		// default case
 		for (SwitchInst::CaseIt i = SI->case_begin(), e = SI->case_end();
 			 i != e; ++i)
-			safeUnion(CR, i.getCaseValue()->getValue());
+			CR.safeUnion(i.getCaseValue()->getValue());
 		CR = CR.inverse();
 	}
 	VRM.insert(std::make_pair(V, VCR.intersectWith(CR)));
@@ -471,7 +453,7 @@ bool RangePass::updateRangeFor(BasicBlock *BB)
 			 j != je; ++j) {
 			ValueRangeMap::iterator it = BBVRM.find(j->first);
 			if (it != BBVRM.end())
-				safeUnion(it->second, j->second);
+				it->second.safeUnion(j->second);
 			else
 				BBVRM.insert(*j);
 		}
@@ -511,7 +493,7 @@ bool RangePass::doModulePass(Module *M)
 			for (ChangeSet::iterator it = Changes.begin(), ie = Changes.end();
 				 it != ie; ++it) {
 				RangeMap::iterator i = Ctx->IntRanges.find(*it);
-				i->second = ConstantRange(i->second.getBitWidth());
+				i->second = CRange(i->second.getBitWidth(), true);
 			}
 		}
 		changed = false;
