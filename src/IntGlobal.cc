@@ -131,7 +131,11 @@ int main(int argc, char **argv)
 
 	TaintPass TPass(&GlobalCtx);
 	TPass.run(Modules);
-	TPass.dumpTaints();
+	//TPass.dumpTaints();
+
+	RangePass RPass(&GlobalCtx);
+	RPass.run(Modules);
+	RPass.dumpRange();
 
 	return 0;
 }
