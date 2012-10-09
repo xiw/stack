@@ -13,8 +13,8 @@ def cc(llvmcc, src, argv):
 	if out != '-':
 		out = os.path.splitext(out)[0] + '.ll'
 	argv += ['-o', '-']
-	# Remove -pg to avoid generating mcount calls.
-	argv = [x for x in argv if x != '-pg']
+	# Remove profiling flags.
+	argv = [x for x in argv if x not in ['-pg', '-fprofile-arcs', '-ftest-coverage']]
 	# Remove warning flags.
 	argv = [x for x in argv if not x.startswith('-W')]
 	# Linux kernel hack: disable asm goto.
