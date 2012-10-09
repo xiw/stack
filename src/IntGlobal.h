@@ -16,13 +16,15 @@
 #include <sstream>
 #include <string>
 
+#include "CRange.h"
+
 typedef std::vector< std::pair<llvm::Module *, llvm::StringRef> > ModuleList;
 typedef llvm::SmallPtrSet<llvm::Function *, 8> FuncSet;
 typedef std::map<llvm::StringRef, llvm::Function *> FuncMap;
 typedef std::map<std::string, FuncSet> FuncPtrMap;
 typedef llvm::DenseMap<llvm::CallInst *, FuncSet> CalleeMap;
 typedef std::map<std::string, bool /* is source */> TaintSet;
-typedef std::map<std::string, llvm::ConstantRange> RangeMap;
+typedef std::map<std::string, CRange> RangeMap;
 
 struct GlobalContext {
 	// Map global function name to function defination
@@ -54,7 +56,7 @@ public:
 		{ return true; }
 
 	// run on each module after iterative pass
-	virtual bool doFinalization(llvm::Module *M, llvm::StringRef)
+	virtual bool doFinalization(llvm::Module *M)
 		{ return true; }
 
 	// iterative pass
@@ -79,7 +81,7 @@ public:
 	CallGraphPass(GlobalContext *Ctx_)
 		: IterativeModulePass(Ctx_, "CallGraph") { }
 	virtual bool doInitialization(llvm::Module *);
-	virtual bool doFinalization(llvm::Module *, llvm::StringRef);
+	virtual bool doFinalization(llvm::Module *);
 	virtual bool doModulePass(llvm::Module *);
 
 	// debug
@@ -104,7 +106,7 @@ public:
 	TaintPass(GlobalContext *Ctx_)
 		: IterativeModulePass(Ctx_, "Taint") { }
 	virtual bool doModulePass(llvm::Module *);
-	virtual bool doFinalization(llvm::Module *, llvm::StringRef);
+	virtual bool doFinalization(llvm::Module *);
 	bool isTaintSource(const std::string &sID);
 
 	// debug
@@ -117,17 +119,17 @@ class RangePass : public IterativeModulePass {
 private:
 	const unsigned MaxIterations;	
 	
-	bool safeUnion(llvm::ConstantRange &CR, const llvm::ConstantRange &R);
-	bool unionRange(llvm::StringRef, const llvm::ConstantRange &, llvm::Value *);
-	bool unionRange(llvm::BasicBlock *, llvm::Value *, const llvm::ConstantRange &);
-	llvm::ConstantRange getRange(llvm::BasicBlock *, llvm::Value *);
+	bool safeUnion(CRange &CR, const CRange &R);
+	bool unionRange(llvm::StringRef, const CRange &, llvm::Value *);
+	bool unionRange(llvm::BasicBlock *, llvm::Value *, const CRange &);
+	CRange getRange(llvm::BasicBlock *, llvm::Value *);
 
 	void collectInitializers(llvm::GlobalVariable *, llvm::Constant *);
 	bool updateRangeFor(llvm::Function *);
 	bool updateRangeFor(llvm::BasicBlock *);
 	bool updateRangeFor(llvm::Instruction *);
 
-	typedef std::map<llvm::Value *, llvm::ConstantRange> ValueRangeMap;
+	typedef std::map<llvm::Value *, CRange> ValueRangeMap;
 	typedef std::map<llvm::BasicBlock *, ValueRangeMap> FuncValueRangeMaps;
 	FuncValueRangeMaps FuncVRMs;
 
@@ -140,10 +142,10 @@ private:
 	
 	bool isBackEdge(const Edge &);
 	
-	llvm::ConstantRange visitBinaryOp(llvm::BinaryOperator *);
-	llvm::ConstantRange visitCastInst(llvm::CastInst *);
-	llvm::ConstantRange visitSelectInst(llvm::SelectInst *);
-	llvm::ConstantRange visitPHINode(llvm::PHINode *);
+	CRange visitBinaryOp(llvm::BinaryOperator *);
+	CRange visitCastInst(llvm::CastInst *);
+	CRange visitSelectInst(llvm::SelectInst *);
+	CRange visitPHINode(llvm::PHINode *);
 	
 	bool visitCallInst(llvm::CallInst *);
 	bool visitReturnInst(llvm::ReturnInst *);
@@ -162,10 +164,10 @@ public:
 	
 	virtual bool doInitialization(llvm::Module *);
 	virtual bool doModulePass(llvm::Module *M);
+	virtual bool doFinalization(llvm::Module *);
 
 	// debug
 	void dumpRange();
 };
 
 
-void doWriteback(llvm::Module *M, llvm::StringRef name);

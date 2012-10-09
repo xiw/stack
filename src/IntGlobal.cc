@@ -34,6 +34,20 @@ GlobalContext GlobalCtx;
 
 #define Diag if (Verbose) llvm::errs()
 
+void doWriteback(Module *M, StringRef name)
+{
+	std::string err;
+	OwningPtr<tool_output_file> out(
+		new tool_output_file(name.data(), err, raw_fd_ostream::F_Binary));
+	if (!err.empty()) {
+		Diag << "Cannot write back to " << name << ": " << err << "\n";
+		return;
+	}
+	M->print(out->os(), NULL);
+	out->keep();
+}
+
+
 void IterativeModulePass::run(ModuleList &modules) {
 
 	ModuleList::iterator i, e;
@@ -62,28 +76,14 @@ void IterativeModulePass::run(ModuleList &modules) {
 	}
 
 	Diag << "\n[" << ID << "] Postprocessing ...\n";
-	for (i = modules.begin(), e = modules.end(); i != e; ++i)
-		doFinalization(i->first, i->second);
-	Diag << "[" << ID << "] Done!\n";
-}
-
-void doWriteback(Module *M, StringRef name)
-{
-	if (Writeback) {
-		std::string err;
-		OwningPtr<tool_output_file> out(
-			new tool_output_file(name.data(), err, raw_fd_ostream::F_Binary));
-		if (!err.empty()) {
-			Diag << "Cannot write back to " << name << ": " << err << "\n";
-			return;
+	for (i = modules.begin(), e = modules.end(); i != e; ++i) {
+		if (doFinalization(i->first) && Writeback) {
+			Diag << "[" << ID << "] Writeback " << i->second << "\n";
+			doWriteback(i->first, i->second);
 		}
-		M->print(out->os(), NULL);
-		out->keep();
 	}
-}
-
-void annotate(Module *M, const std::string &name)
-{
+			
+	Diag << "[" << ID << "] Done!\n";
 }
 
 int main(int argc, char **argv)
@@ -117,25 +117,21 @@ int main(int argc, char **argv)
 		AnnoPass.doInitialization(*M);
 		for (Module::iterator j = M->begin(), je = M->end(); j != je; ++j)
 			AnnoPass.runOnFunction(*j);
-		doWriteback(M, InputFilenames[i].c_str());
+		if (Writeback)
+			doWriteback(M, InputFilenames[i].c_str());
 
 		Modules.push_back(std::make_pair(M, InputFilenames[i]));
 	}
-	
+
 	// Main workflow
 	CallGraphPass CGPass(&GlobalCtx);
 	CGPass.run(Modules);
 
-	//CGPass.dumpFuncPtrs();
-	//CGPass.dumpCallees();
-
 	TaintPass TPass(&GlobalCtx);
 	TPass.run(Modules);
-	//TPass.dumpTaints();
 
 	RangePass RPass(&GlobalCtx);
 	RPass.run(Modules);
-	RPass.dumpRange();
 
 	return 0;
 }
