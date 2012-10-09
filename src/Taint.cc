@@ -144,7 +144,7 @@ bool TaintPass::runOnFunction(Function *F)
 }
 
 // write back
-bool TaintPass::doFinalization(Module *M, StringRef Name) {
+bool TaintPass::doFinalization(Module *M) {
 	LLVMContext &VMCtx = M->getContext();
 	MDNode *MD = MDNode::get(VMCtx, MDString::get(VMCtx, ""));
 	for (Module::iterator f = M->begin(), fe = M->end(); f != fe; ++f) {
@@ -162,7 +162,6 @@ bool TaintPass::doFinalization(Module *M, StringRef Name) {
 			}
 		}
 	}
-	doWriteback(M, Name);
 	return true;
 }
 

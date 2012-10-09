@@ -212,7 +212,7 @@ CRange RangePass::visitBinaryOp(BinaryOperator *BO)
 
 
 CRange RangePass::visitCastInst(CastInst *CI)
-{	
+{
 	unsigned bits = dyn_cast<IntegerType>(
 								CI->getDestTy())->getBitWidth();
 	
@@ -500,6 +500,37 @@ bool RangePass::doModulePass(Module *M)
 		ret |= changed;
 	}
 	return ret;
+}
+
+// write back
+bool RangePass::doFinalization(Module *M) {
+	LLVMContext &VMCtx = M->getContext();
+	for (Module::iterator f = M->begin(), fe = M->end(); f != fe; ++f) {
+		Function *F = &*f;
+		for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
+			Instruction *I = &*i;
+			if (!isa<LoadInst>(I) && !isa<CallInst>(I))
+				continue;
+			I->setMetadata("intrange", NULL);
+			std::string id = getValueId(I);
+			if (id == "")
+				continue;
+			RangeMap &IRM = Ctx->IntRanges;
+			RangeMap::iterator i = IRM.find(id);
+			if (i == IRM.end())
+				continue;
+			CRange &R = i->second;
+			if (R.isEmptySet() || R.isFullSet())
+				continue;
+
+			ConstantInt *Lo = ConstantInt::get(VMCtx, R.getLower());
+			ConstantInt *Hi = ConstantInt::get(VMCtx, R.getUpper());
+			Value *RL[] = { Lo, Hi };
+			MDNode *MD = MDNode::get(VMCtx, RL);
+			I->setMetadata("intrange", MD);
+		}
+	}
+	return true;
 }
 
 

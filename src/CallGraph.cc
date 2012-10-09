@@ -210,7 +210,7 @@ bool CallGraphPass::doInitialization(Module *M) {
 	return true;
 }
 
-bool CallGraphPass::doFinalization(Module *M, StringRef Name) {
+bool CallGraphPass::doFinalization(Module *M) {
 	// update callee mapping
 	for (Module::iterator f = M->begin(), fe = M->end(); f != fe; ++f) {
 		Function *F = &*f;
@@ -222,7 +222,7 @@ bool CallGraphPass::doFinalization(Module *M, StringRef Name) {
 			}
 		}
 	}
-	return true;
+	return false;
 }
 
 bool CallGraphPass::doModulePass(Module *M) {

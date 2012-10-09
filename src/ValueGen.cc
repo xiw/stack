@@ -37,7 +37,11 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 	}
 
 	SMTExpr visitInstruction(Instruction &I) {
-		return mk_fresh(&I);
+		SMTExpr E = mk_fresh(&I);
+		// Ranges are constants, so don't worry about recursion.
+		if (MDNode *MD = I.getMetadata("intrange"))
+			addRangeConstraints(SMT, E, MD);
+		return E;
 	}
 
 	SMTExpr visitConstant(Constant *C) {
@@ -211,13 +215,6 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 		return Tmp;
 	}
 
-	SMTExpr visitLoadInst(LoadInst &I) {
-		SMTExpr E = mk_fresh(&I);
-		// Ranges are constants, so don't worry about recursion.
-		if (MDNode *MD = I.getMetadata("range"))
-			addRangeConstraints(SMT, E, MD);
-		return E;
-	}
 
 	SMTExpr visitPtrToIntInst(PtrToIntInst &I) {
 		Value *V = I.getOperand(0);
@@ -320,17 +317,12 @@ static void assumeMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange &R) {
 }
 
 void addRangeConstraints(SMTSolver &SMT, SMTExpr E, MDNode *MD) {
-	unsigned n = MD->getNumOperands();
-	assert(n >= 2);
-	assert(n % 2 == 0);
-	// Start from emptyset.
-	ConstantRange R(SMT.bvwidth(E), false);
-	for (unsigned i = 0; i != n; i += 2) {
-		ConstantInt *Lo, *Hi;
-		Lo = cast<ConstantInt>(MD->getOperand(i));
-		Hi = cast<ConstantInt>(MD->getOperand(i + 1));
-		R = R.unionWith(ConstantRange(Lo->getValue(), Hi->getValue()));
-	}
+	assert(MD->getNumOperands() == 2);
+
+	ConstantInt *Lo, *Hi;
+	Lo = cast<ConstantInt>(MD->getOperand(0));
+	Hi = cast<ConstantInt>(MD->getOperand(1));
+	ConstantRange R(Lo->getValue(), Hi->getValue());
 	if (R.isEmptySet() || R.isFullSet())
 		return;
 	assumeMinMax(SMT, E, R);

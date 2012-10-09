@@ -28,4 +28,4 @@ libcmpck_la_LDFLAGS = -module
 
 intglobal_LDFLAGS = `llvm-config --ldflags` -lLLVM-`llvm-config --version`
 intglobal_SOURCES = IntGlobal.cc Annotation.cc CallGraph.cc Taint.cc Range.cc \
-	IntGlobal.h Annotation.h
+	IntGlobal.h Annotation.h CRange.h

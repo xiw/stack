@@ -56,7 +56,7 @@ public:
 		{ return true; }
 
 	// run on each module after iterative pass
-	virtual bool doFinalization(llvm::Module *M, llvm::StringRef)
+	virtual bool doFinalization(llvm::Module *M)
 		{ return true; }
 
 	// iterative pass
@@ -81,7 +81,7 @@ public:
 	CallGraphPass(GlobalContext *Ctx_)
 		: IterativeModulePass(Ctx_, "CallGraph") { }
 	virtual bool doInitialization(llvm::Module *);
-	virtual bool doFinalization(llvm::Module *, llvm::StringRef);
+	virtual bool doFinalization(llvm::Module *);
 	virtual bool doModulePass(llvm::Module *);
 
 	// debug
@@ -106,7 +106,7 @@ public:
 	TaintPass(GlobalContext *Ctx_)
 		: IterativeModulePass(Ctx_, "Taint") { }
 	virtual bool doModulePass(llvm::Module *);
-	virtual bool doFinalization(llvm::Module *, llvm::StringRef);
+	virtual bool doFinalization(llvm::Module *);
 	bool isTaintSource(const std::string &sID);
 
 	// debug
@@ -164,10 +164,10 @@ public:
 	
 	virtual bool doInitialization(llvm::Module *);
 	virtual bool doModulePass(llvm::Module *M);
+	virtual bool doFinalization(llvm::Module *);
 
 	// debug
 	void dumpRange();
 };
 
 
-void doWriteback(llvm::Module *M, llvm::StringRef name);
