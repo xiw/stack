@@ -56,13 +56,14 @@ void IterativeModulePass::run(ModuleList &modules) {
 		doInitialization(i->first);
 		Diag << ".";
 	}
+	Diag << "\n";
 
 	unsigned iter = 0, changed = 1;
 	while (changed) {
 		++iter;
 		changed = 0;
 		for (i = modules.begin(), e = modules.end(); i != e; ++i) {
-			Diag << "\n\n[" << ID << " / " << iter << "] ";
+			Diag << "[" << ID << " / " << iter << "] ";
 			Diag << "'" << i->first->getModuleIdentifier() << "'";
 
 			bool ret = doModulePass(i->first);
