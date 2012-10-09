@@ -1,7 +1,9 @@
-To build kint, you need LLVM and Clang.  One option is to install recent
-versions of LLVM and Clang from Debian or Ubuntu:
+To build kint, you need LLVM 3.1 or later, and Clang.  One option is
+to install recent versions of LLVM and Clang from Ubuntu 12.10 (earlier
+versions of Ubuntu have older versions of LLVM that are not compatible
+with kint):
 
-	$ apt-get install llvm-3.1-dev clang
+	$ apt-get install llvm-dev clang
 
 Another option is to build the latest LLVM & Clang, as detailed at:
 
