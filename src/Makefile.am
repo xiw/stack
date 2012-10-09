@@ -8,6 +8,7 @@ EXTRA_DIST         = intck cmpck llvm/DebugInfo.h llvm/IRBuilder.h
 all-local: libintck.la libcmpck.la
 	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libintck.so
 	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libcmpck.so
+	@cd $(top_builddir)/bin && $(LN_S) -f ../src/intglobal
 
 libsat_la_CPPFLAGS = -I$(top_builddir)/lib
 libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc SMTSolver.cc
