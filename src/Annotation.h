@@ -39,7 +39,7 @@ static inline std::string getScopeName(llvm::GlobalValue *GV) {
 }
 
 // prefix anonymous struct name with module name
-static inline std::string getScopeName(llvm::Type *Ty, llvm::Module *M) {
+static inline std::string getScopeName(llvm::StructType *Ty, llvm::Module *M) {
 	if (Ty->getStructName().startswith("struct.anon")) {
 		llvm::StringRef rest = Ty->getStructName().substr(6);
 		llvm::StringRef moduleName = llvm::sys::path::stem(
@@ -57,7 +57,10 @@ static inline llvm::StringRef getLoadStoreId(llvm::Instruction *I) {
 
 static inline std::string
 getStructId(llvm::Type *Ty, llvm::Module *M, unsigned offset) {
-	return getScopeName(Ty, M) + "." + llvm::Twine(offset).str();
+	llvm::StructType *STy = llvm::dyn_cast<llvm::StructType>(Ty);
+	if (!STy || STy->isLiteral())
+		return "";
+	return getScopeName(STy, M) + "." + llvm::Twine(offset).str();
 }
 
 static inline std::string getVarId(llvm::GlobalValue *GV) {
