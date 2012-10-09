@@ -22,6 +22,10 @@ span.userinput {
   font-family: monospace;
   font-weight: bold;
 }
+
+tt {
+  font-weight: bold;
+}
 </style>
 
 <script>
@@ -90,7 +94,7 @@ The next step is to obtain LLVM bitcode for the software project you
 want to analyze.  KINT provides a wrapper called <tt>kint-gcc</tt> (and
 <tt>kint-g++</tt> for C++ source code), which both calls <tt>gcc</tt>
 (or <tt>g++</tt>) and in parallel uses Clang to obtain LLVM bitcode from
-your source code, which is stored in </tt>.ll</tt> files.  For example:
+your source code, which is stored in <tt>.ll</tt> files.  For example:
 
 <pre class="tty">
 XXX
