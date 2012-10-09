@@ -516,10 +516,10 @@ bool RangePass::doFinalization(Module *M) {
 			if (id == "")
 				continue;
 			RangeMap &IRM = Ctx->IntRanges;
-			RangeMap::iterator i = IRM.find(id);
-			if (i == IRM.end())
+			RangeMap::iterator it = IRM.find(id);
+			if (it == IRM.end())
 				continue;
-			CRange &R = i->second;
+			CRange &R = it->second;
 			if (R.isEmptySet() || R.isFullSet())
 				continue;
 
