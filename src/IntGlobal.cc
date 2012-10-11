@@ -27,7 +27,7 @@ static cl::opt<bool>
 Verbose("v", cl::desc("Print information about actions taken"));
 
 static cl::opt<bool>
-Writeback("u", cl::desc("Write back annotated bitcode"));
+NoWriteback("p", cl::desc("Do not writeback annotated bytecode"));
 
 ModuleList Modules;
 GlobalContext GlobalCtx;
@@ -56,13 +56,14 @@ void IterativeModulePass::run(ModuleList &modules) {
 		doInitialization(i->first);
 		Diag << ".";
 	}
+	Diag << "\n";
 
 	unsigned iter = 0, changed = 1;
 	while (changed) {
 		++iter;
 		changed = 0;
 		for (i = modules.begin(), e = modules.end(); i != e; ++i) {
-			Diag << "\n\n[" << ID << " / " << iter << "] ";
+			Diag << "[" << ID << " / " << iter << "] ";
 			Diag << "'" << i->first->getModuleIdentifier() << "'";
 
 			bool ret = doModulePass(i->first);
@@ -77,7 +78,7 @@ void IterativeModulePass::run(ModuleList &modules) {
 
 	Diag << "\n[" << ID << "] Postprocessing ...\n";
 	for (i = modules.begin(), e = modules.end(); i != e; ++i) {
-		if (doFinalization(i->first) && Writeback) {
+		if (doFinalization(i->first) && !NoWriteback) {
 			Diag << "[" << ID << "] Writeback " << i->second << "\n";
 			doWriteback(i->first, i->second);
 		}
@@ -117,7 +118,7 @@ int main(int argc, char **argv)
 		AnnoPass.doInitialization(*M);
 		for (Module::iterator j = M->begin(), je = M->end(); j != je; ++j)
 			AnnoPass.runOnFunction(*j);
-		if (Writeback)
+		if (!NoWriteback)
 			doWriteback(M, InputFilenames[i].c_str());
 
 		Modules.push_back(std::make_pair(M, InputFilenames[i]));
@@ -132,6 +133,11 @@ int main(int argc, char **argv)
 
 	RangePass RPass(&GlobalCtx);
 	RPass.run(Modules);
+
+	if (NoWriteback) {
+		TPass.dumpTaints();
+		RPass.dumpRange();
+	}
 
 	return 0;
 }
