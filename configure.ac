@@ -25,6 +25,7 @@ AC_CONFIG_FILES([
 	src/Makefile
 	test/Makefile
 	test/lit.cfg
+	doc/Makefile
 ])
 AC_CONFIG_LINKS([
 	bin/kint-cc1:test/kint-cc1
