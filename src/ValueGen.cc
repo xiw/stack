@@ -4,7 +4,6 @@
 #include <llvm/Operator.h>
 #include <llvm/ADT/APInt.h>
 #include <llvm/Assembly/Writer.h>
-#include <llvm/Support/ConstantRange.h>
 #include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/InstVisitor.h>
 #include <llvm/Support/raw_ostream.h>
@@ -294,36 +293,43 @@ SMTExpr ValueGen::get(Value *V) {
 	return E;
 }
 
-static void assumeMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange &R) {
-	if (R.isFullSet() || R.isEmptySet())
-		return;
-
-	SMTExpr Lo = SMT.bvconst(R.getLower());
-	SMTExpr Hi = SMT.bvconst(R.getUpper());
-	SMTExpr Cmp0 = SMT.bvuge(E, Lo);
-	SMTExpr Cmp1 = SMT.bvule(E, Hi);
-	SMT.decref(Lo);
-	SMT.decref(Hi);
-
-	SMTExpr Cond;
-	if (R.isWrappedSet())
-		Cond = SMT.bvor(Cmp0, Cmp1);
-	else
-		Cond = SMT.bvand(Cmp0, Cmp1);
-	SMT.decref(Cmp0);
-	SMT.decref(Cmp1);
-	SMT.assume(Cond);
-	SMT.decref(Cond);
-}
-
 void addRangeConstraints(SMTSolver &SMT, SMTExpr E, MDNode *MD) {
-	assert(MD->getNumOperands() == 2);
-
-	ConstantInt *Lo, *Hi;
-	Lo = cast<ConstantInt>(MD->getOperand(0));
-	Hi = cast<ConstantInt>(MD->getOperand(1));
-	ConstantRange R(Lo->getValue(), Hi->getValue());
-	if (R.isEmptySet() || R.isFullSet())
-		return;
-	assumeMinMax(SMT, E, R);
+	// !range comes in pairs.
+	unsigned n = MD->getNumOperands();
+	assert(n % 2 == 0);
+	for (unsigned i = 0; i != n; i += 2) {
+		const APInt &Lo = cast<ConstantInt>(MD->getOperand(i))->getValue();
+		const APInt &Hi = cast<ConstantInt>(MD->getOperand(i + 1))->getValue();
+		// Ignore empty or full set.
+		if (Lo == Hi)
+			continue;
+		SMTExpr Cmp0 = NULL, Cmp1 = NULL, Cond;
+		// Ignore >= 0.
+		if (!!Lo) {
+			SMTExpr Tmp = SMT.bvconst(Lo);
+			Cmp0 = SMT.bvuge(E, Tmp);
+			SMT.decref(Tmp);
+		}
+		// Note that (< Hi) is not always correct.  Need to
+		// ignore Hi == 0 (i.e., <= UMAX) or use (<= Hi - 1).
+		if (!!Hi) {
+			SMTExpr Tmp = SMT.bvconst(Hi);
+			Cmp1 = SMT.bvult(E, Tmp);
+			SMT.decref(Tmp);
+		}
+		if (!Cmp0) {
+			Cond = Cmp1;
+		} else if (!Cmp1) {
+			Cond = Cmp0;
+		} else {
+			if (Lo.ule(Hi))	// [Lo, Hi).
+				Cond = SMT.bvand(Cmp0, Cmp1);
+			else		// Wrap: [Lo, UMAX] union [0, Hi).
+				Cond = SMT.bvor(Cmp0, Cmp1);
+			SMT.decref(Cmp0);
+			SMT.decref(Cmp1);
+		}
+		SMT.assume(Cond);
+		SMT.decref(Cond);
+	}
 }
