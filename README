@@ -1,0 +1,46 @@
+See INSTALL for build instructions or download prebuilt binaries.
+Make sure that Kint's binaries are in the PATH.
+
+Extract bitcode
+===============
+
+Kint works on LLVM bitcode.  To analyze a software project, the
+first step is to generate LLVM bitcode.  Kint provides a script
+called `kint-build`, which both calls gcc (or g++) and in parallel
+uses Clang to obtain LLVM bitcode from your source code, stored in
+.ll files. For example:
+
+	$ cd /path/to/your/project
+	$ kint-build make
+
+Analyze bitcode
+===============
+
+Next, you can run Kint's global analysis on the generated LLVM
+bitcode (the .ll files) to generate some whole-program constraints
+that will reduce false positives in the subsequent analysis steps.
+This step is optional, and if it doesn't work (e.g., due to some
+bug), you can skip it and continue on to the next step.
+
+This global analysis writes its output back to the LLVM bitcode .ll
+files, so it produces no terminal output (unless you specify the
+-v flag).  In our example, you can run the global analysis as
+follows:
+
+	$ find . -name "*.ll" > bitcode.lst
+	$ intglobal @bitcode.lst
+
+Finally, you can run Kint's pintck tool to analyze the LLVM bitcode
+for integer errors, or Kint's cmpck tool to analyze the LLVM bitcode
+for tautological control flow decisions (i.e., branches that are
+always taken or never taken), which are often indicative of bugs.
+For example:
+
+$ intck main.ll
+$ cmpck main.ll
+
+Contact
+=======
+
+If you find any bugs in Kint, feel free to contact us: you can send
+us email at int@pdos.csail.mit.edu.
