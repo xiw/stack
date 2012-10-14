@@ -30,7 +30,7 @@ namespace {
 static SMTWorkaround X;
 
 SMTSolver::SMTSolver(bool modelgen) {
-	ctx_ = (SMTContext)boolector_new();
+	ctx_ = boolector_new();
 	if (modelgen)
 		boolector_enable_model_gen(ctx);
 	boolector_enable_inc_usage(ctx);

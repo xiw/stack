@@ -4,21 +4,21 @@
 #include "SMTSolver.h"
 
 namespace llvm {
-	class TargetData;
+	class DataLayout;
 	class Type;
 	class Value;
 } // namespace llvm
 
 class ValueGen {
 public:
-	llvm::TargetData &TD;
+	llvm::DataLayout &TD;
 	SMTSolver &SMT;
 
 	typedef llvm::DenseMap<llvm::Value *, SMTExpr> ValueExprMap;
 	typedef ValueExprMap::iterator iterator;
 	ValueExprMap Cache;
 
-	ValueGen(llvm::TargetData &, SMTSolver &);
+	ValueGen(llvm::DataLayout &, SMTSolver &);
 	~ValueGen();
 
 	static bool isAnalyzable(llvm::Value *);

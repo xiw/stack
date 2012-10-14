@@ -1,5 +1,6 @@
 #include "ValueGen.h"
 #include <llvm/Constants.h>
+#include <llvm/DataLayout.h>
 #include <llvm/IntrinsicInst.h>
 #include <llvm/Operator.h>
 #include <llvm/ADT/APInt.h>
@@ -7,7 +8,6 @@
 #include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/InstVisitor.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Target/TargetData.h>
 #include <assert.h>
 
 using namespace llvm;
@@ -262,7 +262,7 @@ private:
 
 } // anonymous namespace
 
-ValueGen::ValueGen(TargetData &TD, SMTSolver &SMT)
+ValueGen::ValueGen(DataLayout &TD, SMTSolver &SMT)
 	: TD(TD), SMT(SMT) {}
 
 ValueGen::~ValueGen() {

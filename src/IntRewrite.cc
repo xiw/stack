@@ -1,4 +1,5 @@
 #define DEBUG_TYPE "int-rewrite"
+#include <llvm/DataLayout.h>
 #include <llvm/IRBuilder.h>
 #include <llvm/Instructions.h>
 #include <llvm/Intrinsics.h>
@@ -14,7 +15,6 @@
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/InstIterator.h>
-#include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 using namespace llvm;
@@ -46,7 +46,7 @@ private:
 
 	DominatorTree *DT;
 	LoopInfo *LI;
-	TargetData *TD;
+	DataLayout *TD;
 
 	bool insertOverflowCheck(Instruction *, Intrinsic::ID, Intrinsic::ID);
 	bool insertDivCheck(Instruction *);
@@ -84,7 +84,7 @@ bool IntRewrite::runOnFunction(Function &F) {
 	Builder = &TheBuilder;
 	DT = &getAnalysis<DominatorTree>();
 	LI = &getAnalysis<LoopInfo>();
-	TD = getAnalysisIfAvailable<TargetData>();
+	TD = getAnalysisIfAvailable<DataLayout>();
 	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 		Instruction *I = &*i;

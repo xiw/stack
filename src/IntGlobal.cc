@@ -94,7 +94,7 @@ int main(int argc, char **argv)
 	PrettyStackTraceProgram X(argc, argv);
 
 	llvm_shutdown_obj Y;  // Call llvm_shutdown() on exit.
-	cl::ParseCommandLineOptions(argc, argv, "global analysis\n", true);
+	cl::ParseCommandLineOptions(argc, argv, "global analysis\n");
 	SMDiagnostic Err;	
 	
 	// Loading modules

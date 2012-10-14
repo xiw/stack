@@ -12,7 +12,7 @@ enum SMTStatus {
 	SMT_SAT,
 };
 
-typedef struct SMTContextImpl *SMTContext;
+typedef void *SMTContext;
 typedef void *SMTExpr;
 typedef void *SMTModel;
 

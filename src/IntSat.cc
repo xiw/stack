@@ -3,8 +3,9 @@
 #include "PathGen.h"
 #include "SMTSolver.h"
 #include "ValueGen.h"
-#include <llvm/Constants.h>
 #include <llvm/BasicBlock.h>
+#include <llvm/Constants.h>
+#include <llvm/DataLayout.h>
 #include <llvm/Instructions.h>
 #include <llvm/Function.h>
 #include <llvm/LLVMContext.h>
@@ -17,7 +18,6 @@
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 using namespace llvm;
@@ -43,7 +43,7 @@ struct IntSat : ModulePass {
 private:
 	Diagnostic Diag;
 	Function *Trap;
-	OwningPtr<TargetData> TD;
+	OwningPtr<DataLayout> TD;
 	unsigned MD_bug;
 
 	SmallVector<PathGen::Edge, 32> BackEdges;
@@ -60,7 +60,7 @@ bool IntSat::runOnModule(Module &M) {
 	Trap = M.getFunction("int.sat");
 	if (!Trap)
 		return false;
-	TD.reset(new TargetData(&M));
+	TD.reset(new DataLayout(&M));
 	MD_bug = M.getContext().getMDKindID("bug");
 	for (Module::iterator i = M.begin(), e = M.end(); i != e; ++i) {
 		Function &F = *i;
