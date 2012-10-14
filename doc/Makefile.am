@@ -1,4 +1,6 @@
-html-local: readme.html install.html
+DOCS = readme.html install.html
+html-local: $(DOCS)
+CLEANFILES = $(DOCS)
 EXTRA_DIST = install.html.erb readme.html.erb
 
 install.html: $(top_srcdir)/INSTALL

@@ -4,7 +4,7 @@ EXTRA_DIST = COPYING INSTALL README
 
 intck_bin_distdir = intck-$(PACKAGE_VERSION)-bin
 
-intck-bin:
+intck-bin: all html
 	rm -rf $(intck_bin_distdir)
 	$(MKDIR_P) $(intck_bin_distdir)/bin
 	cp bin/* $(intck_bin_distdir)/bin/
