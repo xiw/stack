@@ -5,7 +5,6 @@
 #include "ValueGen.h"
 #include <llvm/BasicBlock.h>
 #include <llvm/Constants.h>
-#include <llvm/DataLayout.h>
 #include <llvm/Instructions.h>
 #include <llvm/Function.h>
 #include <llvm/LLVMContext.h>

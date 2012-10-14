@@ -1,13 +1,8 @@
 #pragma once
 
+#include <llvm/DataLayout.h>
 #include <llvm/ADT/DenseMap.h>
 #include "SMTSolver.h"
-
-namespace llvm {
-	class DataLayout;
-	class Type;
-	class Value;
-} // namespace llvm
 
 class ValueGen {
 public:

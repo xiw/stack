@@ -1,6 +1,5 @@
 #include "ValueGen.h"
 #include <llvm/Constants.h>
-#include <llvm/DataLayout.h>
 #include <llvm/IntrinsicInst.h>
 #include <llvm/Operator.h>
 #include <llvm/ADT/APInt.h>
