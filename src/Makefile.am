@@ -23,7 +23,7 @@ libintck_la_SOURCES = IntRewrite.cc IntLibcalls.cc IntSat.cc \
 libintck_la_LIBADD  = libsat.la
 libintck_la_LDFLAGS = -module
 
-libcmpck_la_SOURCES = CmpTautology.cc CmpOverflow.cc
+libcmpck_la_SOURCES = CmpTautology.cc CmpOverflow.cc CmpSat.cc
 libcmpck_la_LIBADD  = libsat.la
 libcmpck_la_LDFLAGS = -module
 

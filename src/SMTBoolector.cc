@@ -65,7 +65,7 @@ void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
 	APInt Val(bvwidth(e), str.c_str(), 2);
 	if (Val.uge(0xa))
 		OS << "0x";
-	OS << Val.toString(16, false);;
+	OS << Val.toString(16, false);
 }
 
 void SMTSolver::release(SMTModel m_) {}

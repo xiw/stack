@@ -1,14 +1,13 @@
 #define DEBUG_TYPE "cmp-sat"
+#include <llvm/DataLayout.h>
 #include <llvm/Instructions.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/OwningPtr.h>
-#include <llvm/Support/InstIterator.h>
+#include <llvm/Analysis/Dominators.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "Diagnostic.h"
 #include "PathGen.h"
-#include "SMTSolver.h"
 #include "ValueGen.h"
 
 using namespace llvm;
@@ -21,52 +20,50 @@ static CmpStatus CMP_TRUE = "comparison always true";
 
 struct CmpSat : FunctionPass {
 	static char ID;
-	CmpSat() : FunctionPass(ID) {}
+	CmpSat() : FunctionPass(ID) {
+		PassRegistry &Registry = *PassRegistry::getPassRegistry();
+		initializeDataLayoutPass(Registry);
+		initializeDominatorTreePass(Registry);
+	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+		AU.addRequired<DataLayout>();
+		AU.addRequired<DominatorTree>();
 		AU.setPreservesAll();
 	}
 
-	virtual bool doInitialization(Module &M) {
-		Diag.reset(new Diagnostic(M));
-		TD.reset(new TargetData(&M));
-		CurF = 0;
-		return false;
-	}
-
 	virtual bool runOnFunction(Function &F) {
-		inst_iterator i = inst_begin(F), e = inst_end(F);
-		for (; i != e; ++i) {
-			if (ICmpInst *ICI = dyn_cast<ICmpInst>(&*i)) {
-				check(ICI);
-			}
+		DL = &getAnalysis<DataLayout>();
+		DT = &getAnalysis<DominatorTree>();
+		FindFunctionBackedges(F, Backedges);
+		for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i) {
+			BranchInst *BI = dyn_cast<BranchInst>(i->getTerminator());
+			if (!BI || !BI->isConditional())
+				continue;
+			check(BI);
 		}
+		Backedges.clear();
 		return false;
 	}
 
 private:
-	OwningPtr<Diagnostic> Diag;
-	OwningPtr<TargetData> TD;
-	Function *CurF;
-	SmallVector<PathGen::Edge, 32> BackEdges;
+	Diagnostic Diag;
+	DataLayout *DL;
+	DominatorTree *DT;
+	SmallVector<PathGen::Edge, 32> Backedges;
 
-	void check(ICmpInst *);
+	void check(BranchInst *);
 };
 
 } // anonymous namespace
 
-void CmpSat::check(ICmpInst *I) {
+void CmpSat::check(BranchInst *I) {
 	BasicBlock *BB = I->getParent();
-	Function *F = BB->getParent();
-	if (CurF != F) {
-		CurF = F;
-		BackEdges.clear();
-		FindFunctionBackedges(*F, BackEdges);
-	}
-	SMTSolver SMT;
-	ValueGen VG(*TD, SMT);
-	PathGen PG(VG, BackEdges);
-	SMTExpr ValuePred = VG.get(I);
+	Value *V = I->getCondition();
+	SMTSolver SMT(false);
+	ValueGen VG(*DL, SMT);
+	PathGen PG(VG, Backedges, *DT);
+	SMTExpr ValuePred = VG.get(V);
 	SMTExpr PathPred = PG.get(BB);
 	SMTExpr Query = SMT.bvand(ValuePred, PathPred);
 	SMTStatus Status = SMT.query(Query);
@@ -83,8 +80,10 @@ void CmpSat::check(ICmpInst *I) {
 		if (Status == SMT_UNSAT)
 			Reason = CMP_TRUE;
 	}
-	if (Reason)
-		*Diag << I->getDebugLoc() << Reason;
+	if (!Reason)
+		return;
+	Diag.bug(Reason);
+	Diag.backtrace(I);
 }
 
 char CmpSat::ID;
