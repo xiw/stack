@@ -250,6 +250,8 @@ bool UBBugOn::visitShrOperator(BinaryOperator &I) {
 }
 
 bool UBBugOn::visitLoadInst(LoadInst &I) {
+	if (I.isVolatile())
+		return false;
 	Value *V = GetUnderlyingObject(I.getPointerOperand(), TD, 0);
 	if (V->isDereferenceablePointer())
 		return false;
@@ -257,6 +259,8 @@ bool UBBugOn::visitLoadInst(LoadInst &I) {
 }
 
 bool UBBugOn::visitStoreInst(StoreInst &I) {
+	if (I.isVolatile())
+		return false;
 	Value *V = GetUnderlyingObject(I.getPointerOperand(), TD, 0);
 	if (V->isDereferenceablePointer())
 		return false;
