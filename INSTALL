@@ -1,14 +1,33 @@
-Build the latest LLVM & Clang, as detailed at
+To build Kint from source code, you need LLVM 3.1 or later, and
+Clang.  One option is to install recent versions of LLVM and Clang
+from Ubuntu 12.10 (earlier versions of Ubuntu have older versions
+of LLVM that are not compatible with Kint):
+
+	$ apt-get install llvm-dev clang
+
+Another option is to build the latest LLVM & Clang, as detailed at:
 
 	http://clang.llvm.org/get_started.html
 
-We use the following parameters to LLVM's configure.
+We use the following parameters to LLVM's configure:
 
 	--enable-optimized --enable-targets=host --enable-bindings=none --enable-shared --enable-debug-symbols
 
-Then build kint.
+Then build Kint in its source root directory.
+
+If building from git, first do:
 
 	$ autoreconf -fvi
+
+If building from a source tarball, skip the above step.
+
+Then configure and make.
+
 	$ mkdir build
+	$ cd build
 	$ ../configure
 	$ make
+
+Finally, either add `<KINT_ROOT>/build/bin` to PATH, or do:
+
+	$ sudo make install

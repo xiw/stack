@@ -222,7 +222,7 @@ bool CallGraphPass::doFinalization(Module *M) {
 			}
 		}
 	}
-	return true;
+	return false;
 }
 
 bool CallGraphPass::doModulePass(Module *M) {

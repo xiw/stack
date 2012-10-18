@@ -1,5 +1,6 @@
 #include <llvm/Module.h>
 #include <llvm/Instructions.h>
+#include <llvm/IntrinsicInst.h>
 #include <llvm/Metadata.h>
 #include <llvm/Constants.h>
 #include <llvm/Pass.h>
@@ -13,25 +14,6 @@
 #include "Annotation.h"
 
 using namespace llvm;
-
-namespace {
-
-class AnnotationPass : public FunctionPass {
-protected:
-	Module *M;
-	std::string getAnnotation(Value *V);
-public:
-	static char ID;
-	AnnotationPass() : FunctionPass(ID) { }
-
-	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-		AU.setPreservesCFG();
-	}
-	virtual bool runOnFunction(Function &);
-	virtual bool doInitialization(Module &);
-};
-
-}
 
 
 static inline bool needAnnotation(Value *V) {
@@ -79,6 +61,38 @@ std::string AnnotationPass::getAnnotation(Value *V) {
 bool AnnotationPass::runOnFunction(Function &F) {
 	bool Changed = false;
 	LLVMContext &VMCtx = F.getContext();
+
+	// taint annotation for linux system call arguemnts
+	MDNode *SyscallAnno = NULL;
+	if (F.getName().startswith("sys_"))
+		SyscallAnno = MDNode::get(VMCtx, MDString::get(VMCtx, "syscall"));
+
+	// annotate integer arguments
+	for (Function::arg_iterator i = F.arg_begin(),
+			e = F.arg_end(); i != e; ++i) {
+		if (F.isVarArg())
+			break;
+
+		Argument *A = &*i;
+		IntegerType *Ty = dyn_cast<IntegerType>(A->getType());
+		if (A->use_empty() || !Ty)
+			continue;
+
+		std::string Name = "kint_arg.i" + Twine(Ty->getBitWidth()).str();
+		Function *AF = cast<Function>(
+			F.getParent()->getOrInsertFunction(Name, Ty, NULL));
+		CallInst *CI = IntrinsicInst::Create(AF, A->getName(), 
+			F.getEntryBlock().getFirstInsertionPt());
+
+		MDNode *MD = MDNode::get(VMCtx, MDString::get(VMCtx, getArgId(A)));
+		CI->setMetadata("id", MD);
+		if (SyscallAnno)
+			CI->setMetadata("taint", SyscallAnno);
+
+		A->replaceAllUsesWith(CI);
+		Changed = true;
+	}
+
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 		Instruction *I = &*i;
 
@@ -149,6 +163,6 @@ bool AnnotationPass::doInitialization(Module &M)
 char AnnotationPass::ID;
 
 static RegisterPass<AnnotationPass>
-X("anno", "add annotation for load/stores");
+X("anno", "add id annotation for load/stores; add taint annotation for calls");
 
 

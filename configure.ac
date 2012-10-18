@@ -25,14 +25,17 @@ AC_CONFIG_FILES([
 	src/Makefile
 	test/Makefile
 	test/lit.cfg
+	doc/Makefile
 ])
 AC_CONFIG_LINKS([
 	bin/kint-cc1:test/kint-cc1
 	bin/kint-gcc:test/kint-gcc
 	bin/kint-g++:test/kint-g++
 	bin/kint-build:test/kint-build
+	bin/ncpu:src/ncpu
 	bin/intck:src/intck
 	bin/cmpck:src/cmpck
+	bin/pintck:src/pintck
 	bin/antiopt:src/antiopt
 ])
 AC_OUTPUT

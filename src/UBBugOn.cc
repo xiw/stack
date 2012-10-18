@@ -1,15 +1,14 @@
 #include <llvm/Constants.h>
+#include <llvm/DataLayout.h>
 #include <llvm/IRBuilder.h>
 #include <llvm/Instructions.h>
 #include <llvm/Intrinsics.h>
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/Support/CallSite.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Support/InstVisitor.h>
-
-#include <llvm/Analysis/ValueTracking.h>
-#include <llvm/Target/TargetData.h>
 
 using namespace llvm;
 
@@ -30,7 +29,7 @@ private:
 	typedef IRBuilder<> BuilderTy;
 	BuilderTy *Builder;
 	Function *BugOn;
-	TargetData *TD;
+	DataLayout *TD;
 
 	bool insertBugOn(Value *);
 
@@ -71,7 +70,7 @@ private:
 bool UBBugOn::runOnFunction(Function &F) {
 	IRBuilder<> TheBuilder(F.getContext());
 	Builder = &TheBuilder;
-	TD = getAnalysisIfAvailable<TargetData>();
+	TD = getAnalysisIfAvailable<DataLayout>();
 	// Dispatch through visitor.
 	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i)

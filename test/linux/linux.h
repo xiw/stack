@@ -13,8 +13,15 @@
 #define ERANGE		34
 #define EMSGSIZE	90
 #define ENOPROTOOPT	92
+#define EUCLEAN		117
 
+#define INT_MIN		((int)(1U << (sizeof(int) * 8 - 1)))
+#define INT_MAX		(~INT_MIN)
 #define UINT_MAX	(~0U)
+
+#define LONG_MIN	((long)(1UL << (sizeof(long) * 8 - 1)))
+#define LONG_MAX	(~LONG_MIN)
+#define ULONG_MAX	(~0UL)
 
 #define GFP_KERNEL	(0x10u | 0x40u | 0x80u)
 
@@ -22,6 +29,16 @@
 
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)
+
+typedef unsigned char		u_char;
+typedef unsigned short		u_short;
+typedef unsigned int		u_int;
+typedef unsigned long		u_long;
+
+typedef unsigned char		unchar;
+typedef unsigned short		ushort;
+typedef unsigned int		uint;
+typedef unsigned long		ulong;
 
 typedef signed char		s8;
 typedef unsigned char		u8;
@@ -90,3 +107,18 @@ struct sk_buff *sock_alloc_send_skb(struct sock *sk,
 				    unsigned long size,
 				    int noblock,
 				    int *errcode);
+
+#define MINORBITS	20
+#define MINORMASK	((1U << MINORBITS) - 1)
+#define MAJOR(dev)	((unsigned int) ((dev) >> MINORBITS))
+#define MINOR(dev)	((unsigned int) ((dev) & MINORMASK))
+#define MKDEV(ma,mi)	(((ma) << MINORBITS) | (mi))
+
+typedef u32 dev_t;
+
+static inline u32 new_encode_dev(dev_t dev)
+{
+	unsigned major = MAJOR(dev);
+	unsigned minor = MINOR(dev);
+	return (minor & 0xff) | (major << 8) | ((minor & ~0xff) << 12);
+}

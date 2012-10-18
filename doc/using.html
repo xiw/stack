@@ -1,0 +1,140 @@
+<html>
+<head>
+<title>Using KINT</title>
+
+<style>
+h1, h2 {
+  width: 100%;
+  border-bottom: 1px solid #99aabb;
+  padding-top: 10px;
+}
+
+pre.tty {
+  font-family: monospace;
+  margin: 1pc 4% 0pc 4%;
+  padding: 0.5pc 0.5pc 0.5pc 0.5pc;
+  border: 2px dashed blue;
+  background-color: #f5f5f5
+}
+
+span.userinput {
+  color: green;
+  font-family: monospace;
+  font-weight: bold;
+}
+
+tt {
+  font-weight: bold;
+}
+</style>
+
+<script>
+function autofill_email() {
+  var spans = document.getElementsByTagName("span");
+  for (i = 0; i < spans.length; i++) {
+    if (spans[i].className != "email_autofill")
+      continue;
+    spans[i].innerHTML = spans[i].innerHTML.replace(/ at /, "@");
+  }
+}
+</script>
+
+</head>
+
+<body onload="autofill_email()">
+
+<h1>Using KINT</h1>
+
+<p>
+To explain how to use KINT to analyze a program for integer errors,
+we present an example of how you can build KINT and run it over an
+existing project.
+
+<h2>Build KINT</h2>
+
+<p>
+The first step is to check out and build the KINT source code, as
+follows:
+
+<pre class="tty">
+nickolai@sahara:~$ <span class="userinput">git clone git://g.csail.mit.edu/kint</span>
+Cloning into 'kint'...
+remote: Counting objects: 1292, done.
+remote: Compressing objects: 100% (832/832), done.
+remote: Total 1292 (delta 877), reused 654 (delta 446)
+Receiving objects: 100% (1292/1292), 568.67 KiB | 259 KiB/s, done.
+Resolving deltas: 100% (877/877), done.
+nickolai@sahara:~$ <span class="userinput">cd kint</span>
+nickolai@sahara:~/kint$ <span class="userinput">cat INSTALL</span>
+...
+nickolai@sahara:~/kint$ <span class="userinput">autoreconf -fvi</span>
+autoreconf: Entering directory `.'
+autoreconf: configure.ac: not using Gettext
+autoreconf: running: aclocal --force 
+...
+autoreconf: Leaving directory `.'
+nickolai@sahara:~/kint$ <span class="userinput">mkdir build</span>
+nickolai@sahara:~/kint$ <span class="userinput">( cd build && ../configure )</span>
+checking for a BSD-compatible install... /usr/bin/install -c
+checking whether build environment is sane... yes
+...
+config.status: executing libtool commands
+nickolai@sahara:~/kint$ <span class="userinput">( cd build && make )</span>
+make  all-recursive
+make[1]: Entering directory `/home/nickolai/kint/build'
+...
+make[1]: Leaving directory `/home/nickolai/kint/build'
+nickolai@sahara:~/kint$ 
+</pre>
+
+<h2>Extract bitcode</h2>
+
+<p>
+The next step is to obtain LLVM bitcode for the software project you
+want to analyze.  KINT provides a wrapper called <tt>kint-gcc</tt> (and
+<tt>kint-g++</tt> for C++ source code), which both calls <tt>gcc</tt>
+(or <tt>g++</tt>) and in parallel uses Clang to obtain LLVM bitcode from
+your source code, which is stored in <tt>.ll</tt> files.  For example:
+
+<pre class="tty">
+$ <span class="userinput">cd /path/to/your/project</span>
+$ <span class="userinput">make CC=~/kint/build/bin/kint-gcc </span>
+</pre>
+
+<h2>Analyze bitcode</h2>
+
+<p>
+Next, you can run KINT's global analysis on the generated LLVM bitcode
+(the <tt>.ll</tt> files) to generate some whole-program constraints
+that will reduce false positives in the subsequent analysis steps.
+This step is optional, and if it doesn't work (e.g., due to some bug),
+you can skip it and continue on to the next step.  This global analysis
+writes its output back to the LLVM bitcode <tt>.ll</tt> files, so it
+produces no terminal output (unless you specify the -v flag).
+In our example, you can run the global analysis as follows:
+
+<pre class="tty">
+$ <span class="userinput">find . -name "*.ll" &gt; bitcode.lst</span>
+$ <span class="userinput">~/kint/build/bin/intglobal @bitcode.lst</span>
+</pre>
+
+<p>
+Finally, you can run KINT's <tt>pintck</tt> tool to analyze the LLVM
+bitcode for integer errors, or KINT's </tt>cmpck</tt> tool to analyze
+the LLVM bitcode for tautological control flow decisions (i.e., branches
+that are always taken or never taken), which are often indicative of bugs.
+For example:
+
+<pre class="tty">
+$ <span class="userinput">~/kint/build/bin/intck main.ll</span>
+$ <span class="userinput">~/kint/build/bin/cmpck main.ll</span>
+</pre>
+
+<h2>Contact</h2>
+
+<p>
+If you find any bugs in KINT, feel free to contact us: you can send us
+email at <span class="email_autofill">int at pdos.csail.mit.edu</span>.
+
+</body>
+</html>

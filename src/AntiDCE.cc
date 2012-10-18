@@ -4,6 +4,7 @@
 // then s is actually "dead" in terms of undefined behavior.
 
 #define DEBUG_TYPE "anti-dce"
+#include <llvm/DataLayout.h>
 #include <llvm/Instructions.h>
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
@@ -11,7 +12,6 @@
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/Support/Debug.h>
-#include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <cxxabi.h>
 #include "Diagnostic.h"
@@ -34,7 +34,7 @@ struct AntiDCE: FunctionPass {
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		AU.addRequired<DominatorTree>();
 		AU.addRequired<PostDominatorTree>();
-		AU.addRequired<TargetData>();
+		AU.addRequired<DataLayout>();
 		AU.addPreserved<DominatorTree>();
 		AU.addPreserved<PostDominatorTree>();
 	}
@@ -46,7 +46,7 @@ private:
 	Function *BugOn;
 	DominatorTree *DT;
 	PostDominatorTree *PDT;
-	TargetData *TD;
+	DataLayout *TD;
 	SmallVector<PathGen::Edge, 32> Backedges;
 
 	int shouldKeepCode(BasicBlock *BB);
@@ -74,7 +74,7 @@ bool AntiDCE::runOnFunction(Function &F) {
 	assert(BugOn->arg_begin()->getType()->isIntegerTy(1));
 	DT = &getAnalysis<DominatorTree>();
 	PDT = &getAnalysis<PostDominatorTree>();
-	TD = &getAnalysis<TargetData>();
+	TD = &getAnalysis<DataLayout>();
 	FindFunctionBackedges(F, Backedges);
 	bool Changed = false;
 	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i) {

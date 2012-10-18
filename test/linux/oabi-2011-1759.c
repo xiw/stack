@@ -6,6 +6,8 @@
 
 #include "linux.h"
 
+#define SEMOPM		32
+
 struct sembuf {
 	unsigned short	sem_num;
 	short		sem_op;

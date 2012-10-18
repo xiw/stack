@@ -13,6 +13,7 @@ struct agp_memory {
 int __get_num_entries(void);
 int __agp_type_to_mask_type(int);
 void __writel(size_t);
+int agp_num_entries(void);
 
 int agp_generic_remove_memory(struct agp_memory *mem, off_t pg_start, int type)
 {

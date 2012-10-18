@@ -4,11 +4,9 @@
 #include <llvm/Operator.h>
 #include <llvm/ADT/APInt.h>
 #include <llvm/Assembly/Writer.h>
-#include <llvm/Support/ConstantRange.h>
 #include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/InstVisitor.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Target/TargetData.h>
 #include <assert.h>
 
 using namespace llvm;
@@ -37,7 +35,11 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 	}
 
 	SMTExpr visitInstruction(Instruction &I) {
-		return mk_fresh(&I);
+		SMTExpr E = mk_fresh(&I);
+		// Ranges are constants, so don't worry about recursion.
+		if (MDNode *MD = I.getMetadata("intrange"))
+			addRangeConstraints(SMT, E, MD);
+		return E;
 	}
 
 	SMTExpr visitConstant(Constant *C) {
@@ -211,13 +213,6 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 		return Tmp;
 	}
 
-	SMTExpr visitLoadInst(LoadInst &I) {
-		SMTExpr E = mk_fresh(&I);
-		// Ranges are constants, so don't worry about recursion.
-		if (MDNode *MD = I.getMetadata("range"))
-			addRangeConstraints(SMT, E, MD);
-		return E;
-	}
 
 	SMTExpr visitPtrToIntInst(PtrToIntInst &I) {
 		Value *V = I.getOperand(0);
@@ -266,7 +261,7 @@ private:
 
 } // anonymous namespace
 
-ValueGen::ValueGen(TargetData &TD, SMTSolver &SMT)
+ValueGen::ValueGen(DataLayout &TD, SMTSolver &SMT)
 	: TD(TD), SMT(SMT) {}
 
 ValueGen::~ValueGen() {
@@ -297,83 +292,43 @@ SMTExpr ValueGen::get(Value *V) {
 	return E;
 }
 
-static void assumeAnd(SMTSolver &SMT, SMTExpr Cmp0, SMTExpr Cmp1) {
-	if (!Cmp0 && !Cmp1)
-		return;
-	SMTExpr Tmp;
-	if (!Cmp0) {
-		Tmp = Cmp1;
-	} else if (!Cmp1) {
-		Tmp = Cmp0;
-	} else {
-		Tmp = SMT.bvand(Cmp0, Cmp1);
-		SMT.decref(Cmp0);
-		SMT.decref(Cmp1);
-	}
-	SMT.assume(Tmp);
-	SMT.decref(Tmp);
-}
-
-static void assumeSignedMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange &R) {
-	APInt MinVal = R.getSignedMin();
-	APInt MaxVal = R.getSignedMax();
-	SMTExpr Min = NULL;
-	SMTExpr Cmp0 = NULL;
-	if (!MinVal.isMinSignedValue()) {
-		Min = SMT.bvconst(MinVal);
-		Cmp0 = SMT.bvsge(E, Min);
-		SMT.decref(Min);
-	}
-	SMTExpr Max = NULL;
-	SMTExpr Cmp1 = NULL;
-	if (!MaxVal.isMaxSignedValue()) {
-		Max = SMT.bvconst(MaxVal);
-		Cmp1 = SMT.bvsle(E, Max);
-		SMT.decref(Max);
-	}
-	assumeAnd(SMT, Cmp0, Cmp1);
-}
-
-static void assumeUnsignedMinMax(SMTSolver &SMT, SMTExpr E, const ConstantRange &R) {
-	APInt MinVal = R.getUnsignedMin();
-	APInt MaxVal = R.getUnsignedMax();
-	// Done by assumeSignedMinMax() if R is in [INT_MAX + 1, UINT_MAX].
-	if (MinVal.isNegative())
-		return;
-	// Done by assumeSignedMinMax() if R is in [0, INT_MAX].
-	if (MaxVal.isNonNegative())
-		return;
-	SMTExpr Min = NULL;
-	SMTExpr Cmp0 = NULL;
-	if (!MinVal.isMinValue()) {
-		Min = SMT.bvconst(MinVal);
-		Cmp0 = SMT.bvuge(E, Min);
-		SMT.decref(Min);
-	}
-	SMTExpr Max = NULL;
-	SMTExpr Cmp1 = NULL;
-	if (!MaxVal.isMaxValue()) {
-		Max = SMT.bvconst(MaxVal);
-		Cmp1 = SMT.bvule(E, Max);
-		SMT.decref(Max);
-	}
-	assumeAnd(SMT, Cmp0, Cmp1);
-}
-
 void addRangeConstraints(SMTSolver &SMT, SMTExpr E, MDNode *MD) {
+	// !range comes in pairs.
 	unsigned n = MD->getNumOperands();
-	assert(n >= 2);
 	assert(n % 2 == 0);
-	// Start from emptyset.
-	ConstantRange R(SMT.bvwidth(E), false);
 	for (unsigned i = 0; i != n; i += 2) {
-		ConstantInt *Lo, *Hi;
-		Lo = cast<ConstantInt>(MD->getOperand(i));
-		Hi = cast<ConstantInt>(MD->getOperand(i + 1));
-		R = R.unionWith(ConstantRange(Lo->getValue(), Hi->getValue()));
+		const APInt &Lo = cast<ConstantInt>(MD->getOperand(i))->getValue();
+		const APInt &Hi = cast<ConstantInt>(MD->getOperand(i + 1))->getValue();
+		// Ignore empty or full set.
+		if (Lo == Hi)
+			continue;
+		SMTExpr Cmp0 = NULL, Cmp1 = NULL, Cond;
+		// Ignore >= 0.
+		if (!!Lo) {
+			SMTExpr Tmp = SMT.bvconst(Lo);
+			Cmp0 = SMT.bvuge(E, Tmp);
+			SMT.decref(Tmp);
+		}
+		// Note that (< Hi) is not always correct.  Need to
+		// ignore Hi == 0 (i.e., <= UMAX) or use (<= Hi - 1).
+		if (!!Hi) {
+			SMTExpr Tmp = SMT.bvconst(Hi);
+			Cmp1 = SMT.bvult(E, Tmp);
+			SMT.decref(Tmp);
+		}
+		if (!Cmp0) {
+			Cond = Cmp1;
+		} else if (!Cmp1) {
+			Cond = Cmp0;
+		} else {
+			if (Lo.ule(Hi))	// [Lo, Hi).
+				Cond = SMT.bvand(Cmp0, Cmp1);
+			else		// Wrap: [Lo, UMAX] union [0, Hi).
+				Cond = SMT.bvor(Cmp0, Cmp1);
+			SMT.decref(Cmp0);
+			SMT.decref(Cmp1);
+		}
+		SMT.assume(Cond);
+		SMT.decref(Cond);
 	}
-	if (R.isEmptySet() || R.isFullSet())
-		return;
-	assumeSignedMinMax(SMT, E, R);
-	assumeUnsignedMinMax(SMT, E, R);
 }

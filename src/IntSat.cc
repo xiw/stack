@@ -4,6 +4,7 @@
 #include "SMTSolver.h"
 #include "ValueGen.h"
 #include <llvm/BasicBlock.h>
+#include <llvm/Constants.h>
 #include <llvm/Instructions.h>
 #include <llvm/Function.h>
 #include <llvm/LLVMContext.h>
@@ -16,7 +17,6 @@
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Support/raw_ostream.h>
-#include <llvm/Target/TargetData.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 using namespace llvm;
@@ -42,7 +42,7 @@ struct IntSat : ModulePass {
 private:
 	Diagnostic Diag;
 	Function *Trap;
-	OwningPtr<TargetData> TD;
+	OwningPtr<DataLayout> TD;
 	unsigned MD_bug;
 
 	SmallVector<PathGen::Edge, 32> BackEdges;
@@ -50,7 +50,7 @@ private:
 
 	void runOnFunction(Function &);
 	void check(CallInst *);
-	SMTStatus query(Value *, BasicBlock *);
+	SMTStatus query(Value *, Instruction *);
 };
 
 } // anonymous namespace
@@ -59,7 +59,7 @@ bool IntSat::runOnModule(Module &M) {
 	Trap = M.getFunction("int.sat");
 	if (!Trap)
 		return false;
-	TD.reset(new TargetData(&M));
+	TD.reset(new DataLayout(&M));
 	MD_bug = M.getContext().getMDKindID("bug");
 	for (Module::iterator i = M.begin(), e = M.end(); i != e; ++i) {
 		Function &F = *i;
@@ -93,35 +93,35 @@ void IntSat::check(CallInst *I) {
 	const DebugLoc &DbgLoc = I->getDebugLoc();
 	if (DbgLoc.isUnknown())
 		return;
-	MDNode *MD = I->getMetadata(MD_bug);
-	if (!MD)
+	if (!I->getMetadata(MD_bug))
 		return;
-	Diag.bug(cast<MDString>(MD->getOperand(0))->getString());
 
 	int SMTRes;
-	if (SMTFork() == 0) {
-		BasicBlock *BB = I->getParent();
-		SMTRes = query(V, BB);
-	}
+	if (SMTFork() == 0)
+		SMTRes = query(V, I);
 	SMTJoin(&SMTRes);
 
 	// Save to suppress furture warnings.
 	if (SMTRes == SMT_SAT)
 		ReportedBugs.insert(V);
-
-	// Output location.
-	Diag.status(SMTRes);
-	Diag.backtrace(I);
 }
 
-SMTStatus IntSat::query(Value *V, BasicBlock *BB) {
+SMTStatus IntSat::query(Value *V, Instruction *I) {
 	SMTSolver SMT(SMTModelOpt);
 	ValueGen VG(*TD, SMT);
 	PathGen PG(VG, BackEdges);
-	SMTExpr Query = SMT.bvand(VG.get(V), PG.get(BB));
+	SMTExpr Query = SMT.bvand(VG.get(V), PG.get(I->getParent()));
 	SMTModel Model = NULL;
 	SMTStatus Res = SMT.query(Query, &Model);
 	SMT.decref(Query);
+	if (Res != SMT_SAT)
+		return Res;
+	// Output bug type.
+	MDNode *MD = I->getMetadata(MD_bug);
+	Diag.bug(cast<MDString>(MD->getOperand(0))->getString());
+	// Output location.
+	Diag.status(Res);
+	Diag.backtrace(I);
 	// Output model.
 	if (SMTModelOpt && Model) {
 		Diag << "model: |\n";

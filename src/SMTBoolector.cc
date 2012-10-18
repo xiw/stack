@@ -30,7 +30,7 @@ namespace {
 static SMTWorkaround X;
 
 SMTSolver::SMTSolver(bool modelgen) {
-	ctx_ = (SMTContext)boolector_new();
+	ctx_ = boolector_new();
 	if (modelgen)
 		boolector_enable_model_gen(ctx);
 	boolector_enable_inc_usage(ctx);
@@ -65,7 +65,7 @@ void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
 	APInt Val(bvwidth(e), str.c_str(), 2);
 	if (Val.uge(0xa))
 		OS << "0x";
-	OS << Val.toString(16, false);;
+	OS << Val.toString(16, false);
 }
 
 void SMTSolver::release(SMTModel m_) {}
@@ -231,12 +231,24 @@ SMTExpr SMTSolver::bvurem(SMTExpr lhs_, SMTExpr rhs_) {
 template <BtorNode *(*F)(Btor *, BtorNode *,  BtorNode *)>
 static inline SMTExpr shift(Btor *btor,  BtorNode *e0,  BtorNode *e1) {
 	unsigned n = boolector_get_width(btor, e1);
-	assert(!(n & (n - 1)) && "TODO");
-	unsigned amount = __builtin_ctz(n);
+	// Round up to nearest power of 2.
+	unsigned amount = (32 - __builtin_clz(n - 1));
+	unsigned power2 = 1U << amount;
+	if (power2 != n) {
+		// Extend e0 to power2 bits.
+		e0 = boolector_uext(btor, e0, power2 - n);
+	}
 	BtorNode *log2w = boolector_slice(btor, e1, amount - 1, 0);
-	SMTExpr tmp = F(btor, e0, log2w);
+	BtorNode *result = F(btor, e0, log2w);
 	boolector_release(btor, log2w);
-	return tmp;
+	if (power2 != n) {
+		boolector_release(btor, e0);
+		// Truncate result back to n bits.
+		BtorNode *tmp = boolector_slice(btor, result, n - 1, 0);
+		boolector_release(btor, result);
+		result = tmp;
+	}
+	return result;
 }
 
 SMTExpr SMTSolver::bvshl(SMTExpr lhs_, SMTExpr rhs_) {
