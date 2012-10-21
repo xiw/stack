@@ -1,5 +1,5 @@
-// RUN: %cc -DNORETURN= %s | antiopt -S -ub-bugon -anti-dce | FileCheck %s
-// RUN: %cc %s | antiopt -S -ub-bugon -anti-dce | FileCheck %s --check-prefix=NORETURN
+// RUN: %cc -DNORETURN= %s | antiopt -S -bugon-int -anti-dce | FileCheck %s
+// RUN: %cc %s | antiopt -S -bugon-int -anti-dce | FileCheck %s --check-prefix=NORETURN
 //
 // http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=616180
 

@@ -2,6 +2,7 @@
 #include "SMTSolver.h"
 #include <llvm/DebugInfo.h>
 #include <llvm/Instruction.h>
+#include <llvm/Metadata.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
@@ -35,6 +36,13 @@ void Diagnostic::backtrace(Instruction *I) {
 		if (!Loc.Verify())
 			break;
 	}
+}
+
+void Diagnostic::bug(Instruction *I) {
+	MDNode *MD = I->getMetadata("bug");
+	if (!MD)
+		return;
+	this->bug(cast<MDString>(MD->getOperand(0))->getString());
 }
 
 void Diagnostic::bug(const Twine &Str) {

@@ -13,6 +13,7 @@ public:
 
 	llvm::raw_ostream &os() { return OS; }
 
+	void bug(llvm::Instruction *);
 	void bug(const llvm::Twine &);
 
 	void backtrace(llvm::Instruction *);

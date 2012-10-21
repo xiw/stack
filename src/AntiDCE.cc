@@ -4,6 +4,10 @@
 // then s is actually "dead" in terms of undefined behavior.
 
 #define DEBUG_TYPE "anti-dce"
+#include "BugOn.h"
+#include "Diagnostic.h"
+#include "PathGen.h"
+#include "ValueGen.h"
 #include <llvm/DataLayout.h>
 #include <llvm/Instructions.h>
 #include <llvm/Module.h>
@@ -14,10 +18,6 @@
 #include <llvm/Support/Debug.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <cxxabi.h>
-#include "Diagnostic.h"
-#include "PathGen.h"
-#include "SMTSolver.h"
-#include "ValueGen.h"
 
 using namespace llvm;
 
@@ -66,7 +66,7 @@ static std::string demangle(Function &F) {
 }
 
 bool AntiDCE::runOnFunction(Function &F) {
-	BugOn = F.getParent()->getFunction("c.bugon");
+	BugOn = getBugOn(F.getParent());
 	if (!BugOn)
 		return false;
 	DEBUG(dbgs() << "Analyzing " << demangle(F) << "\n");
