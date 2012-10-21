@@ -52,14 +52,13 @@ private:
 			Intrinsic::umul_with_overflow);
 	}
 	bool visitUDiv(BinaryOperator &);
-	bool visitURem(BinaryOperator &);
+	bool visitURem(BinaryOperator &I) { return visitUDiv(I); }
 	bool visitSDiv(BinaryOperator &);
-	bool visitSRem(BinaryOperator &);
+	bool visitSRem(BinaryOperator &I) { return visitSDiv(I); }
 	bool visitShiftOperator(BinaryOperator &);
 	bool visitShl(BinaryOperator &);
-	bool visitShrOperator(BinaryOperator &);
-	bool visitLShr(BinaryOperator &I) { return visitShrOperator(I); }
-	bool visitAShr(BinaryOperator &I) { return visitShrOperator(I); }
+	bool visitLShr(BinaryOperator &I) { return visitShiftOperator(I); }
+	bool visitAShr(BinaryOperator &I) { return visitShiftOperator(I); }
 
 	bool visitLoadInst(LoadInst &);
 	bool visitStoreInst(StoreInst &);
@@ -103,7 +102,7 @@ bool UBBugOn::visit(Instruction &I) {
 	if (isa<TerminatorInst>(I))
 		return false;
 	// Insert bugon calls after instruction I since some may use
-	// I itself (e.g., shift exact).
+	// I itself (e.g., shl nsw).
 	Builder->SetInsertPoint(++BasicBlock::iterator(&I));
 	// If any operand is undef, this instruction must not be reachable.
 	for (unsigned i = 0, n = I.getNumOperands(); i != n; ++i) {
@@ -168,35 +167,12 @@ bool UBBugOn::visitOverflowingOperator(BinaryOperator &I, Intrinsic::ID SID, Int
 }
 
 bool UBBugOn::visitUDiv(BinaryOperator &I) {
-	bool Changed = visitURem(I);
-	// FIXME: use mul or urem?
-	if (I.isExact()) {
-		Value *L = I.getOperand(0);
-		Value *R = I.getOperand(1);
-		Value *V = Builder->CreateICmpNE(L, Builder->CreateMul(&I, R));
-		Changed |= insertBugOn(V);
-	}
-	return Changed;
-}
-
-bool UBBugOn::visitURem(BinaryOperator &I) {
 	Value *R = I.getOperand(1);
 	return insertBugOn(Builder->CreateIsNull(R));
 }
 
 bool UBBugOn::visitSDiv(BinaryOperator &I) {
-	bool Changed = visitSRem(I);
-	if (I.isExact()) {
-		Value *L = I.getOperand(0);
-		Value *R = I.getOperand(1);
-		Value *V = Builder->CreateICmpNE(L, Builder->CreateMul(&I, R));
-		Changed |= insertBugOn(V);
-	}
-	return Changed;
-}
-
-bool UBBugOn::visitSRem(BinaryOperator &I) {
-	// INT_MIN % -1.
+	// INT_MIN / -1.
 	IntegerType *T = cast<IntegerType>(I.getType());
 	Value *L = I.getOperand(0);
 	Value *R = I.getOperand(1);
@@ -207,7 +183,7 @@ bool UBBugOn::visitSRem(BinaryOperator &I) {
 		Builder->CreateICmpEQ(L, SMin),
 		Builder->CreateICmpEQ(R, MinusOne));
 	bool Changed = insertBugOn(V);
-	// ... % 0.
+	// ... / 0.
 	Changed |= insertBugOn(Builder->CreateIsNull(R));
 	return Changed;
 }
@@ -233,17 +209,6 @@ bool UBBugOn::visitShl(BinaryOperator &I) {
 	}
 	if (hasNUW) {
 		Value *V = Builder->CreateICmpNE(L, Builder->CreateLShr(&I, R));
-		Changed |= insertBugOn(V);
-	}
-	return Changed;
-}
-
-bool UBBugOn::visitShrOperator(BinaryOperator &I) {
-	bool Changed = visitShiftOperator(I);
-	if (I.isExact()) {
-		Value *L = I.getOperand(0);
-		Value *R = I.getOperand(1);
-		Value *V = Builder->CreateICmpNE(L, Builder->CreateShl(&I, R));
 		Changed |= insertBugOn(V);
 	}
 	return Changed;
