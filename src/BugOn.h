@@ -17,7 +17,7 @@ protected:
 
 	virtual bool visit(llvm::Instruction *) = 0;
 
-	bool insert(llvm::Value *, const char *Bug);
+	bool insert(llvm::Value *, llvm::StringRef Bug);
 	llvm::Module *getModule();
 
 private:

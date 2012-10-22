@@ -41,7 +41,7 @@ bool BugOnPass::runOnFunction(Function &F) {
 	return Changed;
 }
 
-bool BugOnPass::insert(Value *V, const char *Bug) {
+bool BugOnPass::insert(Value *V, StringRef Bug) {
 	// Ignore bugon(false).
 	if (ConstantInt *CI = dyn_cast<ConstantInt>(V)) {
 		if (CI->isZero())
@@ -55,7 +55,7 @@ bool BugOnPass::insert(Value *V, const char *Bug) {
 	const DebugLoc &DbgLoc = Builder->GetInsertPoint()->getDebugLoc();
 	Instruction *I = Builder->CreateCall(BugOn, V);
 	I->setDebugLoc(DbgLoc);
-	if (Bug)
+	if (!Bug.empty())
 		I->setMetadata(MD_bug, MDNode::get(C, MDString::get(C, Bug)));
 	return true;
 }
