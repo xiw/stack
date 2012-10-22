@@ -5,6 +5,7 @@
 #include <llvm/Support/raw_ostream.h>
 #include <algorithm>
 #include <assert.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 extern "C" {
@@ -232,12 +233,11 @@ template <BtorNode *(*F)(Btor *, BtorNode *,  BtorNode *)>
 static inline SMTExpr shift(Btor *btor,  BtorNode *e0,  BtorNode *e1) {
 	unsigned n = boolector_get_width(btor, e1);
 	// Round up to nearest power of 2.
-	unsigned amount = (32 - __builtin_clz(n - 1));
+	unsigned amount = (sizeof(n) * CHAR_BIT - __builtin_clz(n - 1));
 	unsigned power2 = 1U << amount;
-	if (power2 != n) {
-		// Extend e0 to power2 bits.
+	// Extend e0 to power2 bits.
+	if (power2 != n)
 		e0 = boolector_uext(btor, e0, power2 - n);
-	}
 	BtorNode *log2w = boolector_slice(btor, e1, amount - 1, 0);
 	BtorNode *result = F(btor, e0, log2w);
 	boolector_release(btor, log2w);
