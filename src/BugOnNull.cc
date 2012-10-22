@@ -32,7 +32,7 @@ bool BugOnNull::visit(Instruction *I) {
 			P = LI->getPointerOperand();
 	} else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
 		if (!SI->isVolatile())
-			P = LI->getPointerOperand();
+			P = SI->getPointerOperand();
 	}
 	if (!P)
 		return false;
