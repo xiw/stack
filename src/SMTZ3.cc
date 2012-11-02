@@ -14,7 +14,8 @@ struct SMTContextImpl {
 	Z3_ast bvtrue;
 };
 
-#define ctx (ctx_->c)
+#define imp ((SMTContextImpl *)ctx_)
+#define ctx (imp->c)
 #define m   ((Z3_model)m_)
 #define e   ((Z3_ast)e_)
 #define lhs ((Z3_ast)lhs_)
@@ -28,8 +29,8 @@ static inline Z3_ast bool2bv_(SMTContextImpl *ctx_, Z3_ast e0) {
 	return Z3_mk_ite(ctx, e0, ctx_->bvtrue, ctx_->bvfalse);
 }
 
-#define bv2bool(x) bv2bool_(ctx_, x)
-#define bool2bv(x) bool2bv_(ctx_, x)
+#define bv2bool(x) bv2bool_(imp, x)
+#define bool2bv(x) bool2bv_(imp, x)
 
 SMTSolver::SMTSolver(bool modelgen) {
 	ctx_ = new SMTContextImpl;
@@ -37,17 +38,17 @@ SMTSolver::SMTSolver(bool modelgen) {
 	// Enable model construction.
 	if (modelgen)
 		Z3_set_param_value(cfg, "MODEL", "true");
-	ctx_->c = Z3_mk_context(cfg);
+	ctx = Z3_mk_context(cfg);
 	Z3_del_config(cfg);
 	// Set up constants.
 	Z3_sort sort = Z3_mk_bv_sort(ctx, 1);
-	ctx_->bvfalse = Z3_mk_int(ctx, 0, sort);
-	ctx_->bvtrue = Z3_mk_int(ctx, 1, sort);
+	imp->bvfalse = Z3_mk_int(ctx, 0, sort);
+	imp->bvtrue = Z3_mk_int(ctx, 1, sort);
 }
 
 SMTSolver::~SMTSolver() {
 	Z3_del_context(ctx);
-	delete ctx_;
+	delete imp;
 }
 
 void SMTSolver::assume(SMTExpr e_) {
@@ -80,7 +81,7 @@ void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
 	}
 	if (bvwidth(v) == 1 && Z3_is_app(ctx, v)) {
 		Z3_push(ctx);
-		Z3_assert_cnstr(ctx, Z3_mk_eq(ctx, v, ctx_->bvtrue));
+		Z3_assert_cnstr(ctx, Z3_mk_eq(ctx, v, imp->bvtrue));
 		switch (Z3_check(ctx)) {
 		default: assert(0);
 		case Z3_L_FALSE: OS << "0"; break;
@@ -114,11 +115,11 @@ unsigned SMTSolver::bvwidth(SMTExpr e_) {
 }
 
 SMTExpr SMTSolver::bvfalse() {
-	return ctx_->bvfalse;
+	return imp->bvfalse;
 }
 
 SMTExpr SMTSolver::bvtrue() {
-	return ctx_->bvtrue;
+	return imp->bvtrue;
 }
 
 SMTExpr SMTSolver::bvconst(const APInt &Val) {
