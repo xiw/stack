@@ -55,6 +55,7 @@ private:
 
 } // anonymous namespace
 
+#if 0
 static std::string demangle(Function &F) {
 	std::string Name = F.getName();
 	char *s = abi::__cxa_demangle(Name.c_str(), NULL, NULL, NULL);
@@ -64,12 +65,13 @@ static std::string demangle(Function &F) {
 	}
 	return Name;
 }
+#endif
 
 bool AntiDCE::runOnFunction(Function &F) {
 	BugOn = getBugOn(F.getParent());
 	if (!BugOn)
 		return false;
-	DEBUG(dbgs() << "Analyzing " << demangle(F) << "\n");
+	DEBUG(dbgs() << "Analyzing " << F.getName() << "\n");
 	assert(BugOn->arg_size() == 1);
 	assert(BugOn->arg_begin()->getType()->isIntegerTy(1));
 	DT = &getAnalysis<DominatorTree>();
