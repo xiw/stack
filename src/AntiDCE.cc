@@ -81,6 +81,10 @@ bool AntiDCE::runOnFunction(Function &F) {
 	bool Changed = false;
 	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i) {
 		BasicBlock *BB = i;
+		// Ignore unreachable blocks, often from BUG_ON() or assert().
+		// TODO: add BUG_ON(true) for more knowledge.
+		if (isa<UnreachableInst>(BB->getTerminator()))
+			continue;
 		int Keep;
 		if (SMTFork() == 0)
 			Keep = shouldKeepCode(BB);
