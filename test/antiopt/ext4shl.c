@@ -1,4 +1,4 @@
-// RUN: %cc -DNORETURN= %s | antiopt -S -ideal-shift -bugon-int -anti-dce | FileCheck %s
+// RUN: %cc -DNORETURN= %s | antiopt -S -bugon-int -anti-dce | FileCheck %s
 //
 // https://bugzilla.kernel.org/show_bug.cgi?id=14287
 

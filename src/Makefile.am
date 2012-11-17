@@ -12,7 +12,7 @@ all-local: libintck.la libcmpck.la
 	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libantiopt.so
 
 libsat_la_CPPFLAGS = -I$(top_builddir)/lib
-libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc SMTSolver.cc IdealShift.cc
+libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc SMTSolver.cc
 libsat_la_SOURCES += BugOn.cc BugOnInt.cc BugOnNull.cc BugOnLibc.cc
 libsat_la_SOURCES += ValueGen.h PathGen.h Diagnostic.h SMTSolver.h BugOn.h
 libsat_la_SOURCES += SMTBoolector.cc

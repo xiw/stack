@@ -230,7 +230,7 @@ SMTExpr SMTSolver::bvurem(SMTExpr lhs_, SMTExpr rhs_) {
 
 // Shift operations use log2n bits for shifting amount. 
 template <BtorNode *(*F)(Btor *, BtorNode *,  BtorNode *)>
-static inline SMTExpr shift(Btor *btor,  BtorNode *e0,  BtorNode *e1) {
+static inline BtorNode *shift(Btor *btor,  BtorNode *e0,  BtorNode *e1) {
 	unsigned n = boolector_get_width(btor, e1);
 	// Round up to nearest power of 2.
 	unsigned amount = (sizeof(n) * CHAR_BIT - __builtin_clz(n - 1));
@@ -252,15 +252,47 @@ static inline SMTExpr shift(Btor *btor,  BtorNode *e0,  BtorNode *e1) {
 }
 
 SMTExpr SMTSolver::bvshl(SMTExpr lhs_, SMTExpr rhs_) {
-	return shift<boolector_sll>(ctx, lhs, rhs);
+	// Return 0 if rhs >= n.
+	unsigned n = boolector_get_width(ctx, rhs);
+	BtorNode *width = boolector_unsigned_int(ctx, n, n);
+	BtorNode *cond = boolector_ugte(ctx, rhs, width);
+	BtorNode *zero = boolector_zero(ctx, n);
+	BtorNode *tmp = shift<boolector_sll>(ctx, lhs, rhs);
+	BtorNode *result = boolector_cond(ctx, cond, zero, tmp);
+	boolector_release(ctx, width);
+	boolector_release(ctx, cond);
+	boolector_release(ctx, zero);
+	boolector_release(ctx, tmp);
+	return result;
 }
 
 SMTExpr SMTSolver::bvlshr(SMTExpr lhs_, SMTExpr rhs_) {
-	return shift<boolector_srl>(ctx, lhs, rhs);
+	// Return 0 if rhs >= n.
+	unsigned n = boolector_get_width(ctx, rhs);
+	BtorNode *width = boolector_unsigned_int(ctx, n, n);
+	BtorNode *cond = boolector_ugte(ctx, rhs, width);
+	BtorNode *zero = boolector_zero(ctx, n);
+	BtorNode *tmp = shift<boolector_srl>(ctx, lhs, rhs);
+	BtorNode *result = boolector_cond(ctx, cond, zero, tmp);
+	boolector_release(ctx, width);
+	boolector_release(ctx, cond);
+	boolector_release(ctx, zero);
+	boolector_release(ctx, tmp);
+	return result;
 }
 
 SMTExpr SMTSolver::bvashr(SMTExpr lhs_, SMTExpr rhs_) {
-	return shift<boolector_sra>(ctx, lhs, rhs);
+	// If rhs is too large, the result is either zero or all-one,
+	// the same as limiting rhs to n - 1.
+	unsigned n = boolector_get_width(ctx, rhs);
+	BtorNode *maxw = boolector_unsigned_int(ctx, n - 1, n);
+	BtorNode *cond = boolector_ugt(ctx, rhs, maxw);
+	BtorNode *rhs_max = boolector_cond(ctx, cond, maxw, rhs);
+	BtorNode *result = shift<boolector_sra>(ctx, lhs, rhs_max);
+	boolector_release(ctx, maxw);
+	boolector_release(ctx, cond);
+	boolector_release(ctx, rhs_max);
+	return result;
 }
 
 SMTExpr SMTSolver::bvand(SMTExpr lhs_, SMTExpr rhs_) {
