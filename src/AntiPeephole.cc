@@ -40,7 +40,7 @@ private:
 
 bool AntiPeephole::doInitialization(Module &M) {
 	FPM.reset(new FunctionPassManager(&M));
-	DataLayout *DL = new DataLayout(&M);
+	DL = new DataLayout(&M);
 	TargetLibraryInfo *TLI = new TargetLibraryInfo(Triple(M.getTargetTriple()));
 	// TODO: -fno-builtin
 	// TLI->disableAllFunctions();
