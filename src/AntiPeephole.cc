@@ -63,8 +63,12 @@ static bool isRecomputable(Instruction *I) {
 		return true;
 	switch (I->getOpcode()) {
 	default: break;
+	// Don't clone readonly calls for now; we need to compare its
+	// parameters otherwise.
+#if 0
 	case Instruction::Call:
 		return cast<CallInst>(I)->doesNotAccessMemory();
+#endif
 	case Instruction::ExtractElement:
 	case Instruction::ExtractValue:
 	case Instruction::GetElementPtr:
