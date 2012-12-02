@@ -213,6 +213,11 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 		return Tmp;
 	}
 
+	SMTExpr visitBitCastInst(BitCastInst &I) {
+		SMTExpr E = get(I.getOperand(0));
+		SMT.incref(E);
+		return E;
+	}
 
 	SMTExpr visitPtrToIntInst(PtrToIntInst &I) {
 		Value *V = I.getOperand(0);
