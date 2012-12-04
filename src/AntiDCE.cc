@@ -12,9 +12,12 @@
 #include <llvm/Instructions.h>
 #include <llvm/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/ADT/SCCIterator.h>
+#include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
+#include <llvm/Support/CFG.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <cxxabi.h>
@@ -48,6 +51,7 @@ private:
 	PostDominatorTree *PDT;
 	DataLayout *TD;
 	SmallVector<PathGen::Edge, 32> Backedges;
+	SmallPtrSet<BasicBlock *, 8> InLoopBlocks;
 
 	int shouldKeepCode(BasicBlock *BB);
 	void markAsDead(BasicBlock *BB);
@@ -78,6 +82,13 @@ bool AntiDCE::runOnFunction(Function &F) {
 	PDT = &getAnalysis<PostDominatorTree>();
 	TD = &getAnalysis<DataLayout>();
 	FindFunctionBackedges(F, Backedges);
+	if (!Backedges.empty()) {
+		scc_iterator<Function *> i = scc_begin(&F), e = scc_end(&F);
+		for (; i != e; ++i) {
+			if (i.hasLoop())
+				InLoopBlocks.insert((*i).begin(), (*i).end());
+		}
+	}
 	bool Changed = false;
 	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i) {
 		BasicBlock *BB = i;
@@ -100,6 +111,7 @@ bool AntiDCE::runOnFunction(Function &F) {
 		FindFunctionBackedges(F, Backedges);
 	}
 	Backedges.clear();
+	InLoopBlocks.clear();
 	return Changed;
 }
 
@@ -114,13 +126,17 @@ int AntiDCE::shouldKeepCode(BasicBlock *BB) {
 	if (SMT.query(R) == SMT_UNSAT)
 		return 1;
 	// Collect undefined behavior assertions.
+	bool BBInLoop = InLoopBlocks.count(BB);
 	SmallVector<SMTExpr, 16> UBs;
 	for (Function::iterator bi = F->begin(), be = F->end(); bi != be; ++bi) {
 		BasicBlock *Blk = bi;
 		// Collect blocks that (post)dominate BB: if BB is reachable,
 		// these blocks must also be reachable, and we need to check
 		// their undefined behavior assertions.
-		if (!DT->dominates(Blk, BB) && !PDT->dominates(Blk, BB))
+		bool dom = DT->dominates(Blk, BB);
+		// Skip inspecting postdominators if BB is in a loop.
+		bool postdom = BBInLoop ? false : PDT->dominates(Blk, BB);
+		if (!dom && !postdom)
 			continue;
 		for (BasicBlock::iterator i = Blk->begin(), e = Blk->end(); i != e; ++i) {
 			CallInst *CI = dyn_cast<CallInst>(i);
