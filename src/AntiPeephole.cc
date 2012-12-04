@@ -32,8 +32,9 @@ private:
 	DataLayout *DL;
 	Diagnostic Diag;
 	SmallVector<PathGen::Edge, 32> BackEdges0, BackEdges1;
+	ValueToValueMapTy VMap;
 
-	void checkEqv(BasicBlock *BB0, BasicBlock *BB1);
+	void checkEqv(BasicBlock *BB1);
 };
 
 } // anonymous namespace
@@ -88,16 +89,10 @@ static bool isRecomputable(Instruction *I) {
 
 bool AntiPeephole::runOnFunction(Function &F) {
 	// VMap stores values F => Clone.
-	ValueToValueMapTy VMap;
+	VMap.clear();
 	// No need to clone arguments.
 	for (Function::arg_iterator i = F.arg_begin(), e = F.arg_end(); i != e; ++i)
 		VMap[i] = i;
-	// No need to clone instructions that will be recomputed.
-	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
-		Instruction *I = &*i;
-		if (!isRecomputable(I))
-			VMap[I] = I;
-	}
 	// Make a clone of F before running P.
 	OwningPtr<Function> Clone(CloneFunction(&F, VMap, false));
 	// Run P over F.
@@ -105,26 +100,45 @@ bool AntiPeephole::runOnFunction(Function &F) {
 		return false;
 	// Check if P made any changes.
 	BackEdges0.clear();
-	FindFunctionBackedges(F, BackEdges0);
+	FindFunctionBackedges(*Clone, BackEdges0);
 	BackEdges1.clear();
 	FindFunctionBackedges(F, BackEdges1);
 	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i)
-		checkEqv(cast<BasicBlock>(VMap.lookup(i)), i);
+		checkEqv(i);
 	return true;
 }
 
-void AntiPeephole::checkEqv(BasicBlock *BB0, BasicBlock *BB1) {
+void AntiPeephole::checkEqv(BasicBlock *BB1) {
+	BasicBlock *BB0 = cast<BasicBlock>(VMap.lookup(BB1));
 	BranchInst *Br0 = dyn_cast<BranchInst>(BB0->getTerminator());
 	if (!Br0 || Br0->isUnconditional())
 		return;
 	BranchInst *Br1 = dyn_cast<BranchInst>(BB1->getTerminator());
 	if (!Br1 || Br1->isUnconditional())
 		return;
+	bool SuccSwapped = (Br0->getSuccessor(0) != VMap.lookup(Br1->getSuccessor(0)));
 
 	SMTSolver SMT(true);
 	ValueGen VG(*DL, SMT);
-	PathGen PG0(VG, BackEdges0), PG1(VG, BackEdges1);
 
+	// Establish equivalence via cloning.
+	for (ValueToValueMapTy::iterator i = VMap.begin(), e = VMap.end(); i != e; ++i) {
+		Instruction *I0 = dyn_cast<Instruction>(i->second);
+		Instruction *I1 = const_cast<Instruction *>(dyn_cast<Instruction>(i->first));
+		if (!I0 || !I1)
+			continue;
+		Type *T = I0->getType();
+		assert(T == I1->getType());
+		if (!ValueGen::isAnalyzable(T))
+			continue;
+		if (!isRecomputable(I0)) {
+			SMTExpr E = SMT.eq(VG.get(I0), VG.get(I1));
+			SMT.assume(E);
+			SMT.decref(E);
+		}
+	}
+
+	PathGen PG0(VG, BackEdges0), PG1(VG, BackEdges1);
 	// First make sure the path conditions are the same.
 	// Avoid repeating warnings from previous BBs.
 	SMTExpr P0 = PG0.get(BB0), P1 = PG1.get(BB1);
@@ -140,7 +154,14 @@ void AntiPeephole::checkEqv(BasicBlock *BB0, BasicBlock *BB1) {
 
 	Value *V1 = Br1->getCondition();
 	SMTExpr Cond1 = VG.get(V1);
-	SMTExpr NewP1 = SMT.bvand(Cond1, P1);
+	SMTExpr NewP1;
+	if (SuccSwapped) {
+		SMTExpr Tmp = SMT.bvnot(Cond1);
+		NewP1 = SMT.bvand(Tmp, P1);
+		SMT.decref(Tmp);
+	} else {
+		NewP1 = SMT.bvand(Cond1, P1);
+	}
 
 	// Then we check if the conditions change with the new branching.
 	Query = SMT.ne(NewP0, NewP1);
