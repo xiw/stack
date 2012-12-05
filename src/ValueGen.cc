@@ -192,10 +192,22 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 				continue;
 			}
 			SMTExpr SIdx = get(V);
+			unsigned IdxSize = SMT.bvwidth(SIdx);
+			// Sometimes a 64-bit GEP's index is 32-bit.
+			if (IdxSize != PtrSize) {
+				SMTExpr Tmp;
+				if (IdxSize < PtrSize)
+					Tmp = SMT.zero_extend(PtrSize - IdxSize, SIdx);
+				else
+					Tmp = SMT.extract(PtrSize - 1, 0, SIdx);
+				SIdx = Tmp;
+			} else {
+				SMT.incref(SIdx);
+			}
 			SMTExpr SElemSize = SMT.bvconst(APInt(PtrSize, ElemSize));
 			SMTExpr LocalOffset = SMT.bvmul(SIdx, SElemSize);
 			SMTExpr Tmp = SMT.bvadd(Offset, LocalOffset);
-			// Don't delete SIdx;
+			SMT.decref(SIdx);
 			SMT.decref(SElemSize);
 			SMT.decref(Offset);
 			SMT.decref(LocalOffset);
