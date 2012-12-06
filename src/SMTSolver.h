@@ -27,7 +27,7 @@ public:
 	void assume(SMTExpr);
 
 	SMTStatus query(SMTExpr, SMTModel * = 0);
-	void eval(SMTModel, SMTExpr, llvm::raw_ostream &);
+	void eval(SMTModel, SMTExpr, llvm::APInt &);
 	void release(SMTModel);
 
 	void dump(SMTExpr);

@@ -58,15 +58,12 @@ SMTStatus SMTSolver::query(SMTExpr e_, SMTModel *m_) {
 	return SMT_SAT;
 }
 
-void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
+void SMTSolver::eval(SMTModel m_, SMTExpr e_, APInt &v) {
 	char *s = boolector_bv_assignment(ctx, e);
 	std::string str(s);
 	boolector_free_bv_assignment(ctx, s);
 	std::replace(str.begin(), str.end(), 'x', '0');
-	APInt Val(bvwidth(e), str.c_str(), 2);
-	if (Val.uge(0xa))
-		OS << "0x";
-	OS << Val.toString(16, false);
+	v = APInt(bvwidth(e), str.c_str(), 2);
 }
 
 void SMTSolver::release(SMTModel m_) {}

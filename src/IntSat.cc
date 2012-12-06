@@ -133,7 +133,11 @@ SMTStatus IntSat::query(Value *V, Instruction *I) {
 			OS << "  ";
 			WriteAsOperand(OS, KeyV, false, Trap->getParent());
 			OS << ": ";
-			SMT.eval(Model, i->second, OS);
+			APInt Val;
+			SMT.eval(Model, i->second, Val);
+			if (Val.getLimitedValue(0xa) == 0xa)
+				OS << "0x";
+			OS << Val.toString(16, false);
 			OS << '\n';
 		}
 	}

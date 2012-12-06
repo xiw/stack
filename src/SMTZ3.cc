@@ -67,16 +67,13 @@ SMTStatus SMTSolver::query(SMTExpr e_, SMTModel *m_) {
 	}
 }
 
-void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
+void SMTSolver::eval(SMTModel m_, SMTExpr e_, APInt &r) {
 	Z3_ast v = 0;
 	Z3_bool ret = Z3_model_eval(ctx, m, e, Z3_TRUE, &v);
 	assert(ret);
 	assert(v);
 	if (Z3_is_numeral_ast(ctx, v)) {
-		APInt Val(bvwidth(v), Z3_get_numeral_string(ctx, v), 10);
-		if (Val.getLimitedValue(0xa) == 0xa)
-			OS << "0x";
-		OS << Val.toString(16, false);
+		r = APInt(bvwidth(v), Z3_get_numeral_string(ctx, v), 10);
 		return;
 	}
 	if (bvwidth(v) == 1 && Z3_is_app(ctx, v)) {
@@ -84,13 +81,13 @@ void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
 		Z3_assert_cnstr(ctx, Z3_mk_eq(ctx, v, imp->bvtrue));
 		switch (Z3_check(ctx)) {
 		default: assert(0);
-		case Z3_L_FALSE: OS << "0"; break;
-		case Z3_L_TRUE:  OS << "1"; break;
+		case Z3_L_FALSE: r = APInt(1, 0); break;
+		case Z3_L_TRUE:  r = APInt(1, 1); break;
 		}
 		Z3_pop(ctx, 1);
 		return;
 	}
-	OS << Z3_ast_to_string(ctx, v);
+	assert(0);
 }
 
 void SMTSolver::release(SMTModel m_) {

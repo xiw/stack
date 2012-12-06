@@ -40,8 +40,8 @@ SMTStatus SMTSolver::query(SMTExpr e_, SMTModel *m_) {
 	return SMT_SAT;
 }
 
-void SMTSolver::eval(SMTModel m_, SMTExpr e_, raw_ostream &OS) {
-	OS << "NOT SUPPORTED";
+void SMTSolver::eval(SMTModel m_, SMTExpr e_, APInt &) {
+	assert(0 && "NOT SUPPORTED");
 }
 
 void SMTSolver::release(SMTModel m_) {}
