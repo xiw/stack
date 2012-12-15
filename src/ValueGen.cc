@@ -186,9 +186,10 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 				continue;
 			}
 			// For an array, add the scaled element offset.
-			uint64_t ElemSize = TD.getTypeAllocSize(*GTI);
+			APInt ElemSize(PtrSize, TD.getTypeAllocSize(*GTI));
 			if (C) {
-				ConstOffset = ConstOffset + C->getZExtValue() * ElemSize;
+				// GEP index can be sign-extended.
+				ConstOffset += ElemSize * C->getValue().sextOrTrunc(PtrSize);
 				continue;
 			}
 			SMTExpr SIdx = get(V);
@@ -197,14 +198,14 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 			if (IdxSize != PtrSize) {
 				SMTExpr Tmp;
 				if (IdxSize < PtrSize)
-					Tmp = SMT.zero_extend(PtrSize - IdxSize, SIdx);
+					Tmp = SMT.sign_extend(PtrSize - IdxSize, SIdx);
 				else
 					Tmp = SMT.extract(PtrSize - 1, 0, SIdx);
 				SIdx = Tmp;
 			} else {
 				SMT.incref(SIdx);
 			}
-			SMTExpr SElemSize = SMT.bvconst(APInt(PtrSize, ElemSize));
+			SMTExpr SElemSize = SMT.bvconst(ElemSize);
 			SMTExpr LocalOffset = SMT.bvmul(SIdx, SElemSize);
 			SMTExpr Tmp = SMT.bvadd(Offset, LocalOffset);
 			SMT.decref(SIdx);
