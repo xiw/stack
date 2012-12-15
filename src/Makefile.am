@@ -33,7 +33,7 @@ libcmpck_la_SOURCES = CmpTautology.cc CmpOverflow.cc CmpSat.cc
 libcmpck_la_LIBADD  = libsat.la
 libcmpck_la_LDFLAGS = -module
 
-libantiopt_la_SOURCES = AntiFunctionPass.cc AntiDCE.cc AntiPeephole.cc
+libantiopt_la_SOURCES = AntiFunctionPass.cc AntiDCE.cc AntiPeephole.cc AntiSimplify.cc
 libantiopt_la_SOURCES += AntiFunctionPass.h
 libantiopt_la_LIBADD  = libsat.la
 libantiopt_la_LDFLAGS = -module
