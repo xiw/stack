@@ -6,6 +6,7 @@
 #define DEBUG_TYPE "anti-dce"
 #include "AntiFunctionPass.h"
 #include "Diagnostic.h"
+#include <llvm/Constants.h>
 #include <llvm/Function.h>
 #include <llvm/Instructions.h>
 #include <llvm/Analysis/Dominators.h>
