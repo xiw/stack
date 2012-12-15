@@ -4,54 +4,33 @@
 // then s is actually "dead" in terms of undefined behavior.
 
 #define DEBUG_TYPE "anti-dce"
-#include "BugOn.h"
+#include "AntiFunctionPass.h"
 #include "Diagnostic.h"
-#include "PathGen.h"
-#include "ValueGen.h"
-#include <llvm/DataLayout.h>
+#include <llvm/Function.h>
 #include <llvm/Instructions.h>
-#include <llvm/Module.h>
-#include <llvm/Pass.h>
-#include <llvm/ADT/SCCIterator.h>
-#include <llvm/ADT/SmallPtrSet.h>
-#include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/Support/CFG.h>
 #include <llvm/Support/Debug.h>
-#include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <cxxabi.h>
 
 using namespace llvm;
 
 namespace {
 
-struct AntiDCE: FunctionPass {
+struct AntiDCE: AntiFunctionPass {
 	static char ID;
-	AntiDCE() : FunctionPass(ID) {
-		PassRegistry &Registry = *PassRegistry::getPassRegistry();
-		initializeDominatorTreePass(Registry);
-		initializePostDominatorTreePass(Registry);
-	}
+	AntiDCE() : AntiFunctionPass(ID) {}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-		AU.addRequired<DominatorTree>();
-		AU.addRequired<PostDominatorTree>();
-		AU.addRequired<DataLayout>();
+		AntiFunctionPass::getAnalysisUsage(AU);
 		AU.addPreserved<DominatorTree>();
 		AU.addPreserved<PostDominatorTree>();
 	}
 
-	virtual bool runOnFunction(Function &);
+	virtual bool runOnAntiFunction(Function &);
 
 private:
 	Diagnostic Diag;
-	Function *BugOn;
-	DominatorTree *DT;
-	PostDominatorTree *PDT;
-	DataLayout *TD;
-	SmallVector<PathGen::Edge, 32> Backedges;
-	SmallPtrSet<BasicBlock *, 8> InLoopBlocks;
 
 	int shouldKeepCode(BasicBlock *BB);
 	void markAsDead(BasicBlock *BB);
@@ -59,36 +38,7 @@ private:
 
 } // anonymous namespace
 
-#if 0
-static std::string demangle(Function &F) {
-	std::string Name = F.getName();
-	char *s = abi::__cxa_demangle(Name.c_str(), NULL, NULL, NULL);
-	if (s) {
-		Name = s;
-		free(s);
-	}
-	return Name;
-}
-#endif
-
-bool AntiDCE::runOnFunction(Function &F) {
-	BugOn = getBugOn(F.getParent());
-	if (!BugOn)
-		return false;
-	DEBUG(dbgs() << "Analyzing " << F.getName() << "\n");
-	assert(BugOn->arg_size() == 1);
-	assert(BugOn->arg_begin()->getType()->isIntegerTy(1));
-	DT = &getAnalysis<DominatorTree>();
-	PDT = &getAnalysis<PostDominatorTree>();
-	TD = &getAnalysis<DataLayout>();
-	FindFunctionBackedges(F, Backedges);
-	if (!Backedges.empty()) {
-		scc_iterator<Function *> i = scc_begin(&F), e = scc_end(&F);
-		for (; i != e; ++i) {
-			if (i.hasLoop())
-				InLoopBlocks.insert((*i).begin(), (*i).end());
-		}
-	}
+bool AntiDCE::runOnAntiFunction(Function &F) {
 	bool Changed = false;
 	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i) {
 		BasicBlock *BB = i;
@@ -104,62 +54,27 @@ bool AntiDCE::runOnFunction(Function &F) {
 			continue;
 		Changed = true;
 		markAsDead(BB);
-		// Update DT & PDT if any optimization performed.
-		DT->DT->recalculate(F);
-		PDT->DT->recalculate(F);
-		Backedges.clear();
-		FindFunctionBackedges(F, Backedges);
+		// Update if any optimization performed.
+		recalculate(F);
 	}
-	Backedges.clear();
-	InLoopBlocks.clear();
 	return Changed;
 }
 
 int AntiDCE::shouldKeepCode(BasicBlock *BB) {
 	SMTSolver SMT(false);
-	ValueGen VG(*TD, SMT);
-	Function *F = BB->getParent();
+	ValueGen VG(*DL, SMT);
 	// Compute path condition.
 	PathGen PG(VG, Backedges, *DT);
 	SMTExpr R = PG.get(BB);
 	// Ignore dead path.
 	if (SMT.query(R) == SMT_UNSAT)
 		return 1;
-	// Collect undefined behavior assertions.
-	bool BBInLoop = InLoopBlocks.count(BB);
-	SmallVector<SMTExpr, 16> UBs;
-	for (Function::iterator bi = F->begin(), be = F->end(); bi != be; ++bi) {
-		BasicBlock *Blk = bi;
-		// Collect blocks that (post)dominate BB: if BB is reachable,
-		// these blocks must also be reachable, and we need to check
-		// their undefined behavior assertions.
-		bool dom = DT->dominates(Blk, BB);
-		// Skip inspecting postdominators if BB is in a loop.
-		bool postdom = BBInLoop ? false : PDT->dominates(Blk, BB);
-		if (!dom && !postdom)
-			continue;
-		for (BasicBlock::iterator i = Blk->begin(), e = Blk->end(); i != e; ++i) {
-			CallInst *CI = dyn_cast<CallInst>(i);
-			if (!CI || CI->getCalledFunction() != BugOn)
-				continue;
-			Value *V = CI->getArgOperand(0);
-			SMTExpr E = VG.get(V);
-			UBs.push_back(E);
-		}
-	}
-	if (UBs.empty())
+	// Collect bug assertions.
+	SMTExpr Delta = getDeltaForBlock(BB, VG);
+	if (!Delta)
 		return 1;
-	SMTExpr U = SMT.bvfalse();
-	// Compute R and U.
-	for (unsigned i = 0, n = UBs.size(); i != n; ++i) {
-		SMTExpr Tmp = SMT.bvor(U, UBs[i]);
-		SMT.decref(U);
-		U = Tmp;
-	}
-	SMTExpr NotU = SMT.bvnot(U);
-	SMT.decref(U);
-	SMTExpr Q = SMT.bvand(R, NotU);
-	SMT.decref(NotU);
+	SMTExpr Q = SMT.bvand(R, Delta);
+	SMT.decref(Delta);
 	SMTStatus Status = SMT.query(Q);
 	SMT.decref(Q);
 	if (Status == SMT_UNSAT)
