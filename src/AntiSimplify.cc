@@ -1,4 +1,6 @@
-// This pass simplifies expressions.
+// This pass folds expressions into constants.  The basic idea is to
+// warn against expression e that is 1) reachable and 2) non-constant,
+// but 3) must be constant with bug-free assertions.
 
 #define DEBUG_TYPE "anti-simplify"
 #include "AntiFunctionPass.h"
