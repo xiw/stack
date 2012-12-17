@@ -25,7 +25,7 @@ private:
 	DataLayout *DL;
 };
 
-} // anonymous nmaespace
+} // anonymous namespace
 
 bool BugOnGep::runOnFunction(Function &F) {
         DL = &getAnalysis<DataLayout>();
@@ -39,7 +39,6 @@ bool BugOnGep::visit(Instruction *I) {
 	// For now we only deal with gep with one index (e.g., array).
 	if (GEP->getNumIndices() > 1)
 		return false;
-	// Bug condition: p + elemsize * idx overflow.
 	Value *Idx = *GEP->idx_begin();
 	// Ignore zero/negative index.
 	if (ConstantInt *C = dyn_cast<ConstantInt>(Idx)) {
@@ -52,7 +51,6 @@ bool BugOnGep::visit(Instruction *I) {
 	LLVMContext &VMCtx = ElemTy->getContext();
 	IntegerType *PtrIntTy = Type::getIntNTy(VMCtx, PtrBits);
 	APInt ElemSize(PtrBits, DL->getTypeAllocSize(ElemTy));
-	APInt AllocSize = APInt::getMaxValue(PtrBits);
 	bool Changed = false;
 	// Sign-extend index.
 	Value *IdxExt = Builder->CreateSExtOrTrunc(Idx, PtrIntTy);
@@ -65,7 +63,7 @@ bool BugOnGep::visit(Instruction *I) {
 	} else {
 		Offset = IdxExt;
 	}
-	// idx > 0 && sadd-overflow(ptr, idx * elemsize)
+	// Bug condition: idx > 0 && uadd-overflow(ptr, idx * elemsize).
 	Value *IsPos = Builder->CreateICmpSGT(Idx, Constant::getNullValue(Idx->getType()));
 	Value *PtrMax = ConstantInt::get(VMCtx, APInt::getMaxValue(PtrBits));
 	Value *V = Builder->CreateAnd(
@@ -75,6 +73,7 @@ bool BugOnGep::visit(Instruction *I) {
 		IsPos // This will be folded if it is 1.
 	);
 	Changed |= insert(V, "pointer overflow");
+	// TODO: more constraints if we can extract the allocation size.
 	return Changed;
 }
 
