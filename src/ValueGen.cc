@@ -186,7 +186,7 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 				continue;
 			}
 			// For an array, add the scaled element offset.
-			APInt ElemSize(PtrSize, TD.getTypeAllocSize(*GTI));
+			APInt ElemSize(PtrSize, TD.getTypeAllocSize(GTI.getIndexedType()));
 			if (C) {
 				// GEP index can be sign-extended.
 				ConstOffset += ElemSize * C->getValue().sextOrTrunc(PtrSize);
