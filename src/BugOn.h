@@ -21,6 +21,7 @@ protected:
 	llvm::Module *getModule();
 
 	llvm::Value *createIsNull(llvm::Value *);
+	llvm::Value *createSExtOrTrunc(llvm::Value *, llvm::IntegerType *);
 
 private:
 	llvm::Function *BugOn;

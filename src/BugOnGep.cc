@@ -53,7 +53,7 @@ bool BugOnGep::visit(Instruction *I) {
 	APInt ElemSize(PtrBits, DL->getTypeAllocSize(ElemTy));
 	bool Changed = false;
 	// Sign-extend index.
-	Value *IdxExt = Builder->CreateSExtOrTrunc(Idx, PtrIntTy);
+	Value *IdxExt = createSExtOrTrunc(Idx, PtrIntTy);
 	Value *Offset;
 	if (ElemSize.ugt(1)) {
 		APInt Hi = APInt::getSignedMaxValue(PtrBits).sdiv(ElemSize);

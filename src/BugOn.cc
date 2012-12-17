@@ -70,3 +70,14 @@ Value *BugOnPass::createIsNull(Value *V) {
 		return Builder->getFalse();
 	return Builder->CreateIsNull(V);
 }
+
+Value *BugOnPass::createSExtOrTrunc(Value *V, IntegerType *T) {
+	// New in 3.2.
+	unsigned SrcWidth = cast<IntegerType>(V->getType())->getBitWidth();
+	unsigned DstWidth = T->getBitWidth();
+	if (SrcWidth < DstWidth)
+		return Builder->CreateSExt(V, T);
+	if (SrcWidth > DstWidth)
+		return Builder->CreateTrunc(V, T);
+	return V;
+}
