@@ -20,6 +20,8 @@ protected:
 	bool insert(llvm::Value *, llvm::StringRef Bug);
 	llvm::Module *getModule();
 
+	llvm::Value *createIsNull(llvm::Value *);
+
 private:
 	llvm::Function *BugOn;
 	unsigned int MD_bug;

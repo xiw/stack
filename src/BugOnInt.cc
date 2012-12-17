@@ -17,7 +17,7 @@ private:
 	bool visitSignedDivisionOperator(IntegerType *, Value *L, Value *R, const char *Bug);
 };
 
-} // anonymous nmaespace
+} // anonymous namespace
 
 bool BugOnInt::visit(Instruction *I) {
 	BinaryOperator *BO = dyn_cast<BinaryOperator>(I);

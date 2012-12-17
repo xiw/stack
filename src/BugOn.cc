@@ -29,8 +29,8 @@ bool BugOnPass::runOnFunction(Function &F) {
 	IRBuilder<> TheBuilder(F.getContext());
 	Builder = &TheBuilder;
 	bool Changed = false;
-	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
-		Instruction *I = &*i;
+	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
+		Instruction *I = &*i++;
 		if (I->getDebugLoc().isUnknown())
 			continue;
 		Builder->SetInsertPoint(I);
@@ -61,5 +61,12 @@ bool BugOnPass::insert(Value *V, StringRef Bug) {
 }
 
 Module *BugOnPass::getModule() {
-	return  Builder->GetInsertBlock()->getParent()->getParent();
+	return Builder->GetInsertBlock()->getParent()->getParent();
+}
+
+Value *BugOnPass::createIsNull(Value *V) {
+	// Ignore trivial non-null pointers (e.g., a stack pointer).
+	if (V->isDereferenceablePointer())
+		return Builder->getFalse();
+	return Builder->CreateIsNull(V);
 }

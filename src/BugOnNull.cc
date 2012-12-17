@@ -18,7 +18,7 @@ private:
 	DataLayout *DL;
 };
 
-} // anonymous nmaespace
+} // anonymous namespace
 
 bool BugOnNull::runOnFunction(llvm::Function &F) {
 	DL = getAnalysisIfAvailable<DataLayout>();
@@ -38,10 +38,7 @@ bool BugOnNull::visit(Instruction *I) {
 		return false;
 	// Strip pointer offset to get the base pointer.
 	Value *Base = GetUnderlyingObject(P, DL, 0);
-	// Ignore trivial non-null cases (e.g., the base pointer is alloca).
-	if (Base->isDereferenceablePointer())
-		return false;
-	return insert(Builder->CreateIsNull(Base), "null pointer dereference");
+	return insert(createIsNull(Base), "null pointer dereference");
 }
 
 char BugOnNull::ID;
