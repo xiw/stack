@@ -23,7 +23,7 @@ private:
 	bool visitDiv(CallInst *);
 };
 
-} // anonymous nmaespace
+} // anonymous namespace
 
 bool BugOnLibc::doInitialization(Module &M) {
 #define HANDLER(method, name) \
@@ -65,7 +65,11 @@ bool BugOnLibc::visitAbs(CallInst *I) {
 		return false;
 	Constant *SMin = ConstantInt::get(T, APInt::getSignedMinValue(T->getBitWidth()));
 	Value *V = Builder->CreateICmpEQ(R, SMin);
-	return insert(V, I->getCalledFunction()->getName());
+	insert(V, I->getCalledFunction()->getName());
+	Value *IsNeg = Builder->CreateICmpSLT(R, ConstantInt::get(T, 0));
+	Value *Abs = Builder->CreateSelect(IsNeg, Builder->CreateNeg(R), R);
+	I->replaceAllUsesWith(Abs);
+	return true;
 }
 
 // div(numer, denom): denom == 0 || (numer == INT_MIN && denom == -1)
@@ -74,21 +78,22 @@ bool BugOnLibc::visitDiv(CallInst *I) {
 		return false;
 	Value *L = I->getArgOperand(0);
 	Value *R = I->getArgOperand(1);
-	IntegerType *T = dyn_cast<IntegerType>(L->getType());
+	IntegerType *T = dyn_cast<IntegerType>(I->getType());
 	if (!T)
 		return false;
-	if (T != R->getType())
+	if (T != L->getType() || T != R->getType())
 		return false;
-	bool Changed = false;
 	StringRef Name = I->getCalledFunction()->getName();
-	Changed |= insert(Builder->CreateIsNull(R), Name);
+	insert(Builder->CreateIsNull(R), Name);
 	Constant *SMin = ConstantInt::get(T, APInt::getSignedMinValue(T->getBitWidth()));
 	Constant *MinusOne = Constant::getAllOnesValue(T);
 	Value *V = Builder->CreateAnd(
 		Builder->CreateICmpEQ(L, SMin),
 		Builder->CreateICmpEQ(R, MinusOne));
-	Changed |= insert(V, Name);
-	return Changed;
+	insert(V, Name);
+	Value *SDiv = Builder->CreateSDiv(L, R);
+	I->replaceAllUsesWith(SDiv);
+	return true;
 }
 
 char BugOnLibc::ID;
