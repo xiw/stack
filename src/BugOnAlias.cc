@@ -86,7 +86,7 @@ bool BugOnAlias::insertNoAlias(Value *L, Value *R) {
 	Instruction *IP = setInsertPointAfter(CI);
 	Value *V = createAnd(
 		createIsNotNull(L),
-		Builder->CreateICmpEQ(L, R)
+		Builder->CreateICmpEQ(L, Builder->CreatePointerCast(R, L->getType()))
 	);
 	bool Changed = insert(V, "noalias");
 	// Restore the insert point.
