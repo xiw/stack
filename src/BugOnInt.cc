@@ -100,9 +100,10 @@ bool BugOnInt::visitSignedDivisionOperator(IntegerType *T, Value *L, Value *R, c
 	unsigned n = T->getBitWidth();
 	Constant *SMin = ConstantInt::get(T, APInt::getSignedMinValue(n));
 	Constant *MinusOne = Constant::getAllOnesValue(T);
-	Value *V = Builder->CreateAnd(
+	Value *V = createAnd(
 		Builder->CreateICmpEQ(L, SMin),
-		Builder->CreateICmpEQ(R, MinusOne));
+		Builder->CreateICmpEQ(R, MinusOne)
+	);
 	return insert(V, Bug);
 }
 

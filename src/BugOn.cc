@@ -33,9 +33,7 @@ bool BugOnPass::runOnFunction(Function &F) {
 		Instruction *I = &*i++;
 		if (I->getDebugLoc().isUnknown())
 			continue;
-		Builder->SetInsertPoint(I);
-		// Don't set debugging information for inserted instructions.
-		Builder->SetCurrentDebugLocation(DebugLoc());
+		setInsertPoint(I);
 		Changed |= visit(I);
 	}
 	return Changed;
@@ -64,11 +62,48 @@ Module *BugOnPass::getModule() {
 	return Builder->GetInsertBlock()->getParent()->getParent();
 }
 
+Instruction *BugOnPass::setInsertPoint(Instruction *I) {
+	Instruction *IP = Builder->GetInsertPoint();
+	Builder->SetInsertPoint(I);
+	// Don't set debugging information for inserted instructions.
+	Builder->SetCurrentDebugLocation(DebugLoc());
+	return IP;
+}
+
+Instruction *BugOnPass::setInsertPointAfter(Instruction *I) {
+	assert(!isa<TerminatorInst>(I) && "Cannot insert after a terminator!");
+	BasicBlock::iterator Iter(I);
+	++Iter;
+	return setInsertPoint(Iter);
+}
+
 Value *BugOnPass::createIsNull(Value *V) {
 	// Ignore trivial non-null pointers (e.g., a stack pointer).
 	if (V->isDereferenceablePointer())
 		return Builder->getFalse();
 	return Builder->CreateIsNull(V);
+}
+
+Value *BugOnPass::createIsNotNull(Value *V) {
+	if (V->isDereferenceablePointer())
+		return Builder->getTrue();
+	return Builder->CreateIsNotNull(V);
+}
+
+Value *BugOnPass::createAnd(Value *L, Value *R) {
+	if (Constant *C = dyn_cast<Constant>(L)) {
+		if (C->isAllOnesValue())
+			return R;
+		if (C->isNullValue())
+			return L;
+	}
+	if (Constant *C = dyn_cast<Constant>(R)) {
+		if (C->isAllOnesValue())
+			return L;
+		if (C->isNullValue())
+			return R;
+	}
+	return Builder->CreateAnd(L, R);
 }
 
 Value *BugOnPass::createSExtOrTrunc(Value *V, IntegerType *T) {

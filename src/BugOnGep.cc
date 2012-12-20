@@ -66,11 +66,12 @@ bool BugOnGep::visit(Instruction *I) {
 	// Bug condition: idx > 0 && uadd-overflow(ptr, idx * elemsize).
 	Value *IsPos = Builder->CreateICmpSGT(Idx, Constant::getNullValue(Idx->getType()));
 	Value *PtrMax = ConstantInt::get(VMCtx, APInt::getMaxValue(PtrBits));
-	Value *V = Builder->CreateAnd(
+	Value *V = createAnd(
+		IsPos,
 		Builder->CreateICmpUGT(
 			Builder->CreatePtrToInt(P, PtrIntTy),
-			Builder->CreateSub(PtrMax, Offset)),
-		IsPos // This will be folded if it is 1.
+			Builder->CreateSub(PtrMax, Offset)
+		)
 	);
 	Changed |= insert(V, "pointer overflow");
 	// TODO: more constraints if we can extract the allocation size.

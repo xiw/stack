@@ -87,9 +87,10 @@ bool BugOnLibc::visitDiv(CallInst *I) {
 	insert(Builder->CreateIsNull(R), Name);
 	Constant *SMin = ConstantInt::get(T, APInt::getSignedMinValue(T->getBitWidth()));
 	Constant *MinusOne = Constant::getAllOnesValue(T);
-	Value *V = Builder->CreateAnd(
+	Value *V = createAnd(
 		Builder->CreateICmpEQ(L, SMin),
-		Builder->CreateICmpEQ(R, MinusOne));
+		Builder->CreateICmpEQ(R, MinusOne)
+	);
 	insert(V, Name);
 	Value *SDiv = Builder->CreateSDiv(L, R);
 	I->replaceAllUsesWith(SDiv);

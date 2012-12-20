@@ -13,15 +13,21 @@ struct BugOnPass : llvm::FunctionPass {
 protected:
 	typedef BugOnPass super;
 	typedef llvm::IRBuilder<> BuilderTy;
+	typedef llvm::Value Value;
+	typedef llvm::Instruction Instruction;
 	BuilderTy *Builder;
 
-	virtual bool visit(llvm::Instruction *) = 0;
+	virtual bool visit(Instruction *) = 0;
 
-	bool insert(llvm::Value *, llvm::StringRef Bug);
+	bool insert(Value *, llvm::StringRef Bug);
 	llvm::Module *getModule();
+	Instruction *setInsertPoint(Instruction *);
+	Instruction *setInsertPointAfter(Instruction *);
 
-	llvm::Value *createIsNull(llvm::Value *);
-	llvm::Value *createSExtOrTrunc(llvm::Value *, llvm::IntegerType *);
+	Value *createIsNull(Value *);
+	Value *createIsNotNull(Value *);
+	Value *createAnd(Value *, Value *);
+	Value *createSExtOrTrunc(Value *, llvm::IntegerType *);
 
 private:
 	llvm::Function *BugOn;
