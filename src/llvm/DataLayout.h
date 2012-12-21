@@ -6,6 +6,7 @@
 #include <llvm/Target/TargetData.h>
 #define DataLayout TargetData
 #define initializeDataLayoutPass initializeTargetDataPass
+#define setDataLayout setTargetData
 #else
 #include_next <llvm/DataLayout.h>
 #endif
