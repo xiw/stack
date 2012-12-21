@@ -26,6 +26,7 @@ protected:
 
 	Value *createIsNull(Value *);
 	Value *createIsNotNull(Value *);
+	Value *createIsZero(Value *);
 	Value *createAnd(Value *, Value *);
 	Value *createSExtOrTrunc(Value *, llvm::IntegerType *);
 

@@ -84,7 +84,7 @@ bool BugOnLibc::visitDiv(CallInst *I) {
 	if (T != L->getType() || T != R->getType())
 		return false;
 	StringRef Name = I->getCalledFunction()->getName();
-	insert(Builder->CreateIsNull(R), Name);
+	insert(createIsZero(R), Name);
 	Constant *SMin = ConstantInt::get(T, APInt::getSignedMinValue(T->getBitWidth()));
 	Constant *MinusOne = Constant::getAllOnesValue(T);
 	Value *V = createAnd(

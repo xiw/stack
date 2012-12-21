@@ -61,7 +61,7 @@ bool BugOnInt::visit(Instruction *I) {
 		// Fall through.
 	case Instruction::UDiv:
 	case Instruction::URem:
-		Changed |= insert(Builder->CreateIsNull(R), "division by zero");
+		Changed |= insert(createIsZero(R), "division by zero");
 		break;
 	case Instruction::Shl:
 		Changed |= visitShiftOperator(T, R, "shift left overflow");

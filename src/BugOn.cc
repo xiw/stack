@@ -84,6 +84,10 @@ Value *BugOnPass::createIsNull(Value *V) {
 	return Builder->CreateIsNull(V);
 }
 
+Value *BugOnPass::createIsZero(Value *V) {
+	return Builder->CreateIsNull(V);
+}
+
 Value *BugOnPass::createIsNotNull(Value *V) {
 	if (V->isDereferenceablePointer())
 		return Builder->getTrue();
