@@ -227,7 +227,11 @@ struct ValueVisitor : InstVisitor<ValueVisitor, SMTExpr> {
 	}
 
 	SMTExpr visitBitCastInst(BitCastInst &I) {
-		SMTExpr E = get(I.getOperand(0));
+		Value *V = I.getOperand(0);
+		// V can be floating point.
+		if (!VG.isAnalyzable(V))
+			return mk_fresh(&I);
+		SMTExpr E = get(V);
 		SMT.incref(E);
 		return E;
 	}
@@ -287,11 +291,11 @@ ValueGen::~ValueGen() {
 		SMT.decref(i->second);
 }
 
-bool ValueGen::isAnalyzable(llvm::Value *V) {
+bool ValueGen::isAnalyzable(Value *V) {
 	return isAnalyzable(V->getType());
 }
 
-bool ValueGen::isAnalyzable(llvm::Type *T) {
+bool ValueGen::isAnalyzable(Type *T) {
 	return T->isIntegerTy()
 		|| T->isPointerTy()
 		|| T->isFunctionTy();
