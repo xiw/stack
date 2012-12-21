@@ -33,19 +33,30 @@ struct AntiDCE: AntiFunctionPass {
 private:
 	Diagnostic Diag;
 
+	bool shouldCheck(BasicBlock *BB);
 	int shouldKeepCode(BasicBlock *BB);
 	void markAsDead(BasicBlock *BB);
 };
 
 } // anonymous namespace
 
+bool AntiDCE::shouldCheck(BasicBlock *BB) {
+	// Ignore unreachable blocks, often from BUG_ON() or assert().
+	// TODO: add BUG_ON(true) for more knowledge.
+	if (isa<UnreachableInst>(BB->getTerminator()))
+		return false;
+	for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ++i) {
+		if (hasSingleDebugLocation(i))
+			return true;
+	}
+	return false;
+}
+
 bool AntiDCE::runOnAntiFunction(Function &F) {
 	bool Changed = false;
 	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i) {
 		BasicBlock *BB = i;
-		// Ignore unreachable blocks, often from BUG_ON() or assert().
-		// TODO: add BUG_ON(true) for more knowledge.
-		if (isa<UnreachableInst>(BB->getTerminator()))
+		if (!shouldCheck(BB))
 			continue;
 		int Keep;
 		if (SMTFork() == 0)
