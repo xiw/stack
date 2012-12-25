@@ -51,7 +51,8 @@ bool AntiSimplify::runOnAntiFunction(Function &F) {
 		if (ConstVal != 0 && ConstVal != 1)
 			continue;
 		Diag.bug(DEBUG_TYPE);
-		Diag << "model: |\n" << *I << "\n";
+		Diag << "model: |\n" << *I << "\n  -->  "
+		     << (ConstVal ? "true" : "false") << "\n";
 		Diag.backtrace(I);
 		Constant *C = ConstantInt::get(T, ConstVal);
 		I->replaceAllUsesWith(C);
