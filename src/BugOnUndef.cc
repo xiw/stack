@@ -32,6 +32,17 @@ static bool isDeadArg(Instruction *I, unsigned Idx) {
 	return A->use_empty();
 }
 
+static bool isDeadRet(Function *F) {
+	for (Function::use_iterator i = F->use_begin(), e = F->use_end(); i != e; ++i) {
+		CallSite CS(*i);
+		if (!CS)
+			return false;
+		if (!CS->use_empty())
+			return false;
+	}
+	return true;
+}
+
 bool BugOnUndef::visit(Instruction *I) {
 	// It's okay to have undef in phi's operands.
 	// TODO: catch conditional undefs.
@@ -39,6 +50,11 @@ bool BugOnUndef::visit(Instruction *I) {
 		return false;
 	if (isa<InsertValueInst>(I) || isa<InsertElementInst>(I))
 		return false;
+	// Allow ret undef is the return value is never used.
+	if (isa<ReturnInst>(I)) {
+		if (isDeadRet(I->getParent()->getParent()))
+			return false;
+	}
 	// If any operand is undef, this instruction must not be reachable.
 	for (unsigned i = 0, n = I->getNumOperands(); i != n; ++i) {
 		Value *V = I->getOperand(i);
