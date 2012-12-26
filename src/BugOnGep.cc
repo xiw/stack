@@ -78,7 +78,8 @@ bool BugOnGep::visit(Instruction *I) {
 	);
 	// Bug condition: end > uintptr_max.
 	{
-		Value *V = Builder->CreateICmpSGT(End, Constant::getAllOnesValue(PtrIntExTy));
+		Value *PtrMax = Builder->CreateZExt(Constant::getAllOnesValue(PtrIntTy), PtrIntExTy);
+		Value *V = Builder->CreateICmpSGT(End, PtrMax);
 		Changed |= insert(V, "pointer overflow");
 	}
 	// Bug condition: end < 0.
