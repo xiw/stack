@@ -2,12 +2,10 @@
 // for C++ delete.
 
 #define DEBUG_TYPE "simplify-delete"
-#include <llvm/Constants.h>
+#include <llvm/BasicBlock.h>
+#include <llvm/Function.h>
 #include <llvm/Instructions.h>
 #include <llvm/Pass.h>
-#include <llvm/Analysis/MemoryBuiltins.h>
-#include <llvm/Support/InstIterator.h>
-#include <llvm/Target/TargetLibraryInfo.h>
 
 using namespace llvm;
 
@@ -19,31 +17,28 @@ struct SimplifyDelete : FunctionPass {
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		AU.setPreservesCFG();
-		AU.addRequired<TargetLibraryInfo>();
 	}
 
 	virtual bool runOnFunction(Function &);
 
 private:
-	bool visitFreeCall(CallInst *);
+	bool visitDeleteBB(BasicBlock *);
 };
 
 } // anonymous namespace
 
 bool SimplifyDelete::runOnFunction(Function &F) {
-	TargetLibraryInfo *TLI = &getAnalysis<TargetLibraryInfo>();
 	bool Changed = false;
-	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
-		if (CallInst *I = isFreeCall(&*i, TLI))
-			Changed |= visitFreeCall(I);
-	}
+	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i)
+		Changed |= visitDeleteBB(i);
 	return Changed;
 }
 
-bool SimplifyDelete::visitFreeCall(CallInst *I) {
-	// TODO: we could check if anything going on after the call.
-	Value *P = I->getArgOperand(0)->stripPointerCasts();
-	BasicBlock *BB = I->getParent();
+bool SimplifyDelete::visitDeleteBB(BasicBlock *BB) {
+	// Clang emits BB with this special name for BB.
+	// It works better with overloaded delete.
+	if (!BB->getName().startswith("delete.notnull"))
+		return false;
 	BasicBlock *Pred = BB->getSinglePredecessor();
 	if (!Pred)
 		return false;
@@ -54,22 +49,6 @@ bool SimplifyDelete::visitFreeCall(CallInst *I) {
 	if (!ICI || !ICI->isEquality())
 		return false;
 	if (ICI->getDebugLoc().isUnknown())
-		return false;
-	switch (ICI->getPredicate()) {
-	default: return false;
-	case CmpInst::ICMP_EQ:
-		if (BI->getSuccessor(1) != BB)
-			return false;
-		break;
-	case CmpInst::ICMP_NE:
-		if (BI->getSuccessor(0) != BB)
-			return false;
-		break;
-	}
-	Value *L = ICI->getOperand(0)->stripPointerCasts();
-	Value *R = ICI->getOperand(1)->stripPointerCasts();
-	if (!((L == P && isa<ConstantPointerNull>(R))
-	   || (R == P && isa<ConstantPointerNull>(L))))
 		return false;
 	// Remove debugging information to ignore the check.
 	ICI->setDebugLoc(DebugLoc());
