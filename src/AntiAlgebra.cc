@@ -5,11 +5,12 @@
 // Emit an warning if the two forms of the same comparison are only
 // equivalent under bug-free assertions.
 
-#define DEBUG_TYPE "anti-peephole"
+#define DEBUG_TYPE "anti-algebra"
 #include "AntiFunctionPass.h"
 #include "Diagnostic.h"
 #include <llvm/Constants.h>
 #include <llvm/Instructions.h>
+#include <llvm/Operator.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpander.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
@@ -21,9 +22,9 @@ using namespace llvm;
 
 namespace {
 
-struct AntiPeephole : AntiFunctionPass {
+struct AntiAlgebra : AntiFunctionPass {
 	static char ID;
-	AntiPeephole() : AntiFunctionPass(ID) {}
+	AntiAlgebra() : AntiFunctionPass(ID) {}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		AntiFunctionPass::getAnalysisUsage(AU);
@@ -49,7 +50,7 @@ private:
 
 } // anonymous namespace
 
-bool AntiPeephole::runOnAntiFunction(Function &F) {
+bool AntiAlgebra::runOnAntiFunction(Function &F) {
 	SE = &getAnalysis<ScalarEvolution>();
 	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
@@ -69,7 +70,7 @@ static unsigned getNumTerms(const SCEV *S) {
 	return 1;
 }
 
-bool AntiPeephole::visitICmpInst(ICmpInst *I) {
+bool AntiAlgebra::visitICmpInst(ICmpInst *I) {
 	const SCEV *L = SE->getSCEV(I->getOperand(0));
 	const SCEV *R = SE->getSCEV(I->getOperand(1));
 	const SCEV *S = SE->getMinusSCEV(L, R);
@@ -84,19 +85,23 @@ bool AntiPeephole::visitICmpInst(ICmpInst *I) {
 	// Transform (lhs op rhs) to ((lhs - rhs) op 0).
 	ICmpInst *NewCmp = new ICmpInst(I, I->getSignedPredicate(), V, Z);
 	NewCmp->setDebugLoc(I->getDebugLoc());
-	if (!checkEqv(I, NewCmp)) {
-		//RecursivelyDeleteTriviallyDeadInstructions(NewCmp, TLI);
+	int isEqv = 0;
+	if (SMTFork() == 0)
+		isEqv = checkEqv(I, NewCmp);
+	SMTJoin(&isEqv);
+	if (!isEqv) {
+		RecursivelyDeleteTriviallyDeadInstructions(NewCmp, TLI);
 		return false;
 	}
 	Diag.bug(DEBUG_TYPE);
 	Diag << "model: |\n" << *I << "\n  -->" << *NewCmp << "\n";
 	Diag.backtrace(I);
 	I->replaceAllUsesWith(NewCmp);
-	//RecursivelyDeleteTriviallyDeadInstructions(I, TLI);
+	RecursivelyDeleteTriviallyDeadInstructions(I, TLI);
 	return true;
 }
 
-int AntiPeephole::checkEqv(ICmpInst *I0, ICmpInst *I1) {
+int AntiAlgebra::checkEqv(ICmpInst *I0, ICmpInst *I1) {
 	SMTSolver SMT(false);
 	ValueGen VG(*DL, SMT);
 	PathGen PG(VG, Backedges, *DT);
@@ -123,7 +128,7 @@ int AntiPeephole::checkEqv(ICmpInst *I0, ICmpInst *I1) {
 	return isEqv;
 }
 
-char AntiPeephole::ID;
+char AntiAlgebra::ID;
 
-static RegisterPass<AntiPeephole>
-X("anti-peephole", "Anti Peephole Optimization");
+static RegisterPass<AntiAlgebra>
+X("anti-algebra", "Anti Algebra Optimization");
