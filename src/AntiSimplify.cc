@@ -7,8 +7,6 @@
 #include "Diagnostic.h"
 #include <llvm/Constants.h>
 #include <llvm/Instructions.h>
-#include <llvm/Pass.h>
-#include <llvm/Support/Debug.h>
 #include <llvm/Support/InstIterator.h>
 
 using namespace llvm;
