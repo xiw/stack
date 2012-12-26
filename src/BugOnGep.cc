@@ -4,6 +4,7 @@
 #include "BugOn.h"
 #include <llvm/DataLayout.h>
 #include <llvm/Operator.h>
+#include <llvm/Transforms/Utils/Local.h>
 
 using namespace llvm;
 
@@ -36,59 +37,31 @@ bool BugOnGep::visit(Instruction *I) {
 	GEPOperator *GEP = dyn_cast<GEPOperator>(I);
 	if (!GEP || !GEP->isInBounds())
 		return false;
-	// For now we only deal with gep with one index (e.g., array).
-	if (GEP->getNumIndices() > 1)
-		return false;
 	// Ignore zero index.
 	if (GEP->hasAllZeroIndices())
 		return false;
 	Value *P = GEP->getPointerOperand();
-	Type *ElemTy = cast<PointerType>(P->getType())->getElementType();
+	Value *Offset = EmitGEPOffset(Builder, *DL, GEP);
 	unsigned PtrBits = DL->getPointerSizeInBits(/*GEP->getPointerAddressSpace()*/);
-	LLVMContext &VMCtx = ElemTy->getContext();
-	IntegerType *PtrIntTy = Type::getIntNTy(VMCtx, PtrBits);
-	APInt ElemSize(PtrBits, DL->getTypeAllocSize(ElemTy));
-	bool Changed = false;
-	// Sign-extend index.
-	Value *Idx = createSExtOrTrunc(*GEP->idx_begin(), PtrIntTy);
-	Value *Offset;
-	if (ElemSize.ugt(1)) {
-		// idx * elemsize overflows.
-		{
-			APInt Hi = APInt::getSignedMaxValue(PtrBits).sdiv(ElemSize);
-			Value *V = Builder->CreateICmpSGT(Idx, ConstantInt::get(VMCtx, Hi));
-			Changed |= insert(V, "pointer overflow");
-		}
-		// idx * elemsize underflows.
-		{
-			APInt Lo = APInt::getSignedMinValue(PtrBits).sdiv(ElemSize);
-			Value *V = Builder->CreateICmpSLT(Idx, ConstantInt::get(VMCtx, Lo));
-			Changed |= insert(V, "pointer overflow");
-		}
-		Offset = Builder->CreateMul(ConstantInt::get(VMCtx, ElemSize), Idx);
-	} else {
-		Offset = Idx;
-	}
-	// Extend pointers to n + 1 bits to avoid overflow.
+	LLVMContext &VMCtx = I->getContext();
+	// Extend to n + 1 bits to avoid overflowing ptr + offset.
 	IntegerType *PtrIntExTy = Type::getIntNTy(VMCtx, PtrBits + 1);
-	// end = ptr + idx * elemsize.
 	Value *End = Builder->CreateAdd(
 		Builder->CreatePtrToInt(P, PtrIntExTy),
 		createSExtOrTrunc(Offset, PtrIntExTy)
 	);
-	// Bug condition: end > uintptr_max.
+	// Bug condition: ptr + offset > uintptr_max.
 	{
-		Value *PtrMax = Builder->CreateZExt(Constant::getAllOnesValue(PtrIntTy), PtrIntExTy);
+		Value *PtrMax = ConstantInt::get(VMCtx, APInt::getMaxValue(PtrBits).zext(PtrBits + 1));
 		Value *V = Builder->CreateICmpSGT(End, PtrMax);
-		Changed |= insert(V, "pointer overflow");
+		insert(V, "pointer overflow");
 	}
-	// Bug condition: end < 0.
+	// Bug condition: ptr + offset < 0.
 	{
 		Value *V = Builder->CreateICmpSLT(End, Constant::getNullValue(PtrIntExTy));
-		Changed |= insert(V, "pointer overflow");
+		insert(V, "pointer overflow");
 	}
-	// TODO: more constraints if we can extract the allocation size.
-	return Changed;
+	return true;
 }
 
 char BugOnGep::ID;

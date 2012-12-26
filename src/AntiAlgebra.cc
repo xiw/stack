@@ -10,7 +10,6 @@
 #include "Diagnostic.h"
 #include <llvm/Constants.h>
 #include <llvm/Instructions.h>
-#include <llvm/Operator.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpander.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
