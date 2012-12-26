@@ -6,12 +6,17 @@
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/Support/CFG.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <algorithm>
 #include <cxxabi.h>
 
 using namespace llvm;
+
+static cl::opt<bool>
+IgnorePostOpt("ignore-bugon-post",
+              cl::desc("Ignore bugon conditions on post-dominators"));
 
 AntiFunctionPass::AntiFunctionPass(char &ID) : FunctionPass(ID) {
 	PassRegistry &Registry = *PassRegistry::getPassRegistry();
@@ -41,6 +46,9 @@ static std::string demangle(Function &F) {
 static void calculateBackedges(Function &F, SmallVectorImpl<PathGen::Edge> &Backedges, SmallVectorImpl<BasicBlock *> &InLoopBlocks) {
 	FindFunctionBackedges(F, Backedges);
 	if (Backedges.empty())
+		return;
+	// No need to calculate InLoopBlocks if post-dominators are ignored.
+	if (IgnorePostOpt)
 		return;
 	for (scc_iterator<Function *> i = scc_begin(&F), e = scc_end(&F); i != e; ++i) {
 		if (i.hasLoop())
@@ -75,18 +83,22 @@ void AntiFunctionPass::recalculate(Function &F) {
 
 SMTExpr AntiFunctionPass::getDeltaForBlock(BasicBlock *BB, ValueGen &VG) {
 	SmallVector<SMTExpr, 32> Dom;
-	bool BBInLoop = (std::find(InLoopBlocks.begin(), InLoopBlocks.end(), BB) != InLoopBlocks.end());
+	// Ignore post-dominators if the option is set or BB is in a loop.
+	bool IgnorePostdom = IgnorePostOpt
+		|| (std::find(InLoopBlocks.begin(), InLoopBlocks.end(), BB) != InLoopBlocks.end());
 	Function *F = BB->getParent();
 	for (Function::iterator i = F->begin(), e = F->end(); i != e; ++i) {
 		BasicBlock *Blk = i;
 		// Collect blocks that (post)dominate BB: if BB is reachable,
 		// these blocks must also be reachable, and we need to check
 		// their bug assertions.
-		bool dom = DT->dominates(Blk, BB);
-		// Skip inspecting postdominators if BB is in a loop.
-		bool postdom = BBInLoop ? false : PDT->dominates(Blk, BB);
-		if (!dom && !postdom)
-			continue;
+		if (!DT->dominates(Blk, BB)) {
+			// Skip inspecting postdominators if BB is in a loop.
+			if (IgnorePostdom)
+				continue;
+			if (!PDT->dominates(Blk, BB))
+				continue;
+		}
 		for (BasicBlock::iterator i = Blk->begin(), e = Blk->end(); i != e; ++i) {
 			CallInst *CI = dyn_cast<CallInst>(i);
 			if (!CI || CI->getCalledFunction() != BugOn)
