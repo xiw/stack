@@ -1,6 +1,6 @@
 #!/bin/bash
 
 DIR=$(dirname "${BASH_SOURCE[0]}")
-ABS_DIR=$(cd "${DIR}"; pwd)
+ABS_DIR=$(cd "${DIR}/kint"; pwd)
 export PATH="${ABS_DIR}:${PATH}"
 "$@"

@@ -28,11 +28,11 @@ AC_CONFIG_FILES([
 	doc/Makefile
 ])
 AC_CONFIG_LINKS([
-	bin/gcc:test/gcc
-	bin/g++:test/g++
-	bin/cc:test/gcc
-	bin/c++:test/g++
-	bin/kint-cc1:test/kint-cc1
+	bin/kint/gcc:test/gcc
+	bin/kint/g++:test/g++
+	bin/kint/cc:test/gcc
+	bin/kint/c++:test/g++
+	bin/kint/cc1:test/cc1
 	bin/kint-build:test/kint-build
 	bin/ncpu:src/ncpu
 	bin/intck:src/intck
