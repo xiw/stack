@@ -1,184 +1,126 @@
+// This pass simplifies expressions via "transposition" of formulae.
+// Consider a comparison lhs < rhs.  The basic idea is to represent
+// each side as a symbolic expression (e.g., p + x < p), and transform
+// the comparison into lhs - rhs < 0 for simplification (e.g., x < 0).
+// Emit an warning if the two forms of the same comparison are only
+// equivalent under bug-free assertions.
+
 #define DEBUG_TYPE "anti-peephole"
-#include <llvm/DataLayout.h>
-#include <llvm/Instructions.h>
-#include <llvm/Module.h>
-#include <llvm/Pass.h>
-#include <llvm/PassManager.h>
-#include <llvm/ADT/OwningPtr.h>
-#include <llvm/ADT/SmallVector.h>
-#include <llvm/ADT/Triple.h>
-#include <llvm/Support/InstIterator.h>
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/Target/TargetLibraryInfo.h>
-#include <llvm/Transforms/Scalar.h>
-#include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include <llvm/Transforms/Utils/Cloning.h>
+#include "AntiFunctionPass.h"
 #include "Diagnostic.h"
-#include "PathGen.h"
-#include "ValueGen.h"
+#include <llvm/Constants.h>
+#include <llvm/Instructions.h>
+#include <llvm/Analysis/ScalarEvolution.h>
+#include <llvm/Analysis/ScalarEvolutionExpander.h>
+#include <llvm/Analysis/ScalarEvolutionExpressions.h>
+#include <llvm/Support/InstIterator.h>
+#include <llvm/Target/TargetLibraryInfo.h>
+#include <llvm/Transforms/Utils/Local.h>
 
 using namespace llvm;
 
 namespace {
 
-struct AntiPeephole : FunctionPass {
+struct AntiPeephole : AntiFunctionPass {
 	static char ID;
-	AntiPeephole() : FunctionPass(ID) {}
-	virtual bool doInitialization(Module &);
-	virtual bool runOnFunction(Function &);
-	virtual bool doFinalization(Module &);
-private:
-	OwningPtr<FunctionPassManager> FPM;
-	DataLayout *DL;
-	Diagnostic Diag;
-	SmallVector<PathGen::Edge, 32> BackEdges0, BackEdges1;
-	ValueToValueMapTy VMap;
+	AntiPeephole() : AntiFunctionPass(ID) {}
 
-	void checkEqv(BasicBlock *BB1);
+	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+		AntiFunctionPass::getAnalysisUsage(AU);
+		AU.addRequired<ScalarEvolution>();
+		AU.setPreservesCFG();
+	}
+
+	virtual bool doInitialization(Module &) {
+		TLI = getAnalysisIfAvailable<TargetLibraryInfo>();
+		return false;
+	}
+
+	virtual bool runOnAntiFunction(Function &);
+
+private:
+	Diagnostic Diag;
+	TargetLibraryInfo *TLI;
+	ScalarEvolution *SE;
+
+	bool visitICmpInst(ICmpInst *I);
+	int checkEqv(ICmpInst *Old, ICmpInst *New);
 };
 
 } // anonymous namespace
 
-bool AntiPeephole::doInitialization(Module &M) {
-	FPM.reset(new FunctionPassManager(&M));
-	DL = new DataLayout(&M);
-	TargetLibraryInfo *TLI = new TargetLibraryInfo(Triple(M.getTargetTriple()));
-	// TODO: -fno-builtin
-	// TLI->disableAllFunctions();
-	Pass *P = createInstructionCombiningPass();
-	FPM->add(DL);
-	FPM->add(TLI);
-	FPM->add(P);
-	return FPM->doInitialization();
-}
-
-bool AntiPeephole::doFinalization(Module &) {
-	return FPM->doFinalization();
-}
-
-static bool isRecomputable(Instruction *I) {
-	Type *T = I->getType();
-	if (!T->isIntegerTy() && !T->isPointerTy())
-		return false;
-	if (isa<BinaryOperator>(I))
-		return true;
-	switch (I->getOpcode()) {
-	default: break;
-	// Don't clone readonly calls for now; we need to compare its
-	// parameters otherwise.
-#if 0
-	case Instruction::Call:
-		return cast<CallInst>(I)->doesNotAccessMemory();
-#endif
-	case Instruction::ExtractElement:
-	case Instruction::ExtractValue:
-	case Instruction::GetElementPtr:
-	case Instruction::Trunc:
-	case Instruction::ZExt:
-	case Instruction::SExt:
-	case Instruction::PtrToInt:
-	case Instruction::IntToPtr:
-	case Instruction::BitCast:
-	case Instruction::ICmp:
-	case Instruction::PHI:
-	case Instruction::Select:
-		return true;
+bool AntiPeephole::runOnAntiFunction(Function &F) {
+	SE = &getAnalysis<ScalarEvolution>();
+	bool Changed = false;
+	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
+		Instruction *I = &*i++;
+		if (!hasSingleDebugLocation(I))
+			continue;
+		// For now we are only interested in comparisons.
+		if (ICmpInst *ICI = dyn_cast<ICmpInst>(I))
+			Changed |= visitICmpInst(ICI);
 	}
-	return false;
+	return Changed;
 }
 
-bool AntiPeephole::runOnFunction(Function &F) {
-	// VMap stores values F => Clone.
-	VMap.clear();
-	// No need to clone arguments.
-	for (Function::arg_iterator i = F.arg_begin(), e = F.arg_end(); i != e; ++i)
-		VMap[i] = i;
-	// Make a clone of F before running P.
-	OwningPtr<Function> Clone(CloneFunction(&F, VMap, false));
-	// Run P over F.
-	if (!FPM->run(F))
+static unsigned getNumTerms(const SCEV *S) {
+	if (const SCEVAddExpr *Add = dyn_cast<SCEVAddExpr>(S))
+		return Add->getNumOperands();
+	return 1;
+}
+
+bool AntiPeephole::visitICmpInst(ICmpInst *I) {
+	const SCEV *L = SE->getSCEV(I->getOperand(0));
+	const SCEV *R = SE->getSCEV(I->getOperand(1));
+	const SCEV *S = SE->getMinusSCEV(L, R);
+	// Is S simpler than L and R?
+	if (getNumTerms(S) >= getNumTerms(L) + getNumTerms(R))
 		return false;
-	// Check if P made any changes.
-	BackEdges0.clear();
-	FindFunctionBackedges(*Clone, BackEdges0);
-	BackEdges1.clear();
-	FindFunctionBackedges(F, BackEdges1);
-	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i)
-		checkEqv(i);
+	SCEVExpander Expander(*SE, "");
+	LLVMContext &C = I->getContext();
+	IntegerType *T = IntegerType::get(C, DL->getTypeSizeInBits(S->getType()));
+	Value *V = Expander.expandCodeFor(S, T, I);
+	Value *Z = Constant::getNullValue(T);
+	// Transform (lhs op rhs) to ((lhs - rhs) op 0).
+	ICmpInst *NewCmp = new ICmpInst(I, I->getSignedPredicate(), V, Z);
+	NewCmp->setDebugLoc(I->getDebugLoc());
+	if (!checkEqv(I, NewCmp)) {
+		//RecursivelyDeleteTriviallyDeadInstructions(NewCmp, TLI);
+		return false;
+	}
+	Diag.bug(DEBUG_TYPE);
+	Diag << "model: |\n" << *I << "\n  -->" << *NewCmp << "\n";
+	Diag.backtrace(I);
+	I->replaceAllUsesWith(NewCmp);
+	//RecursivelyDeleteTriviallyDeadInstructions(I, TLI);
 	return true;
 }
 
-void AntiPeephole::checkEqv(BasicBlock *BB1) {
-	BasicBlock *BB0 = cast<BasicBlock>(VMap.lookup(BB1));
-	BranchInst *Br0 = dyn_cast<BranchInst>(BB0->getTerminator());
-	if (!Br0 || Br0->isUnconditional())
-		return;
-	BranchInst *Br1 = dyn_cast<BranchInst>(BB1->getTerminator());
-	if (!Br1 || Br1->isUnconditional())
-		return;
-	bool SuccSwapped = (Br0->getSuccessor(0) != VMap.lookup(Br1->getSuccessor(0)));
-
-	SMTSolver SMT(true);
+int AntiPeephole::checkEqv(ICmpInst *I0, ICmpInst *I1) {
+	SMTSolver SMT(false);
 	ValueGen VG(*DL, SMT);
-
-	// Establish equivalence via cloning.
-	for (ValueToValueMapTy::iterator i = VMap.begin(), e = VMap.end(); i != e; ++i) {
-		Instruction *I0 = dyn_cast<Instruction>(i->second);
-		Instruction *I1 = const_cast<Instruction *>(dyn_cast<Instruction>(i->first));
-		if (!I0 || !I1)
-			continue;
-		Type *T = I0->getType();
-		assert(T == I1->getType());
-		if (!ValueGen::isAnalyzable(T))
-			continue;
-		if (!isRecomputable(I0)) {
-			SMTExpr E = SMT.eq(VG.get(I0), VG.get(I1));
-			SMT.assume(E);
-			SMT.decref(E);
+	PathGen PG(VG, Backedges, *DT);
+	int isEqv = 0;
+	SMTExpr E0 = VG.get(I0);
+	SMTExpr E1 = VG.get(I1);
+	SMTExpr Q = SMT.ne(E0, E1);
+	BasicBlock *BB = I0->getParent();
+	SMTExpr R = PG.get(BB);
+	SMT.assume(R);
+	// E0 != E1 without bug-free assertions; must be reachable as well.
+	if (SMT.query(Q) == SMT_SAT) {
+		SMTExpr Delta = getDeltaForBlock(BB, VG);
+		if (Delta) {
+			SMT.assume(Delta);
+			SMT.decref(Delta);
+			// E0 == E1 with bug-free assertions.
+			int Status = SMT.query(Q);
+			if (Status == SMT_UNSAT)
+				isEqv = 1;
 		}
 	}
-
-	PathGen PG0(VG, BackEdges0), PG1(VG, BackEdges1);
-	// First make sure the path conditions are the same.
-	// Avoid repeating warnings from previous BBs.
-	SMTExpr P0 = PG0.get(BB0), P1 = PG1.get(BB1);
-	SMTExpr Query = SMT.ne(P0, P1);
-	SMTStatus Status = SMT.query(Query);
-	SMT.decref(Query);
-	if (Status != SMT_UNSAT)
-		return;
-
-	Value *V0 = Br0->getCondition();
-	SMTExpr Cond0 = VG.get(V0);
-	SMTExpr NewP0 = SMT.bvand(Cond0, P0);
-
-	Value *V1 = Br1->getCondition();
-	SMTExpr Cond1 = VG.get(V1);
-	SMTExpr NewP1;
-	if (SuccSwapped) {
-		SMTExpr Tmp = SMT.bvnot(Cond1);
-		NewP1 = SMT.bvand(Tmp, P1);
-		SMT.decref(Tmp);
-	} else {
-		NewP1 = SMT.bvand(Cond1, P1);
-	}
-
-	// Then we check if the conditions change with the new branching.
-	Query = SMT.ne(NewP0, NewP1);
-	SMT.decref(NewP0);
-	SMT.decref(NewP1);
-	Status = SMT.query(Query);
-	SMT.decref(Query);
-	if (Status == SMT_UNSAT)
-		return;
-
-	// Output model.
-	Diag.bug(DEBUG_TYPE);
-	Diag << "model: |\n";
-	Diag << "  <<<" << (isa<Instruction>(V0) ? "" : "  ") << *V0 << '\n';
-	Diag << "  >>>" << (isa<Instruction>(V1) ? "" : "  ") << *V1 << '\n';
-	Instruction *Loc = isa<Instruction>(V0) ? cast<Instruction>(V0) : Br0;
-	Diag.backtrace(Loc);
+	SMT.decref(Q);
+	return isEqv;
 }
 
 char AntiPeephole::ID;
