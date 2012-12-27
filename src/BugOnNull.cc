@@ -11,7 +11,7 @@ struct BugOnNull : BugOnPass {
 	static char ID;
 	BugOnNull() : BugOnPass(ID) {}
 
-	virtual bool runOnFunction(llvm::Function &);
+	virtual bool runOnFunction(Function &);
 	virtual bool visit(Instruction *);
 
 private:
@@ -20,7 +20,7 @@ private:
 
 } // anonymous namespace
 
-bool BugOnNull::runOnFunction(llvm::Function &F) {
+bool BugOnNull::runOnFunction(Function &F) {
 	DL = getAnalysisIfAvailable<DataLayout>();
 	return super::runOnFunction(F);
 }
