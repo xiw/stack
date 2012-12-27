@@ -24,6 +24,9 @@ struct BugOnGep : BugOnPass {
 
 private:
 	DataLayout *DL;
+
+	bool insertIndexOverflow(GEPOperator *GEP);
+	bool insertOffsetOverflow(GEPOperator *GEP);
 };
 
 } // anonymous namespace
@@ -40,10 +43,50 @@ bool BugOnGep::visit(Instruction *I) {
 	// Ignore zero index.
 	if (GEP->hasAllZeroIndices())
 		return false;
+	bool Changed = false;
+	Changed |= insertIndexOverflow(GEP);
+	Changed |= insertOffsetOverflow(GEP);
+	return Changed;
+}
+
+bool BugOnGep::insertIndexOverflow(GEPOperator *GEP) {
+	bool Changed = false;
+#if 0
+	LLVMContext &VMCtx = GEP->getContext();
+	unsigned PtrBits = DL->getPointerSizeInBits(/*GEP->getPointerAddressSpace()*/);
+	IntegerType *PtrIntTy = Type::getIntNTy(VMCtx, PtrBits);
+	gep_type_iterator GTI = gep_type_begin(GEP);
+        for (GEPOperator::op_iterator i = GEP->idx_begin(),
+	     e = GEP->idx_end(); i != e; ++i, ++GTI) {
+		if (isa<StructType>(*GTI))
+			continue;
+	        Type *IndexedTy = GTI.getIndexedType();
+	        if (!IndexedTy->isSized())
+			continue;
+		APInt Size(PtrBits, DL->getTypeAllocSize(IndexedTy));
+		Value *Index = createSExtOrTrunc(*i, PtrIntTy);
+		// Bug condition: index * size overflows.
+		{
+			APInt Hi = APInt::getSignedMaxValue(PtrBits).sdiv(Size);
+			Value *V = Builder->CreateICmpSGT(Index, ConstantInt::get(VMCtx, Hi));
+			Changed |= insert(V, "pointer overflow");
+		}
+		// Bug condition: index * size underflows.
+		{
+			APInt Lo = APInt::getSignedMinValue(PtrBits).sdiv(Size);
+			Value *V = Builder->CreateICmpSLT(Index, ConstantInt::get(VMCtx, Lo));
+			Changed |= insert(V, "pointer overflow");
+		}
+	}
+#endif
+	return Changed;
+}
+
+bool BugOnGep::insertOffsetOverflow(GEPOperator *GEP) {
 	Value *P = GEP->getPointerOperand();
 	Value *Offset = EmitGEPOffset(Builder, *DL, GEP);
 	unsigned PtrBits = DL->getPointerSizeInBits(/*GEP->getPointerAddressSpace()*/);
-	LLVMContext &VMCtx = I->getContext();
+	LLVMContext &VMCtx = GEP->getContext();
 	// Extend to n + 1 bits to avoid overflowing ptr + offset.
 	IntegerType *PtrIntExTy = Type::getIntNTy(VMCtx, PtrBits + 1);
 	Value *End = Builder->CreateAdd(
