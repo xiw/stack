@@ -18,7 +18,8 @@ kint_bindir = os.path.join("@abs_top_builddir@", 'bin')
 path = os.path.pathsep.join( (kint_bindir, config.test_source_root, llvm_bindir, config.environment['PATH']) )
 config.environment['PATH'] = path
 
-cc      = 'kint-cc1 -c -o -'
-linuxcc = 'kint-cc1 -nostdinc -fno-builtin -c -o -'
+cc1     = os.path.join(kint_bindir, 'kint', 'cc1')
+cc      = cc1 + ' -c -o -'
+linuxcc = cc1 + ' -nostdinc -fno-builtin -c -o -'
 config.substitutions.append( ('%cc', cc) )
 config.substitutions.append( ('%linuxcc', linuxcc) )
