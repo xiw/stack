@@ -1,4 +1,5 @@
 #include <llvm/IRBuilder.h>
+#include <llvm/Intrinsics.h>
 #include <llvm/Pass.h>
 
 llvm::Function *getBugOn(llvm::Module *);
@@ -27,6 +28,14 @@ protected:
 	Value *createIsNull(Value *);
 	Value *createIsNotNull(Value *);
 	Value *createIsZero(Value *);
+	Value *createIsWrap(llvm::Intrinsic::ID, Value *, Value *);
+	Value *createIsSAddWrap(Value *, Value *);
+	Value *createIsUAddWrap(Value *, Value *);
+	Value *createIsSSubWrap(Value *, Value *);
+	Value *createIsUSubWrap(Value *, Value *);
+	Value *createIsSMulWrap(Value *, Value *);
+	Value *createIsUMulWrap(Value *, Value *);
+	Value *createIsSDivWrap(Value *, Value *);
 	Value *createAnd(Value *, Value *);
 	Value *createSExtOrTrunc(Value *, llvm::IntegerType *);
 

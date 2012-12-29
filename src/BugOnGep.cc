@@ -63,20 +63,11 @@ bool BugOnGep::insertIndexOverflow(GEPOperator *GEP) {
 	        Type *IndexedTy = GTI.getIndexedType();
 	        if (!IndexedTy->isSized())
 			continue;
-		APInt Size(PtrBits, DL->getTypeAllocSize(IndexedTy));
+		Value *Size = ConstantInt::get(PtrIntTy, DL->getTypeAllocSize(IndexedTy));
 		Value *Index = createSExtOrTrunc(*i, PtrIntTy);
-		// Bug condition: index * size overflows.
-		{
-			APInt Hi = APInt::getSignedMaxValue(PtrBits).sdiv(Size);
-			Value *V = Builder->CreateICmpSGT(Index, ConstantInt::get(VMCtx, Hi));
-			Changed |= insert(V, "pointer overflow");
-		}
-		// Bug condition: index * size underflows.
-		{
-			APInt Lo = APInt::getSignedMinValue(PtrBits).sdiv(Size);
-			Value *V = Builder->CreateICmpSLT(Index, ConstantInt::get(VMCtx, Lo));
-			Changed |= insert(V, "pointer overflow");
-		}
+		// Bug condition: size * index overflows.
+		Value *V = createIsSMulWrap(Size, Index);
+		Changed |= insert(V, "pointer overflow");
 	}
 #endif
 	return Changed;

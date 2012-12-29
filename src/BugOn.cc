@@ -94,6 +94,49 @@ Value *BugOnPass::createIsNotNull(Value *V) {
 	return Builder->CreateIsNotNull(V);
 }
 
+Value *BugOnPass::createIsWrap(Intrinsic::ID ID, Value *L, Value *R) {
+	Type *T = L->getType();
+	assert(T == R->getType() && "Type mismatch!");
+	Function *F = Intrinsic::getDeclaration(getModule(), ID, T);
+	return Builder->CreateExtractValue(Builder->CreateCall2(F, L, R), 1);
+}
+
+Value *BugOnPass::createIsSAddWrap(Value *L, Value *R) {
+	return createIsWrap(Intrinsic::sadd_with_overflow, L, R);
+}
+
+Value *BugOnPass::createIsUAddWrap(Value *L, Value *R) {
+	return createIsWrap(Intrinsic::uadd_with_overflow, L, R);
+}
+
+Value *BugOnPass::createIsSSubWrap(Value *L, Value *R) {
+	return createIsWrap(Intrinsic::ssub_with_overflow, L, R);
+}
+
+Value *BugOnPass::createIsUSubWrap(Value *L, Value *R) {
+	return createIsWrap(Intrinsic::usub_with_overflow, L, R);
+}
+
+Value *BugOnPass::createIsSMulWrap(Value *L, Value *R) {
+	return createIsWrap(Intrinsic::smul_with_overflow, L, R);
+}
+
+Value *BugOnPass::createIsUMulWrap(Value *L, Value *R) {
+	return createIsWrap(Intrinsic::umul_with_overflow, L, R);
+}
+
+Value *BugOnPass::createIsSDivWrap(Value *L, Value *R) {
+	Type *T = L->getType();
+	assert(T == R->getType() && "Type mismatch!");
+	unsigned n = T->getIntegerBitWidth();
+	Constant *SMin = ConstantInt::get(T, APInt::getSignedMinValue(n));
+	Constant *MinusOne = Constant::getAllOnesValue(T);
+	return createAnd(
+		Builder->CreateICmpEQ(L, SMin),
+		Builder->CreateICmpEQ(R, MinusOne)
+	);
+}
+
 Value *BugOnPass::createAnd(Value *L, Value *R) {
 	if (Constant *C = dyn_cast<Constant>(L)) {
 		if (C->isAllOnesValue())

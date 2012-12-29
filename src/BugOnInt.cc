@@ -12,9 +12,7 @@ struct BugOnInt : BugOnPass {
 	BugOnInt() : BugOnPass(ID) {}
 	virtual bool visit(Instruction *);
 private:
-	bool visitOverflowingOperator(Intrinsic::ID, IntegerType *, Value *L, Value *R, const char *Bug);
 	bool visitShiftOperator(IntegerType *, Value *R, const char *Bug);
-	bool visitSignedDivisionOperator(IntegerType *, Value *L, Value *R, const char *Bug);
 };
 
 } // anonymous namespace
@@ -33,31 +31,25 @@ bool BugOnInt::visit(Instruction *I) {
 	default: break;
 	case Instruction::Add:
 		if (BO->hasNoSignedWrap())
-			Changed |= visitOverflowingOperator(Intrinsic::sadd_with_overflow,
-					T, L, R, "signed addition overflow");
+			Changed |= insert(createIsSAddWrap(L, R), "signed addition overflow");
 		if (BO->hasNoUnsignedWrap())
-			Changed |= visitOverflowingOperator(Intrinsic::uadd_with_overflow,
-					T, L, R, "unsigned addition overflow");
+			Changed |= insert(createIsUAddWrap(L, R), "unsigned addition overflow");
 		break;
 	case Instruction::Sub:
 		if (BO->hasNoSignedWrap())
-			Changed |= visitOverflowingOperator(Intrinsic::ssub_with_overflow,
-					T, L, R, "signed subtraction overflow");
+			Changed |= insert(createIsSSubWrap(L, R), "signed subtraction overflow");
 		if (BO->hasNoUnsignedWrap())
-			Changed |= visitOverflowingOperator(Intrinsic::usub_with_overflow,
-					T, L, R, "unsigned subtraction overflow");
+			Changed |= insert(createIsUSubWrap(L, R), "unsigned subtraction overflow");
 		break;
 	case Instruction::Mul:
 		if (BO->hasNoSignedWrap())
-			Changed |= visitOverflowingOperator(Intrinsic::smul_with_overflow,
-					T, L, R, "signed multiplication overflow");
+			Changed |= insert(createIsSMulWrap(L, R), "signed multiplication overflow");
 		if (BO->hasNoUnsignedWrap())
-			Changed |= visitOverflowingOperator(Intrinsic::umul_with_overflow,
-					T, L, R, "unsigned multiplication overflow");
+			Changed |= insert(createIsUMulWrap(L, R), "unsigned multiplication overflow");
 		break;
 	case Instruction::SDiv:
 	case Instruction::SRem:
-		Changed |= visitSignedDivisionOperator(T, L, R, "signed division overflow");
+		Changed |= insert(createIsSDivWrap(L, R), "signed division overflow");
 		// Fall through.
 	case Instruction::UDiv:
 	case Instruction::URem:
@@ -84,26 +76,9 @@ bool BugOnInt::visit(Instruction *I) {
 	return Changed;
 }
 
-bool BugOnInt::visitOverflowingOperator(Intrinsic::ID ID, IntegerType *T, Value *L, Value *R, const char *Bug) {
-	Function *F = Intrinsic::getDeclaration(getModule(), ID, T);
-	Value *V = Builder->CreateExtractValue(Builder->CreateCall2(F, L, R), 1);
-	return insert(V, Bug);
-}
-
 bool BugOnInt::visitShiftOperator(IntegerType *T, Value *R, const char *Bug) {
 	Constant *BitWidth = ConstantInt::get(T, T->getBitWidth());
 	Value *V = Builder->CreateICmpUGE(R, BitWidth);
-	return insert(V, Bug);
-}
-
-bool BugOnInt::visitSignedDivisionOperator(IntegerType *T, Value *L, Value *R, const char *Bug) {
-	unsigned n = T->getBitWidth();
-	Constant *SMin = ConstantInt::get(T, APInt::getSignedMinValue(n));
-	Constant *MinusOne = Constant::getAllOnesValue(T);
-	Value *V = createAnd(
-		Builder->CreateICmpEQ(L, SMin),
-		Builder->CreateICmpEQ(R, MinusOne)
-	);
 	return insert(V, Bug);
 }
 
