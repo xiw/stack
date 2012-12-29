@@ -76,7 +76,7 @@ void SMTSolver::dump(SMTExpr e_) {
 void SMTSolver::print(SMTExpr e_, raw_ostream &OS) {
 	FILE *fp = tmpfile();
 	assert(fp && "tmpfile");
-	boolector_dump_smt(ctx, fp, e);
+	boolector_dump_btor(ctx, fp, e);
 	long n = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 	char *s = (char *)malloc(n + 1);
