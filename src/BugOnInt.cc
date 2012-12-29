@@ -58,12 +58,12 @@ bool BugOnInt::runOnInstruction(Instruction *I) {
 	case Instruction::Shl:
 		Changed |= visitShiftOperator(T, R, "shift left overflow");
 		if (BO->hasNoSignedWrap()) {
-			Value *V = Builder->CreateICmpNE(L, Builder->CreateAShr(Builder->CreateShl(L, R), R));
-			Changed |= insert(V, "signed shift left overflow");
+			Value *Power = Builder->CreateShl(ConstantInt::get(T, 1), R);
+			Changed |= insert(createIsSMulWrap(L, Power), "signed shift left overflow");
 		}
 		if (BO->hasNoUnsignedWrap()) {
-			Value *V = Builder->CreateICmpNE(L, Builder->CreateLShr(Builder->CreateShl(L, R), R));
-			Changed |= insert(V, "unsigned shift left overflow");
+			Value *Power = Builder->CreateShl(ConstantInt::get(T, 1), R);
+			Changed |= insert(createIsUMulWrap(L, Power), "unsigned shift left overflow");
 		}
 		break;
 	case Instruction::LShr:
