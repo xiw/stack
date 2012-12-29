@@ -20,7 +20,7 @@ struct BugOnBounds : BugOnPass {
 	}
 
 	virtual bool runOnFunction(Function &);
-	virtual bool visit(Instruction *);
+	virtual bool runOnInstruction(Instruction *);
 
 private:
 	DataLayout *DL;
@@ -38,7 +38,7 @@ bool BugOnBounds::runOnFunction(llvm::Function &F) {
 	return super::runOnFunction(F);
 }
 
-bool BugOnBounds::visit(Instruction *I) {
+bool BugOnBounds::runOnInstruction(Instruction *I) {
 	Value *Ptr = NULL, *Val = NULL;
 	if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
 		Ptr = LI->getPointerOperand();

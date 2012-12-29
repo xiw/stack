@@ -20,7 +20,7 @@ struct BugOnGep : BugOnPass {
 	}
 	virtual bool runOnFunction(Function &);
 
-	virtual bool visit(Instruction *);
+	virtual bool runOnInstruction(Instruction *);
 
 private:
 	DataLayout *DL;
@@ -36,7 +36,7 @@ bool BugOnGep::runOnFunction(Function &F) {
         return super::runOnFunction(F);
 }
 
-bool BugOnGep::visit(Instruction *I) {
+bool BugOnGep::runOnInstruction(Instruction *I) {
 	GEPOperator *GEP = dyn_cast<GEPOperator>(I);
 	if (!GEP || !GEP->isInBounds())
 		return false;

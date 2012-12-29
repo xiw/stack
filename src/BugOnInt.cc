@@ -10,14 +10,14 @@ namespace {
 struct BugOnInt : BugOnPass {
 	static char ID;
 	BugOnInt() : BugOnPass(ID) {}
-	virtual bool visit(Instruction *);
+	virtual bool runOnInstruction(Instruction *);
 private:
 	bool visitShiftOperator(IntegerType *, Value *R, const char *Bug);
 };
 
 } // anonymous namespace
 
-bool BugOnInt::visit(Instruction *I) {
+bool BugOnInt::runOnInstruction(Instruction *I) {
 	BinaryOperator *BO = dyn_cast<BinaryOperator>(I);
 	if (!BO)
 		return false;

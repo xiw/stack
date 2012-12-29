@@ -14,7 +14,7 @@ struct BugOnUndef : BugOnPass {
 	static char ID;
 	BugOnUndef() : BugOnPass(ID) {}
 
-	virtual bool visit(Instruction *);
+	virtual bool runOnInstruction(Instruction *);
 };
 
 } // anonymous namespace
@@ -43,7 +43,7 @@ static bool isDeadRet(Function *F) {
 	return true;
 }
 
-bool BugOnUndef::visit(Instruction *I) {
+bool BugOnUndef::runOnInstruction(Instruction *I) {
 	// It's okay to have undef in phi's operands.
 	// TODO: catch conditional undefs.
 	if (isa<PHINode>(I) || isa<SelectInst>(I))

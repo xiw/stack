@@ -12,7 +12,7 @@ struct BugOnNull : BugOnPass {
 	BugOnNull() : BugOnPass(ID) {}
 
 	virtual bool runOnFunction(Function &);
-	virtual bool visit(Instruction *);
+	virtual bool runOnInstruction(Instruction *);
 
 private:
 	DataLayout *DL;
@@ -25,7 +25,7 @@ bool BugOnNull::runOnFunction(Function &F) {
 	return super::runOnFunction(F);
 }
 
-bool BugOnNull::visit(Instruction *I) {
+bool BugOnNull::runOnInstruction(Instruction *I) {
 	Value *P = NULL;
 	if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
 		if (!LI->isVolatile())

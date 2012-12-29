@@ -14,7 +14,7 @@ struct BugOnLinux : BugOnPass {
 	BugOnLinux() : BugOnPass(ID) {}
 
 	virtual bool doInitialization(Module &);
-	virtual bool visit(Instruction *);
+	virtual bool runOnInstruction(Instruction *);
 
 private:
 	typedef bool (BugOnLinux::*handler_t)(CallInst *);
@@ -40,7 +40,7 @@ bool BugOnLinux::doInitialization(Module &M) {
 	return false;
 }
 
-bool BugOnLinux::visit(Instruction *I) {
+bool BugOnLinux::runOnInstruction(Instruction *I) {
 	CallInst *CI = dyn_cast<CallInst>(I);
 	if (!CI)
 		return false;

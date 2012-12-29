@@ -13,7 +13,10 @@ namespace {
 
 struct BugOnAlias : BugOnPass {
 	static char ID;
-	BugOnAlias() : BugOnPass(ID) {}
+	BugOnAlias() : BugOnPass(ID) {
+		PassRegistry &Registry = *PassRegistry::getPassRegistry();
+		initializeDominatorTreePass(Registry);
+	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
@@ -21,7 +24,7 @@ struct BugOnAlias : BugOnPass {
 	}
 	virtual bool runOnFunction(Function &);
 
-	virtual bool visit(Instruction *);
+	virtual bool runOnInstruction(Instruction *);
 
 private:
 	DominatorTree *DT;
@@ -37,7 +40,7 @@ bool BugOnAlias::runOnFunction(Function &F) {
         return super::runOnFunction(F);
 }
 
-bool BugOnAlias::visit(Instruction *I) {
+bool BugOnAlias::runOnInstruction(Instruction *I) {
 	bool Changed = false;
 	if (ICmpInst *ICI = dyn_cast<ICmpInst>(I))
 		Changed |= visitICmpInst(ICI);

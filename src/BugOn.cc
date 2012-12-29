@@ -7,7 +7,7 @@ using namespace llvm;
 
 #define KINT_BUGON "kint.bugon"
 
-Function *getBugOn(Module *M) {
+Function *getBugOn(const Module *M) {
 	return M->getFunction(KINT_BUGON);
 }
 
@@ -19,6 +19,11 @@ Function *getOrInsertBugOn(Module *M) {
 	Function *F = cast<Function>(M->getOrInsertFunction(KINT_BUGON, T));
 	F->setDoesNotThrow();
 	return F;
+}
+
+StringRef BugOnInst::getAnnotation() const {
+	MDNode *MD = getMetadata("bug");
+	return cast<MDString>(MD->getOperand(0))->getString();
 }
 
 void BugOnPass::getAnalysisUsage(AnalysisUsage &AU) const {
@@ -34,12 +39,17 @@ bool BugOnPass::runOnFunction(Function &F) {
 		if (I->getDebugLoc().isUnknown())
 			continue;
 		setInsertPoint(I);
-		Changed |= visit(I);
+		Changed |= runOnInstruction(I);
 	}
 	return Changed;
 }
 
 bool BugOnPass::insert(Value *V, StringRef Bug) {
+	const DebugLoc &DbgLoc = Builder->GetInsertPoint()->getDebugLoc();
+	return insert(V, Bug, DbgLoc);
+}
+
+bool BugOnPass::insert(Value *V, StringRef Bug, const DebugLoc &DbgLoc) {
 	// Ignore bugon(false).
 	if (ConstantInt *CI = dyn_cast<ConstantInt>(V)) {
 		if (CI->isZero())
@@ -50,7 +60,6 @@ bool BugOnPass::insert(Value *V, StringRef Bug) {
 		BugOn = getOrInsertBugOn(getModule());
 		MD_bug = C.getMDKindID("bug");
 	}
-	const DebugLoc &DbgLoc = Builder->GetInsertPoint()->getDebugLoc();
 	Instruction *I = Builder->CreateCall(BugOn, V);
 	I->setDebugLoc(DbgLoc);
 	if (!Bug.empty())
