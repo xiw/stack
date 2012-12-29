@@ -41,8 +41,10 @@ private:
 } // anonymous namespace
 
 bool AntiDCE::shouldCheck(BasicBlock *BB) {
+	// BB may become unreachable after marking some block as unreachable.
+	if (!DT->isReachableFromEntry(BB))
+		return false;
 	// Ignore unreachable blocks, often from BUG_ON() or assert().
-	// TODO: add BUG_ON(true) for more knowledge.
 	if (isa<UnreachableInst>(BB->getTerminator()))
 		return false;
 	for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ++i) {
