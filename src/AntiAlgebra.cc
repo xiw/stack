@@ -76,10 +76,9 @@ bool AntiAlgebra::visitICmpInst(ICmpInst *I) {
 	// Is S simpler than L and R?
 	if (getNumTerms(S) >= getNumTerms(L) + getNumTerms(R))
 		return false;
-	SCEVExpander Expander(*SE, "");
 	LLVMContext &C = I->getContext();
 	IntegerType *T = IntegerType::get(C, DL->getTypeSizeInBits(S->getType()));
-	Value *V = Expander.expandCodeFor(S, T, I);
+	Value *V = SCEVExpander(*SE, "").expandCodeFor(S, T, I);
 	Value *Z = Constant::getNullValue(T);
 	// Transform (lhs op rhs) to ((lhs - rhs) op 0).
 	ICmpInst *NewCmp = new ICmpInst(I, I->getSignedPredicate(), V, Z);
