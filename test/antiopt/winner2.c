@@ -1,4 +1,4 @@
-// RUN: %cc %s | antiopt -S -bugon-null -bugon-alias -anti-simplify -simplifycfg | FileCheck %s
+// TODO: %cc %s | intck | diagdiff --prefix=exp %s
 //
 // http://blog.regehr.org/archives/767
 
@@ -7,13 +7,10 @@
  
 int main()
 {
-  // CHECK: @malloc
-  // CHECK: @realloc
   int *p = (int*)malloc(sizeof(int));
   int *q = (int*)realloc(p, sizeof(int));
   *p = 1;
   *q = 2;
-  // CHECK-NOT: call i32 @printf
-  if (p == q)
+  if (p == q) // exp: {{anti-simplify}}
     printf("%d %d\n", *p, *q);
 }

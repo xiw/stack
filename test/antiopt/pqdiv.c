@@ -1,5 +1,5 @@
-// RUN: %cc -DNORETURN= %s | antiopt -S -bugon-int -anti-dce | FileCheck %s
-// RUN: %cc %s | antiopt -S -bugon-int -anti-dce | FileCheck %s --check-prefix=NORETURN
+// RUN: %cc -DNORETURN= %s | optck | diagdiff --prefix=exp %s
+// RUN: %cc %s | optck | diagdiff %s
 //
 // http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=616180
 
@@ -10,9 +10,7 @@ void my_raise(void) NORETURN;
 
 int foo(int x, int y)
 {
-	// CHECK-NOT: call void @my_raise
-	// NORETURN:  call void @my_raise
-	if (y == 0)
+	if (y == 0) // exp: {{anti-simplify}}
 		my_raise();
 	return x / y;
 }

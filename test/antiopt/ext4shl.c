@@ -1,4 +1,4 @@
-// RUN: %cc -DNORETURN= %s | antiopt -S -bugon-int -anti-dce | FileCheck %s
+// RUN: %cc %s | optck | diagdiff --prefix=exp %s
 //
 // https://bugzilla.kernel.org/show_bug.cgi?id=14287
 
@@ -8,8 +8,7 @@ int foo(unsigned char log_groups_per_flex)
 {
 	unsigned int groups_per_flex;
 	groups_per_flex = 1 << log_groups_per_flex;
-	// CHECK-NOT: call void @bar
-	if (groups_per_flex == 0) {
+	if (groups_per_flex == 0) { // exp: {{anti-simplify}}
 		bar();
 		return 1;
 	}

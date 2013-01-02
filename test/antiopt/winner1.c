@@ -1,4 +1,4 @@
-// RUN: %cc %s | antiopt -S -loop-rotate -bugon-bounds -anti-simplify -simplifycfg | FileCheck %s
+// TODO: %cc %s | antiopt -S -loop-rotate -bugon-bounds -anti-simplify -simplifycfg | FileCheck %s
 //
 // http://blog.regehr.org/archives/767
 
