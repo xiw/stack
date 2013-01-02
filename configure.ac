@@ -38,6 +38,7 @@ AC_CONFIG_LINKS([
 	bin/intck:src/intck
 	bin/cmpck:src/cmpck
 	bin/pintck:src/pintck
+	bin/antiopt:src/antiopt
 	bin/optck:src/optck
 	bin/poptck:src/poptck
 ])
