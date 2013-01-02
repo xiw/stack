@@ -2,5 +2,5 @@
 
 DIR=$(dirname "${BASH_SOURCE[0]}")
 OPT=`PATH=${DIR}:$PATH which opt`
-${OPT} -disable-output -load=${DIR}/../lib/libcmpck.so \
+exec ${OPT} -disable-output -load=${DIR}/../lib/libcmpck.so \
 	-cmp-tautology -cmp-overflow $@ 2>&1
