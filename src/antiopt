@@ -2,4 +2,4 @@
 
 DIR=$(dirname "${BASH_SOURCE[0]}")
 OPT="`llvm-config --bindir`/opt"
-${OPT} -load=${DIR}/../lib/libantiopt.so "$@"
+exec ${OPT} -load=${DIR}/../lib/libantiopt.so "$@"

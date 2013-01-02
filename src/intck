@@ -2,7 +2,7 @@
 
 DIR=$(dirname "${BASH_SOURCE[0]}")
 OPT=`PATH=${DIR}:$PATH which opt`
-${OPT} -disable-output -load=${DIR}/../lib/libintck.so \
+exec ${OPT} -disable-output -load=${DIR}/../lib/libintck.so \
 	-targetlibinfo -tbaa -basicaa -globalopt -ipsccp -deadargelim \
 	-simplifycfg -basiccg -prune-eh -inline -functionattrs -argpromotion \
 	-scalarrepl-ssa -early-cse -simplify-libcalls -lazy-value-info \
