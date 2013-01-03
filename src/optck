@@ -9,9 +9,7 @@ exec ${OPT} --disable-output -load=${DIR}/../lib/libantiopt.so \
 	-strip-dead-prototypes \
 	-simplify-libcalls -adce \
 	-loop-rotate \
-	-bugon-undef \
-	-bugon-null -bugon-gep -bugon-bounds \
-	-bugon-alias \
+	-bugon-null -bugon-bounds \
 	-bugon-int \
 	-anti-simplify \
 	-simplifycfg \
