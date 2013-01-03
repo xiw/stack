@@ -7,7 +7,8 @@ exec ${OPT} --disable-output -load=${DIR}/../lib/libantiopt.so \
 	-simplify-delete \
 	-basiccg -prune-eh -inline-only -functionattrs -argpromotion \
 	-strip-dead-prototypes \
-	--simplify-libcalls -adce \
+	-simplify-libcalls -adce \
+	-loop-rotate \
 	-bugon-undef \
 	-bugon-null -bugon-gep -bugon-bounds \
 	-bugon-alias \
@@ -15,4 +16,6 @@ exec ${OPT} --disable-output -load=${DIR}/../lib/libantiopt.so \
 	-anti-simplify \
 	-simplifycfg \
 	-anti-dce \
+	-simplifycfg \
+	-show-bugon-true \
 	"$@" 2>&1
