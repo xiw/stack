@@ -11,7 +11,11 @@ namespace {
 
 struct BugOnBounds : BugOnPass {
 	static char ID;
-	BugOnBounds() : BugOnPass(ID) {}
+	BugOnBounds() : BugOnPass(ID) {
+		PassRegistry &Registry = *PassRegistry::getPassRegistry();
+		initializeDataLayoutPass(Registry);
+		initializeTargetLibraryInfoPass(Registry);
+	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
