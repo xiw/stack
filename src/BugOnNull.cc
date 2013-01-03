@@ -1,6 +1,7 @@
 #define DEBUG_TYPE "bugon-null"
 #include "BugOn.h"
 #include <llvm/DataLayout.h>
+#include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/Analysis/ValueTracking.h>
 
 using namespace llvm;
@@ -9,25 +10,36 @@ namespace {
 
 struct BugOnNull : BugOnPass {
 	static char ID;
-	BugOnNull() : BugOnPass(ID) {}
+	BugOnNull() : BugOnPass(ID) {
+		PassRegistry &Registry = *PassRegistry::getPassRegistry();
+		initializeDataLayoutPass(Registry);
+	}
+
+	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+		super::getAnalysisUsage(AU);
+		AU.addRequired<DataLayout>();
+	}
 
 	virtual bool runOnFunction(Function &);
 	virtual bool runOnInstruction(Instruction *);
 
 private:
 	DataLayout *DL;
+	SmallPtrSet<Value *, 32> Visited;
 };
 
 } // anonymous namespace
 
 bool BugOnNull::runOnFunction(Function &F) {
-	DL = getAnalysisIfAvailable<DataLayout>();
+	DL = &getAnalysis<DataLayout>();
 	return super::runOnFunction(F);
 }
 
 bool BugOnNull::runOnInstruction(Instruction *I) {
 	Value *P = NULL;
-	if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
+	if (isa<TerminatorInst>(I)) {
+		Visited.clear();
+	} else if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
 		if (!LI->isVolatile())
 			P = LI->getPointerOperand();
 	} else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
@@ -38,6 +50,8 @@ bool BugOnNull::runOnInstruction(Instruction *I) {
 		return false;
 	// Strip pointer offset to get the base pointer.
 	Value *Base = GetUnderlyingObject(P, DL, 0);
+	if (!Visited.insert(Base))
+		return false;
 	return insert(createIsNull(Base), "null pointer dereference");
 }
 
