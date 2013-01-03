@@ -30,8 +30,6 @@ protected:
 	void recalculate(llvm::Function &F);
 	// Return bug-free assertion.
 	SMTExpr getDeltaForBlock(llvm::BasicBlock *, ValueGen &);
-	// Return if I has a non-inlined debug location.
-	static bool hasSingleDebugLocation(llvm::Instruction *I);
 
 private:
 	llvm::Function *BugOn;

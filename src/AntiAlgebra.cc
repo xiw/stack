@@ -54,7 +54,7 @@ bool AntiAlgebra::runOnAntiFunction(Function &F) {
 	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
 		Instruction *I = &*i++;
-		if (!hasSingleDebugLocation(I))
+		if (!Diagnostic::hasSingleDebugLocation(I))
 			continue;
 		// For now we are only interested in comparisons.
 		if (ICmpInst *ICI = dyn_cast<ICmpInst>(I))

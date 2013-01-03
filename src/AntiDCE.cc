@@ -48,7 +48,7 @@ bool AntiDCE::shouldCheck(BasicBlock *BB) {
 	if (isa<UnreachableInst>(BB->getTerminator()))
 		return false;
 	for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ++i) {
-		if (hasSingleDebugLocation(i))
+		if (Diagnostic::hasSingleDebugLocation(i))
 			return true;
 	}
 	return false;

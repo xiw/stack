@@ -36,7 +36,7 @@ bool AntiSimplify::runOnAntiFunction(Function &F) {
 	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
 		Instruction *I = &*i++;
-		if (!hasSingleDebugLocation(I))
+		if (!Diagnostic::hasSingleDebugLocation(I))
 			continue;
 		Type *T = I->getType();
 		// For now we are only interested in bool expressions.

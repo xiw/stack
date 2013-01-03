@@ -9,6 +9,17 @@
 
 using namespace llvm;
 
+bool Diagnostic::hasSingleDebugLocation(Instruction *I) {
+	const DebugLoc &DbgLoc = I->getDebugLoc();
+	// Skip inserted instructions without debugging information.
+	if (DbgLoc.isUnknown())
+		return false;
+	// Skip inlined instructions.
+	if (DbgLoc.getInlinedAt(I->getContext()))
+		return false;
+	return true;
+}
+
 Diagnostic::Diagnostic() : OS(errs()) {}
 
 static void getPath(SmallVectorImpl<char> &Path, const MDNode *MD) {

@@ -9,14 +9,19 @@ namespace llvm {
 
 class Diagnostic {
 public:
+	typedef llvm::Instruction Instruction;
+
+	// Return if I has a non-inlined debug location.
+	static bool hasSingleDebugLocation(Instruction *I);
+
 	Diagnostic();
 
 	llvm::raw_ostream &os() { return OS; }
 
-	void bug(llvm::Instruction *);
+	void bug(Instruction *);
 	void bug(const llvm::Twine &);
 
-	void backtrace(llvm::Instruction *);
+	void backtrace(Instruction *);
 	void status(int);
 
 	template <typename T> Diagnostic &

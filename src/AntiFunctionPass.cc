@@ -122,14 +122,3 @@ SMTExpr AntiFunctionPass::getDeltaForBlock(BasicBlock *BB, ValueGen &VG) {
 	SMT.decref(U);
 	return NotU;
 }
-
-bool AntiFunctionPass::hasSingleDebugLocation(Instruction *I) {
-	const DebugLoc &DbgLoc = I->getDebugLoc();
-	// Skip inserted instructions without debugging information.
-	if (DbgLoc.isUnknown())
-		return false;
-	// Skip inlined instructions.
-	if (DbgLoc.getInlinedAt(I->getContext()))
-		return false;
-	return true;
-}
