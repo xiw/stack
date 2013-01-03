@@ -38,7 +38,7 @@ libcmpck_la_LIBADD  = libsat.la
 libcmpck_la_LDFLAGS = -module
 
 libantiopt_la_SOURCES = AntiFunctionPass.cc AntiDCE.cc AntiAlgebra.cc AntiSimplify.cc
-libantiopt_la_SOURCES += InlineOnly.cc SimplifyDelete.cc
+libantiopt_la_SOURCES += InlineOnly.cc SimplifyDelete.cc IgnoreLoopInitial.cc
 libantiopt_la_SOURCES += AntiFunctionPass.h
 libantiopt_la_LIBADD  = libsat.la
 libantiopt_la_LDFLAGS = -module
