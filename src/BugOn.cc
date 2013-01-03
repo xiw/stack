@@ -1,11 +1,17 @@
 #include "BugOn.h"
+#include "Diagnostic.h"
 #include <llvm/Module.h>
+#include <llvm/Support/CommandLine.h>
 #include <llvm/Support/DebugLoc.h>
 #include <llvm/Support/InstIterator.h>
 
 using namespace llvm;
 
 #define KINT_BUGON "kint.bugon"
+
+static cl::opt<bool>
+ShowTrueOpt("show-bugon-true",
+            cl::desc("Show always true bug conditions"));
 
 Function *getBugOn(const Module *M) {
 	return M->getFunction(KINT_BUGON);
@@ -54,6 +60,15 @@ bool BugOnPass::insert(Value *V, StringRef Bug, const DebugLoc &DbgLoc) {
 	if (ConstantInt *CI = dyn_cast<ConstantInt>(V)) {
 		if (CI->isZero())
 			return false;
+		if (ShowTrueOpt) {
+			Instruction *I = Builder->GetInsertPoint();
+			if (Diagnostic::hasSingleDebugLocation(I)) {
+				Diagnostic Diag;
+				Diag.bug(Pass::lookupPassInfo(getPassID())->getPassArgument());
+				Diag << "model: |\n" << *I << "\n";
+				Diag.backtrace(I);
+			}
+		}
 	}
 	LLVMContext &C = V->getContext();
 	if (!BugOn) {
