@@ -1,22 +1,21 @@
 #define DEBUG_TYPE "ranges"
+#include "Annotation.h"
+#include "IntGlobal.h"
+#include <llvm/DebugInfo.h>
 #include <llvm/Pass.h>
-#include <llvm/Instructions.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/InstIterator.h>
-#include <llvm/Module.h>
-#include <llvm/Constants.h>
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/ADT/StringExtras.h>
-#include <llvm/DebugInfo.h>
 #include <llvm/Analysis/CallGraph.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
-#include "llvm/Support/CommandLine.h"
-
-#include "Annotation.h"
-#include "IntGlobal.h"
+#include <llvm/Support/CommandLine.h>
 
 using namespace llvm;
 

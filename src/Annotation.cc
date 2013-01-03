@@ -1,10 +1,10 @@
-#include <llvm/Module.h>
-#include <llvm/Instructions.h>
-#include <llvm/IntrinsicInst.h>
-#include <llvm/Metadata.h>
-#include <llvm/Constants.h>
 #include <llvm/Pass.h>
 #include <llvm/Analysis/ValueTracking.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
+#include <llvm/IR/Metadata.h>
+#include <llvm/IR/Constants.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/ADT/DenseMap.h>

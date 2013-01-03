@@ -1,11 +1,11 @@
 #pragma once
 
 #include <llvm/DebugInfo.h>
-#include <llvm/Module.h>
-#include <llvm/Instructions.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/ADT/StringExtras.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Support/ConstantRange.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>

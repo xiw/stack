@@ -1,11 +1,11 @@
 #include <llvm/DebugInfo.h>
-#include <llvm/Module.h>
 #include <llvm/Pass.h>
-#include <llvm/Constants.h>
-#include <llvm/Instructions.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/ADT/StringExtras.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Analysis/CallGraph.h>

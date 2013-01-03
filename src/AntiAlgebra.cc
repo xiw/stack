@@ -8,11 +8,11 @@
 #define DEBUG_TYPE "anti-algebra"
 #include "AntiFunctionPass.h"
 #include "Diagnostic.h"
-#include <llvm/Constants.h>
-#include <llvm/Instructions.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpander.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Target/TargetLibraryInfo.h>
 #include <llvm/Transforms/Utils/Local.h>

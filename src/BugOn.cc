@@ -1,6 +1,6 @@
 #include "BugOn.h"
 #include "Diagnostic.h"
-#include <llvm/Module.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/DebugLoc.h>
 #include <llvm/Support/InstIterator.h>

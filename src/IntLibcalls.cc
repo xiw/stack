@@ -1,8 +1,8 @@
 #define DEBUG_TYPE "int-libcalls"
-#include <llvm/IRBuilder.h>
-#include <llvm/Instructions.h>
-#include <llvm/Module.h>
 #include <llvm/Pass.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Support/InstIterator.h>
 
 using namespace llvm;

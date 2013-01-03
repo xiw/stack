@@ -1,7 +1,7 @@
 #define DEBUG_TYPE "bugon-int"
 #include "BugOn.h"
-#include <llvm/Function.h>
-#include <llvm/Intrinsics.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Intrinsics.h>
 
 using namespace llvm;
 

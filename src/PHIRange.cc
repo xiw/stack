@@ -2,13 +2,13 @@
 // in loops, so as to add value constraints. 
 
 #define DEBUG_TYPE "phi-range"
-#include <llvm/BasicBlock.h>
-#include <llvm/Function.h>
-#include <llvm/Instructions.h>
-#include <llvm/Metadata.h>
 #include <llvm/Pass.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/ScalarEvolution.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Metadata.h>
 
 using namespace llvm;
 

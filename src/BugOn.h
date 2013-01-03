@@ -1,7 +1,7 @@
-#include <llvm/Function.h>
-#include <llvm/IRBuilder.h>
-#include <llvm/Intrinsics.h>
 #include <llvm/Pass.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Intrinsics.h>
 
 llvm::Function *getBugOn(const llvm::Module *);
 llvm::Function *getOrInsertBugOn(llvm::Module *);

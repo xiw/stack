@@ -1,10 +1,10 @@
 #define DEBUG_TYPE "load-elim"
-#include <llvm/IRBuilder.h>
-#include <llvm/Instructions.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Transforms/Utils/SSAUpdater.h>
 #include <llvm/Support/InstIterator.h>
 

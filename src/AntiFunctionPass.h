@@ -2,9 +2,9 @@
 
 #include "PathGen.h"
 #include "ValueGen.h"
-#include <llvm/DataLayout.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/IR/DataLayout.h>
 
 namespace llvm {
 	class BasicBlock;

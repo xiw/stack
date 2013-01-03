@@ -1,8 +1,8 @@
 #define DEBUG_TYPE "inline-only"
-#include <llvm/DataLayout.h>
-#include <llvm/Module.h>
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/Analysis/InlineCost.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Transforms/IPO/InlinerPass.h>
 
 using namespace llvm;
@@ -19,6 +19,10 @@ struct InlineOnly : Inliner {
 
 	virtual bool doInitialization(CallGraph &CG);
 	virtual bool doFinalization(CallGraph &CG);
+
+	typedef Inliner super;
+	using super::doInitialization;
+	using super::doFinalization;
 
 private:
 	InlineCostAnalyzer CA;

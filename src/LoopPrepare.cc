@@ -2,8 +2,8 @@
 // It should run before -loop-rotate.
 
 #define DEBUG_TYPE "loop-prepare"
-#include <llvm/IRBuilder.h>
 #include <llvm/Pass.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/InstIterator.h>
 
 using namespace llvm;

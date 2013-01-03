@@ -2,10 +2,10 @@
 // for C++ delete.
 
 #define DEBUG_TYPE "simplify-delete"
-#include <llvm/BasicBlock.h>
-#include <llvm/Function.h>
-#include <llvm/Instructions.h>
 #include <llvm/Pass.h>
+#include <llvm/IR/BasicBlock.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
 
 using namespace llvm;
 

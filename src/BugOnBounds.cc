@@ -1,8 +1,8 @@
 #define DEBUG_TYPE "bugon-bounds"
 #include "BugOn.h"
-#include <llvm/DataLayout.h>
-#include <llvm/Instructions.h>
 #include <llvm/Analysis/MemoryBuiltins.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Target/TargetLibraryInfo.h>
 
 using namespace llvm;

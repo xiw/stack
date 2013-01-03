@@ -2,8 +2,8 @@
 
 #define DEBUG_TYPE "bugon-gep"
 #include "BugOn.h"
-#include <llvm/DataLayout.h>
-#include <llvm/Operator.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Operator.h>
 #include <llvm/Transforms/Utils/Local.h>
 
 using namespace llvm;

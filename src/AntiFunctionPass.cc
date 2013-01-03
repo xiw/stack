@@ -1,10 +1,10 @@
 #include "AntiFunctionPass.h"
 #include "BugOn.h"
-#include <llvm/Instructions.h>
-#include <llvm/Module.h>
 #include <llvm/ADT/SCCIterator.h>
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Support/CFG.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Debug.h>

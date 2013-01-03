@@ -1,12 +1,12 @@
 #define DEBUG_TYPE "overflow-simplify"
-#include <llvm/Constants.h>
-#include <llvm/IRBuilder.h>
-#include <llvm/Instructions.h>
-#include <llvm/IntrinsicInst.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/APInt.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/Assembly/Writer.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Support/raw_ostream.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>

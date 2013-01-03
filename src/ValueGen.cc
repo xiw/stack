@@ -1,10 +1,10 @@
 #include "ValueGen.h"
-#include <llvm/Constants.h>
 #include <llvm/InstVisitor.h>
-#include <llvm/IntrinsicInst.h>
-#include <llvm/Operator.h>
 #include <llvm/ADT/APInt.h>
 #include <llvm/Assembly/Writer.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/IntrinsicInst.h>
+#include <llvm/IR/Operator.h>
 #include <llvm/Support/GetElementPtrTypeIterator.h>
 #include <llvm/Support/raw_ostream.h>
 #include <assert.h>

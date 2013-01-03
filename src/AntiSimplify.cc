@@ -5,8 +5,8 @@
 #define DEBUG_TYPE "anti-simplify"
 #include "AntiFunctionPass.h"
 #include "Diagnostic.h"
-#include <llvm/Constants.h>
-#include <llvm/Instructions.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Support/InstIterator.h>
 
 using namespace llvm;

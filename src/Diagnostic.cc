@@ -1,9 +1,9 @@
 #include "Diagnostic.h"
 #include "SMTSolver.h"
 #include <llvm/DebugInfo.h>
-#include <llvm/Instruction.h>
-#include <llvm/Metadata.h>
 #include <llvm/ADT/SmallString.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/Support/Path.h>
 #include <llvm/Support/raw_ostream.h>
 

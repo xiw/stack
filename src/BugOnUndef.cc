@@ -2,8 +2,8 @@
 
 #define DEBUG_TYPE "bugon-undef"
 #include "BugOn.h"
-#include <llvm/Constants.h>
-#include <llvm/Function.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/Function.h>
 #include <llvm/Support/CallSite.h>
 
 using namespace llvm;

@@ -2,14 +2,14 @@
 // with overflow intrinsics.
 
 #define DEBUG_TYPE "overflow-idiom"
-#include <llvm/Constants.h>
-#include <llvm/IRBuilder.h>
-#include <llvm/Instructions.h>
-#include <llvm/IntrinsicInst.h>
-#include <llvm/Module.h>
 #include <llvm/Pass.h>
 #include <llvm/ADT/OwningPtr.h>
 #include <llvm/Analysis/ValueTracking.h>
+#include <llvm/IR/Constants.h>
+#include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/IntrinsicInst.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Support/PatternMatch.h>
 #include <llvm/Transforms/Utils/Local.h>

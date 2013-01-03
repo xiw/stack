@@ -1,9 +1,9 @@
 #define DEBUG_TYPE "bugon-linux"
 #include "BugOn.h"
-#include <llvm/Instructions.h>
-#include <llvm/Intrinsics.h>
-#include <llvm/Module.h>
 #include <llvm/ADT/DenseMap.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/IR/Intrinsics.h>
+#include <llvm/IR/Module.h>
 
 using namespace llvm;
 

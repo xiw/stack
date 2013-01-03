@@ -1,8 +1,8 @@
 #define DEBUG_TYPE "cmp-tautology"
-#include <llvm/Instructions.h>
 #include <llvm/Pass.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Support/raw_ostream.h>
 #include "Diagnostic.h"

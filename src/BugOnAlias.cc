@@ -2,9 +2,9 @@
 
 #define DEBUG_TYPE "bugon-alias"
 #include "BugOn.h"
-#include <llvm/Function.h>
-#include <llvm/Instructions.h>
 #include <llvm/Analysis/Dominators.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
 #include <algorithm>
 
 using namespace llvm;

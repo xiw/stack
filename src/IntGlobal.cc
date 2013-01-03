@@ -1,8 +1,10 @@
-#include "llvm/LLVMContext.h"
+#include "IntGlobal.h"
+#include "Annotation.h"
 #include "llvm/PassManager.h"
-#include "llvm/Module.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/Bitcode/ReaderWriter.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/PrettyStackTrace.h"
@@ -13,9 +15,6 @@
 #include "llvm/Support/Path.h"
 #include <memory>
 #include <vector>
-
-#include "IntGlobal.h"
-#include "Annotation.h"
 
 using namespace llvm;
 

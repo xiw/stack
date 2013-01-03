@@ -1,14 +1,14 @@
 #define DEBUG_TYPE "cmp-sat"
-#include <llvm/DataLayout.h>
-#include <llvm/Instructions.h>
-#include <llvm/Pass.h>
-#include <llvm/ADT/OwningPtr.h>
-#include <llvm/Analysis/Dominators.h>
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include "Diagnostic.h"
 #include "PathGen.h"
 #include "ValueGen.h"
+#include <llvm/Pass.h>
+#include <llvm/ADT/OwningPtr.h>
+#include <llvm/Analysis/Dominators.h>
+#include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/Support/raw_ostream.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 
 using namespace llvm;
 

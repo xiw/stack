@@ -1,7 +1,7 @@
 #pragma once
 
-#include <llvm/DataLayout.h>
 #include <llvm/ADT/DenseMap.h>
+#include <llvm/IR/DataLayout.h>
 #include "SMTSolver.h"
 
 class ValueGen {
