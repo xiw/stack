@@ -1,0 +1,9 @@
+#!/bin/bash
+
+DIR=$(dirname "${BASH_SOURCE[0]}")
+NCPU=`${DIR}/ncpu`
+OUT='pcmpck.txt'
+TIMEOUT=500
+find . -name '*.ll' -type f -print0 | xargs -0 -P ${NCPU} -I{} -t bash -c "${DIR}/cmpck -smt-timeout=${TIMEOUT} '{}' > '{}.out'"
+rm -f ${OUT}
+find . -name '*.ll.out' -type f -print0 | xargs -0 -I{} bash -c "cat '{}' >> ${OUT}"

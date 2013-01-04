@@ -1,6 +1,6 @@
 #!/bin/bash
 
 DIR=$(dirname "${BASH_SOURCE[0]}")
-OPT=`PATH=${DIR}:$PATH which opt`
+OPT="`llvm-config --bindir`/opt"
 exec ${OPT} -disable-output -load=${DIR}/../lib/libcmpck.so \
-	-cmp-tautology -cmp-overflow $@ 2>&1
+	-cmp-tautology $@ 2>&1

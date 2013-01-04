@@ -36,8 +36,9 @@ AC_CONFIG_LINKS([
 	bin/kint-build:test/kint-build
 	bin/ncpu:src/ncpu
 	bin/intck:src/intck
-	bin/cmpck:src/cmpck
 	bin/pintck:src/pintck
+	bin/cmpck:src/cmpck
+	bin/pcmpck:src/pcmpck
 	bin/antiopt:src/antiopt
 	bin/optck:src/optck
 	bin/poptck:src/poptck
