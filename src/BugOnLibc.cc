@@ -42,6 +42,9 @@ bool BugOnLibc::doInitialization(Module &M) {
 	HANDLER(visitDiv, "imaxdiv");
 
 	HANDLER(visitMemcpy, "memcpy");
+	HANDLER(visitMemcpy, "__memcpy");	// Linux kernel internal
+	HANDLER(visitMemcpy, "llvm.memcpy.p0i8.p0i8.i32");
+	HANDLER(visitMemcpy, "llvm.memcpy.p0i8.p0i8.i64");
 
 #undef HANDLER
 	return false;
@@ -104,7 +107,7 @@ bool BugOnLibc::visitDiv(CallInst *I) {
 
 // memcpy(a, b, n): a-b<n || b-a<n
 bool BugOnLibc::visitMemcpy(CallInst *I) {
-	if (I->getNumArgOperands() != 3)
+	if (I->getNumArgOperands() < 3)
 		return false;
 	Value *A = I->getArgOperand(0);
 	Value *B = I->getArgOperand(1);

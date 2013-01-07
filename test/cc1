@@ -20,7 +20,7 @@ def cc(llvmcc, src, argv):
 	# Linux kernel hack: disable asm goto.
 	argv = [x for x in argv if x != '-DCC_HAVE_ASM_GOTO']
 	# Use -fstrict-overflow to distinguish signed/unsigned integers.
-	more = ['-S', '-flto', '-fno-builtin', '-fstrict-overflow', '-O0', '-g']
+	more = ['-S', '-flto', '-fstrict-overflow', '-O0', '-g']
 	p1 = subprocess.Popen(llvmcc + argv + more + [src], stdout=subprocess.PIPE)
 	# Don't invoke -early-cse, which may hide undefined behavior bugs.
 	opts = ['-strip-debug-declare', '-simplifycfg', '-scalarrepl', '-lower-expect']
