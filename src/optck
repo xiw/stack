@@ -10,6 +10,7 @@ exec ${OPT} --disable-output -load=${DIR}/../lib/libantiopt.so \
 	-simplify-libcalls -adce \
 	-loop-rotate -ignore-loop-initial \
 	-bugon-null -bugon-bounds \
+	-bugon-free \
 	-bugon-int \
 	-anti-simplify \
 	-simplifycfg \

@@ -1,0 +1,114 @@
+// Insert bug assertions on use-after-free.
+
+#define DEBUG_TYPE "bugon-free"
+#include "BugOn.h"
+#include <llvm/Analysis/Dominators.h>
+#include <llvm/Analysis/ValueTracking.h>
+#include <llvm/IR/Function.h>
+#include <llvm/IR/Instructions.h>
+#include <llvm/Support/InstIterator.h>
+#include <algorithm>
+
+using namespace llvm;
+
+namespace {
+
+struct BugOnFree : BugOnPass {
+	static char ID;
+	BugOnFree() : BugOnPass(ID) {
+		PassRegistry &Registry = *PassRegistry::getPassRegistry();
+		initializeDominatorTreePass(Registry);
+		initializeDataLayoutPass(Registry);
+	}
+
+	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+		super::getAnalysisUsage(AU);
+		AU.addRequired<DominatorTree>();
+		AU.addRequired<DataLayout>();
+	}
+
+	virtual bool runOnFunction(Function &);
+	virtual bool runOnInstruction(Instruction *);
+
+private:
+	DominatorTree *DT;
+	DataLayout *DL;
+	Function *CurrentF;
+
+	Value *getFreedValue(CallInst *CI);
+	bool insertNoFree(Value *P, Value *FP);
+};
+
+} // anonymous namespace
+
+bool BugOnFree::runOnFunction(Function &F) {
+	DT = &getAnalysis<DominatorTree>();
+	DL = &getAnalysis<DataLayout>();
+	CurrentF = &F;
+	return super::runOnFunction(F);
+}
+
+bool BugOnFree::runOnInstruction(Instruction *I) {
+	bool Changed = false;
+	Value *P = NULL;
+
+	if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
+		if (!LI->isVolatile())
+			P = LI->getPointerOperand();
+	} else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
+		if (!SI->isVolatile())
+			P = SI->getPointerOperand();
+	}
+
+	if (!P)
+		return false;
+
+	for (inst_iterator i = inst_begin(CurrentF), e = inst_end(CurrentF);
+	     i != e; ) {
+		Instruction *FI = &*i++;
+		if (!DT->dominates(FI, I))
+			continue;
+		if (FI->getDebugLoc().isUnknown())
+			continue;
+		if (CallInst *CFI = dyn_cast<CallInst>(FI)) {
+			Value *FP = getFreedValue(CFI);
+			if (FP)
+				Changed |= insertNoFree(P, FP);
+		}
+	}
+
+	return Changed;
+}
+
+Value *BugOnFree::getFreedValue(CallInst *CI) {
+	#define P std::make_pair
+	static std::pair<const char *, int> Frees[] = {
+		P("free", 0),
+		P("kfree", 0),
+		P("vfree", 0),
+		P("__kfree_skb", 0),
+	};
+	#undef P
+
+	if (!CI->getCalledFunction())
+		return NULL;
+	StringRef Name = CI->getCalledFunction()->getName();
+	for (unsigned i = 0; i < sizeof(Frees) / sizeof(Frees[0]); i++)
+		if (Name == Frees[i].first)
+			return CI->getArgOperand(Frees[i].second);
+	return NULL;
+}
+
+bool BugOnFree::insertNoFree(Value *P, Value *FP) {
+	P = GetUnderlyingObject(P, DL, 0);
+	Value *V = createAnd(
+		createIsNotNull(FP),
+		Builder->CreateICmpEQ(FP, Builder->CreatePointerCast(P, FP->getType()))
+	);
+	return insert(V, "nofree");
+}
+
+char BugOnFree::ID;
+
+static RegisterPass<BugOnFree>
+X("bugon-free", "Insert bugon calls for freed pointers");
