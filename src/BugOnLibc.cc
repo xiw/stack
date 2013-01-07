@@ -21,6 +21,7 @@ private:
 
 	bool visitAbs(CallInst *);
 	bool visitDiv(CallInst *);
+	bool visitMemcpy(CallInst *);
 };
 
 } // anonymous namespace
@@ -33,10 +34,14 @@ bool BugOnLibc::doInitialization(Module &M) {
 	HANDLER(visitAbs, "abs");
 	HANDLER(visitAbs, "labs");
 	HANDLER(visitAbs, "llabs");
+	HANDLER(visitAbs, "imaxabs");
 
 	HANDLER(visitDiv, "div");
 	HANDLER(visitDiv, "ldiv");
 	HANDLER(visitDiv, "lldiv");
+	HANDLER(visitDiv, "imaxdiv");
+
+	HANDLER(visitMemcpy, "memcpy");
 
 #undef HANDLER
 	return false;
@@ -94,6 +99,22 @@ bool BugOnLibc::visitDiv(CallInst *I) {
 	insert(V, Name);
 	Value *SDiv = Builder->CreateSDiv(L, R);
 	I->replaceAllUsesWith(SDiv);
+	return true;
+}
+
+// memcpy(a, b, n): a-b<n || b-a<n
+bool BugOnLibc::visitMemcpy(CallInst *I) {
+	if (I->getNumArgOperands() != 3)
+		return false;
+	Value *A = I->getArgOperand(0);
+	Value *B = I->getArgOperand(1);
+	Value *N = I->getArgOperand(2);
+	Value *AN = Builder->CreatePointerCast(A, N->getType());
+	Value *BN = Builder->CreatePointerCast(B, N->getType());
+	Value *AminusB = Builder->CreateSub(AN, BN);
+	Value *BminusA = Builder->CreateSub(BN, AN);
+	insert(Builder->CreateICmpULT(AminusB, N), "memcpy");
+	insert(Builder->CreateICmpULT(BminusA, N), "memcpy");
 	return true;
 }
 
