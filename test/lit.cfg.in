@@ -1,6 +1,6 @@
 config.name             = "@PACKAGE@"
 config.test_format      = lit.formats.ShTest()
-config.suffixes         = ['.c']
+config.suffixes         = ['.c', '.cc']
 
 config.target_triple    = "@host@"
 config.test_exec_root   = "@abs_builddir@"
