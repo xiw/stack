@@ -9,7 +9,7 @@ void foo()
 	int *p = 0;
 	int i = 0;
 	if (p) {
-		while (p[i]) { // exp: {{bugon-null}}{{bugon-bounds}}
+		while (p[i]) {
 			bar();
 			++i;
 		}
