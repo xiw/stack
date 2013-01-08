@@ -92,7 +92,7 @@ bool BugOnFree::insertNoFree(Value *P, CallInst *CI) {
 
 	Value *F = NULL;
 	if (!CI->getCalledFunction())
-		return NULL;
+		return false;
 	StringRef Name = CI->getCalledFunction()->getName();
 	for (unsigned i = 0; i < sizeof(Frees) / sizeof(Frees[0]); i++)
 		if (Name == Frees[i].first)
@@ -118,7 +118,7 @@ bool BugOnFree::insertNoRealloc(Value *P, CallInst *CI) {
 
 	Value *F = NULL;
 	if (!CI->getCalledFunction())
-		return NULL;
+		return false;
 	StringRef Name = CI->getCalledFunction()->getName();
 	for (unsigned i = 0; i < sizeof(Reallocs) / sizeof(Reallocs[0]); i++)
 		if (Name == Reallocs[i].first)
