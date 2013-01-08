@@ -109,6 +109,16 @@ bool BugOnLibc::visitDiv(CallInst *I) {
 bool BugOnLibc::visitMemcpy(CallInst *I) {
 	if (I->getNumArgOperands() < 3)
 		return false;
+	if (I->getNumArgOperands() == 5) {	/* llvm.memcpy.* intrinsic */
+		ConstantInt *Align = dyn_cast<ConstantInt>(I->getArgOperand(3));
+		if (Align != NULL && !Align->isZero() && !Align->isOne()) {
+			/*
+			 * Not an explicit memcpy() call; skip because Clang
+			 * should have generated llvm.memmove.* instead.
+			 */
+			return false;
+		}
+	}
 	Value *A = I->getArgOperand(0);
 	Value *B = I->getArgOperand(1);
 	Value *N = I->getArgOperand(2);
