@@ -35,8 +35,8 @@ private:
 	DataLayout *DL;
 	Function *CurrentF;
 
-	Value *getFreedValue(CallInst *CI);
-	bool insertNoFree(Value *P, Value *FP);
+	bool insertNoFree(Value *P, CallInst *CI);
+	bool insertNoRealloc(Value *P, CallInst *CI);
 };
 
 } // anonymous namespace
@@ -68,20 +68,19 @@ bool BugOnFree::runOnInstruction(Instruction *I) {
 		Instruction *FI = &*i++;
 		if (FI->getDebugLoc().isUnknown())
 			continue;
-		if (CallInst *CFI = dyn_cast<CallInst>(FI)) {
-			Value *FP = getFreedValue(CFI);
-			if (FP == NULL)
-				continue;
+		if (CallInst *CI = dyn_cast<CallInst>(FI)) {
 			if (!DT->dominates(FI, I))
 				continue;
-			Changed |= insertNoFree(P, FP);
+			Changed |= insertNoFree(P, CI);
+			Changed |= insertNoRealloc(P, CI);
 		}
 	}
 
 	return Changed;
 }
 
-Value *BugOnFree::getFreedValue(CallInst *CI) {
+// free(f): f != NULL && f == p
+bool BugOnFree::insertNoFree(Value *P, CallInst *CI) {
 	#define P std::make_pair
 	static std::pair<const char *, int> Frees[] = {
 		P("free", 0),
@@ -91,22 +90,51 @@ Value *BugOnFree::getFreedValue(CallInst *CI) {
 	};
 	#undef P
 
+        Value *F = NULL;
 	if (!CI->getCalledFunction())
 		return NULL;
 	StringRef Name = CI->getCalledFunction()->getName();
 	for (unsigned i = 0; i < sizeof(Frees) / sizeof(Frees[0]); i++)
 		if (Name == Frees[i].first)
-			return CI->getArgOperand(Frees[i].second);
-	return NULL;
-}
+                        F = CI->getArgOperand(Frees[i].second);
+        if (F == NULL)
+                return false;
 
-bool BugOnFree::insertNoFree(Value *P, Value *FP) {
 	P = GetUnderlyingObject(P, DL, 0);
 	Value *V = createAnd(
-		createIsNotNull(FP),
-		Builder->CreateICmpEQ(FP, Builder->CreatePointerCast(P, FP->getType()))
+		createIsNotNull(F),
+		Builder->CreateICmpEQ(F, Builder->CreatePointerCast(P, F->getType()))
 	);
 	return insert(V, "nofree");
+}
+
+// r=realloc(f, n): f != NULL && f != r && f == p
+bool BugOnFree::insertNoRealloc(Value *P, CallInst *CI) {
+	#define P std::make_pair
+	static std::pair<const char *, int> Reallocs[] = {
+		P("realloc", 0),
+	};
+	#undef P
+
+        Value *F = NULL;
+	if (!CI->getCalledFunction())
+		return NULL;
+	StringRef Name = CI->getCalledFunction()->getName();
+	for (unsigned i = 0; i < sizeof(Reallocs) / sizeof(Reallocs[0]); i++)
+		if (Name == Reallocs[i].first)
+                        F = CI->getArgOperand(Reallocs[i].second);
+        if (F == NULL)
+                return false;
+
+	P = GetUnderlyingObject(P, DL, 0);
+	Value *V = createAnd(
+		createAnd(
+                        createIsNotNull(F),
+                        Builder->CreateICmpNE(F, CI)
+                ),
+		Builder->CreateICmpEQ(F, Builder->CreatePointerCast(P, F->getType()))
+	);
+	return insert(V, "norealloc");
 }
 
 char BugOnFree::ID;

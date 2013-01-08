@@ -1,4 +1,4 @@
-// TODO: %cc %s | intck | diagdiff --prefix=exp %s
+// RUN: %cc %s | optck | diagdiff --prefix=exp %s
 //
 // http://blog.regehr.org/archives/767
 
@@ -7,7 +7,7 @@
  
 int main()
 {
-  int *p = (int*)malloc(sizeof(int));
+  int *p = (int*)malloc(sizeof(int)); // exp: {{anti-dce}}
   int *q = (int*)realloc(p, sizeof(int));
   *p = 1;
   *q = 2;
