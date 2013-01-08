@@ -33,6 +33,8 @@ AC_CONFIG_LINKS([
 	bin/kint/cc:test/gcc
 	bin/kint/c++:test/g++
 	bin/kint/cc1:test/cc1
+	bin/kint/clang:test/clang
+	bin/kint/clang++:test/clang++
 	bin/kint/arm-linux-gnueabi-gcc:test/arm-linux-gnueabi-gcc
 	bin/kint-build:test/kint-build
 	bin/ncpu:src/ncpu

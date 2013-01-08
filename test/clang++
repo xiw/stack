@@ -1,0 +1,4 @@
+#!/bin/bash
+DIR=$(dirname "${BASH_SOURCE[0]}")
+"$DIR/cc1" "$@" > /dev/null
+/usr/bin/clang++ "$@"
