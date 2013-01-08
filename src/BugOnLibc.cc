@@ -109,16 +109,6 @@ bool BugOnLibc::visitDiv(CallInst *I) {
 bool BugOnLibc::visitMemcpy(CallInst *I) {
 	if (I->getNumArgOperands() < 3)
 		return false;
-	if (I->getNumArgOperands() == 5) {	/* llvm.memcpy.* intrinsic */
-		ConstantInt *Align = dyn_cast<ConstantInt>(I->getArgOperand(3));
-		if (Align != NULL && !Align->isZero() && !Align->isOne()) {
-			/*
-			 * Not an explicit memcpy() call; skip because Clang
-			 * should have generated llvm.memmove.* instead.
-			 */
-			return false;
-		}
-	}
 	Value *A = I->getArgOperand(0);
 	Value *B = I->getArgOperand(1);
 	Value *N = I->getArgOperand(2);
@@ -126,8 +116,20 @@ bool BugOnLibc::visitMemcpy(CallInst *I) {
 	Value *BN = Builder->CreatePointerCast(B, N->getType());
 	Value *AminusB = Builder->CreateSub(AN, BN);
 	Value *BminusA = Builder->CreateSub(BN, AN);
-	insert(Builder->CreateICmpULT(AminusB, N), "memcpy");
-	insert(Builder->CreateICmpULT(BminusA, N), "memcpy");
+
+	/*
+	 * Allow memcpy(a, a, n), for two reasons:
+	 * - in practice, memcpy implementations don't get this wrong, and
+	 * - Clang generates memcpy instrinsic calls for self-assignment.
+	 */
+	insert(createAnd(
+			Builder->CreateICmpULT(AminusB, N),
+			Builder->CreateICmpNE(AN, BN)
+	       ), "memcpy");
+	insert(createAnd(
+			Builder->CreateICmpULT(BminusA, N),
+			Builder->CreateICmpNE(AN, BN)
+	       ), "memcpy");
 	return true;
 }
 
