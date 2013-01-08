@@ -8,7 +8,6 @@ exec ${OPT} --disable-output -load=${DIR}/../lib/libantiopt.so \
 	-basiccg -prune-eh -inline-only -functionattrs -argpromotion \
 	-strip-dead-prototypes \
 	-simplify-libcalls -adce \
-	-loop-rotate -ignore-loop-initial \
 	-bugon-null -bugon-bounds \
 	-bugon-free \
 	-bugon-int \
