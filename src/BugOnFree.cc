@@ -90,15 +90,15 @@ bool BugOnFree::insertNoFree(Value *P, CallInst *CI) {
 	};
 	#undef P
 
-        Value *F = NULL;
+	Value *F = NULL;
 	if (!CI->getCalledFunction())
 		return NULL;
 	StringRef Name = CI->getCalledFunction()->getName();
 	for (unsigned i = 0; i < sizeof(Frees) / sizeof(Frees[0]); i++)
 		if (Name == Frees[i].first)
-                        F = CI->getArgOperand(Frees[i].second);
-        if (F == NULL)
-                return false;
+			F = CI->getArgOperand(Frees[i].second);
+	if (F == NULL)
+		return false;
 
 	P = GetUnderlyingObject(P, DL, 0);
 	Value *V = createAnd(
@@ -116,22 +116,22 @@ bool BugOnFree::insertNoRealloc(Value *P, CallInst *CI) {
 	};
 	#undef P
 
-        Value *F = NULL;
+	Value *F = NULL;
 	if (!CI->getCalledFunction())
 		return NULL;
 	StringRef Name = CI->getCalledFunction()->getName();
 	for (unsigned i = 0; i < sizeof(Reallocs) / sizeof(Reallocs[0]); i++)
 		if (Name == Reallocs[i].first)
-                        F = CI->getArgOperand(Reallocs[i].second);
-        if (F == NULL)
-                return false;
+			F = CI->getArgOperand(Reallocs[i].second);
+	if (F == NULL)
+		return false;
 
 	P = GetUnderlyingObject(P, DL, 0);
 	Value *V = createAnd(
 		createAnd(
-                        createIsNotNull(F),
-                        Builder->CreateICmpNE(F, CI)
-                ),
+			createIsNotNull(F),
+			Builder->CreateICmpNE(F, CI)
+		),
 		Builder->CreateICmpEQ(F, Builder->CreatePointerCast(P, F->getType()))
 	);
 	return insert(V, "norealloc");
