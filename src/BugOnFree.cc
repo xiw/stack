@@ -66,14 +66,15 @@ bool BugOnFree::runOnInstruction(Instruction *I) {
 	for (inst_iterator i = inst_begin(CurrentF), e = inst_end(CurrentF);
 	     i != e; ) {
 		Instruction *FI = &*i++;
-		if (!DT->dominates(FI, I))
-			continue;
 		if (FI->getDebugLoc().isUnknown())
 			continue;
 		if (CallInst *CFI = dyn_cast<CallInst>(FI)) {
 			Value *FP = getFreedValue(CFI);
-			if (FP)
-				Changed |= insertNoFree(P, FP);
+			if (FP == NULL)
+				continue;
+			if (!DT->dominates(FI, I))
+				continue;
+			Changed |= insertNoFree(P, FP);
 		}
 	}
 
