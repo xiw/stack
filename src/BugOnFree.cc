@@ -108,7 +108,7 @@ bool BugOnFree::insertNoFree(Value *P, CallInst *CI) {
 	return insert(V, "nofree");
 }
 
-// r=realloc(f, n): f != NULL && f != r && f == p
+// r=realloc(f, n): f != NULL && r != NULL && f != r && f == p
 bool BugOnFree::insertNoRealloc(Value *P, CallInst *CI) {
 	#define P std::make_pair
 	static std::pair<const char *, int> Reallocs[] = {
@@ -129,7 +129,10 @@ bool BugOnFree::insertNoRealloc(Value *P, CallInst *CI) {
 	P = GetUnderlyingObject(P, DL, 0);
 	Value *V = createAnd(
 		createAnd(
-			createIsNotNull(F),
+			createAnd(
+				createIsNotNull(F),
+				createIsNotNull(CI)
+			),
 			Builder->CreateICmpNE(F, CI)
 		),
 		Builder->CreateICmpEQ(F, Builder->CreatePointerCast(P, F->getType()))
