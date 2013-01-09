@@ -35,26 +35,33 @@ private:
 	DataLayout *DL;
 	std::set<Value*> Objects;
 
+	void addObject(Value *);
 	bool insertNoAlias(Value *, Value *);
 	bool visitCallInst(CallInst *);
 };
 
 } // anonymous namespace
 
+void BugOnAlias::addObject(Value *O) {
+	if (!O->getType()->isPointerTy())
+		return;
+	O = GetUnderlyingObject(O, DL, 0);
+	Objects.insert(O);
+}
+
 bool BugOnAlias::runOnFunction(Function &F) {
 	DT = &getAnalysis<DominatorTree>();
 	DL = &getAnalysis<DataLayout>();
 
-	// Find all of the pointers first.
+	// Find all of the objects first.
 	Objects.clear();
+	for (Argument &a: F.getArgumentList())
+		addObject(&a);
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
 		Instruction *I = &*i++;
 		if (I->getDebugLoc().isUnknown())
 			continue;
-		if (!I->getType()->isPointerTy())
-			continue;
-		Value *O = GetUnderlyingObject(I, DL, 0);
-		Objects.insert(O);
+		addObject(I);
 	}
 
 	return super::runOnFunction(F);
