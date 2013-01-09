@@ -11,9 +11,9 @@ all-local: libintck.la libcmpck.la
 	@cd $(top_builddir)/bin && $(LN_S) -f ../src/intglobal
 	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libantiopt.so
 
-libsat_la_CPPFLAGS = -I$(top_builddir)/lib
+libsat_la_CPPFLAGS = -I$(top_builddir)/lib -std=c++11
 libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc SMTSolver.cc
-libsat_la_SOURCES += PHIRange.cc LoopPrepare.cc
+libsat_la_SOURCES += PHIRange.cc LoopPrepare.cc ElimAssert.cc
 libsat_la_SOURCES += BugOn.cc BugOnInt.cc BugOnNull.cc BugOnGep.cc
 libsat_la_SOURCES += BugOnAlias.cc BugOnFree.cc BugOnBounds.cc BugOnUndef.cc
 libsat_la_SOURCES += BugOnLoop.cc
