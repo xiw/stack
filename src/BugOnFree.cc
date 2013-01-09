@@ -84,6 +84,8 @@ bool BugOnFree::insertNoFree(Value *P, CallInst *CI) {
 	#define P std::make_pair
 	static std::pair<const char *, int> Frees[] = {
 		P("free", 0),
+		P("_ZdlPv", 0),		// operator delete(void*)
+		P("_ZdaPv", 0),		// operator delete[](void*)
 		P("kfree", 0),
 		P("vfree", 0),
 		P("__kfree_skb", 0),
