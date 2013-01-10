@@ -19,6 +19,7 @@ struct BugOnAlias : BugOnPass {
 	BugOnAlias() : BugOnPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
 		initializeDominatorTreePass(Registry);
+		initializeDataLayoutPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
