@@ -1,7 +1,7 @@
 #define DEBUG_TYPE "elim-assert"
 #include <set>
 #include <llvm/Pass.h>
-#include <llvm/IRBuilder.h>
+#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
