@@ -30,7 +30,9 @@ def cc(llvmcc, src, argv):
 	return p1.returncode
 
 def main():
-	llvmcc = os.getenv('LLVMCC', '/usr/bin/clang -no-integrated-as').split(' ')
+	bindir = subprocess.check_output(['llvm-config', '--bindir']).strip()
+	clang = os.sep.join( (bindir, 'clang') ) + ' -no-integrated-as'
+	llvmcc = os.getenv('LLVMCC', clang).split(' ')
 	argv = sys.argv[1:]
 	exts = ['.c', '.cc', '.cpp', '.cxx', '.C']
 	# Keep silence for preprocesssing and make depend.
