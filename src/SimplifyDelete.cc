@@ -7,6 +7,8 @@
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include <llvm/Transforms/Utils/Local.h>
 
 using namespace llvm;
 
@@ -15,10 +17,6 @@ namespace {
 struct SimplifyDelete : FunctionPass {
 	static char ID;
 	SimplifyDelete() : FunctionPass(ID) {}
-
-	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-		AU.setPreservesCFG();
-	}
 
 	virtual bool runOnFunction(Function &);
 
@@ -30,8 +28,14 @@ private:
 
 bool SimplifyDelete::runOnFunction(Function &F) {
 	bool Changed = false;
-	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i)
-		Changed |= visitDeleteBB(i);
+	for (Function::iterator i = F.begin(), e = F.end(); i != e; ) {
+		BasicBlock *BB = i++;
+		Changed |= visitDeleteBB(BB);
+	        Changed |= ConstantFoldTerminator(BB, true);
+	        Changed |= EliminateDuplicatePHINodes(BB);
+		// Must be the last one.
+		Changed |= MergeBlockIntoPredecessor(BB, this);
+	}
 	return Changed;
 }
 
