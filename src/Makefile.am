@@ -43,6 +43,6 @@ libantiopt_la_SOURCES += AntiFunctionPass.h
 libantiopt_la_LIBADD  = libsat.la
 libantiopt_la_LDFLAGS = -module
 
-intglobal_LDFLAGS = `llvm-config --ldflags` `llvm-config --libs`
+intglobal_LDFLAGS = `llvm-config --ldflags` -lLLVM-`llvm-config --version`
 intglobal_SOURCES = IntGlobal.cc Annotation.cc CallGraph.cc Taint.cc Range.cc \
 	IntGlobal.h Annotation.h CRange.h
