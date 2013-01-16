@@ -51,11 +51,24 @@ bool BugOnPass::runOnFunction(Function &F) {
 }
 
 bool BugOnPass::clearDebugLoc(Value *V) {
-	if (Instruction *I = dyn_cast<Instruction>(V)) {
-		I->setDebugLoc(DebugLoc());
-		return true;
+	Instruction *I = dyn_cast<Instruction>(V);
+	if (!I || I->getDebugLoc().isUnknown())
+		return false;
+	I->setDebugLoc(DebugLoc());
+	return true;
+}
+
+bool BugOnPass::recursivelyClearDebugLoc(Value *V) {
+	Instruction *I = dyn_cast<Instruction>(V);
+	if (!I || I->getDebugLoc().isUnknown())
+		return false;
+	I->setDebugLoc(DebugLoc());
+	for (Instruction::op_iterator i = I->op_begin(), e = I->op_end(); i != e; ++i) {
+		Value *U = *i;
+		if (U->hasOneUse())
+			recursivelyClearDebugLoc(U);
 	}
-	return false;
+	return true;
 }
 
 bool BugOnPass::insert(Value *V, StringRef Bug) {

@@ -33,6 +33,7 @@ struct BugOnPass : llvm::FunctionPass {
 	virtual bool runOnFunction(llvm::Function &);
 
 	static bool clearDebugLoc(llvm::Value *);
+	static bool recursivelyClearDebugLoc(llvm::Value *);
 
 protected:
 	typedef BugOnPass super;

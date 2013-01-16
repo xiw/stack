@@ -181,7 +181,7 @@ bool BugOnAssert::convert(BranchInst *I, BasicBlock *BB) {
 	}
 	I->eraseFromParent();
 	// Prevent anti-simplify from inspecting the condition.
-	clearDebugLoc(Cond);
+	recursivelyClearDebugLoc(Cond);
 	return true;
 }
 
@@ -222,7 +222,7 @@ bool BugOnAssert::visitPrintBlock(BasicBlock *BB) {
 		if (!BI || !BI->isConditional())
 			continue;
 		// Prevent anti-simplify from inspecting the condition.
-		clearDebugLoc(BI->getCondition());
+		recursivelyClearDebugLoc(BI->getCondition());
 	}
 	return true;
 }
