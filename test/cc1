@@ -21,6 +21,9 @@ def cc(llvmcc, src, argv):
 	argv = [x for x in argv if x != '-DCC_HAVE_ASM_GOTO']
 	# Use -fstrict-overflow to distinguish signed/unsigned integers.
 	argv = [x for x in argv if x not in ['-fwrapv', '-fno-strict-overflow']]
+	# Drop existing _FORTIFY_SOURCE.
+	argv = [x for x in argv if not x.startswith('-D_FORTIFY_SOURCE')]
+	# Additional options.
 	more = ['-S', '-flto', '-fstrict-overflow', '-O0', '-g', '-D_FORTIFY_SOURCE=0']
 	p1 = subprocess.Popen(llvmcc + argv + more + [src], stdout=subprocess.PIPE)
 	# Don't invoke -early-cse, which may hide undefined behavior bugs.
