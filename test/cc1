@@ -31,9 +31,17 @@ def cc(llvmcc, src, argv):
 	p2.communicate()
 	return p1.returncode
 
+def path_find(progname, dirs):
+	for d in dirs:
+		p = os.path.join(d, progname)
+		if os.path.exists(p):
+			return p
+	return progname
+
 def main():
-	bindir = subprocess.check_output(['llvm-config', '--bindir']).strip()
-	clang = os.sep.join( (bindir, 'clang') ) + ' -no-integrated-as'
+	llvmbindir = subprocess.check_output(['llvm-config', '--bindir']).strip()
+	clangpath = path_find('clang', [llvmbindir, '/usr/bin', '/usr/local/bin'])
+	clang = clangpath + ' -no-integrated-as'
 	llvmcc = os.getenv('LLVMCC', clang).split(' ')
 	argv = sys.argv[1:]
 	exts = ['.c', '.cc', '.cpp', '.cxx', '.C']
