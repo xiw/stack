@@ -29,7 +29,7 @@ libsat_la_LDFLAGS  = -L$(top_builddir)/lib
 
 libintck_la_SOURCES = IntRewrite.cc IntLibcalls.cc IntSat.cc \
 	OverflowIdiom.cc OverflowSimplify.cc \
-	LoadElim.cc
+	LoadRewrite.cc
 libintck_la_LIBADD  = libsat.la
 libintck_la_LDFLAGS = -module
 

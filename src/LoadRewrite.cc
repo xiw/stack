@@ -1,4 +1,4 @@
-#define DEBUG_TYPE "load-elim"
+#define DEBUG_TYPE "load-rewrite"
 #include <llvm/Pass.h>
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/Analysis/ScalarEvolution.h>
@@ -12,9 +12,9 @@ using namespace llvm;
 
 namespace {
 
-struct LoadElim : FunctionPass {
+struct LoadRewrite : FunctionPass {
 	static char ID;
-	LoadElim() : FunctionPass(ID) {
+	LoadRewrite() : FunctionPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
 		initializeScalarEvolutionPass(Registry);
 	}
@@ -34,7 +34,7 @@ private:
 
 } // anonymous namespace
 
-bool LoadElim::runOnFunction(Function &F) {
+bool LoadRewrite::runOnFunction(Function &F) {
 	SE = &getAnalysis<ScalarEvolution>();
 	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
@@ -64,7 +64,7 @@ extractPointerBaseAndOffset(const SCEV *S) {
 	return std::make_pair(V, Offset);
 }
 
-bool LoadElim::hoist(LoadInst *I) {
+bool LoadRewrite::hoist(LoadInst *I) {
 	if (I->use_empty())
 		return false;
 	const SCEV *S = SE->getSCEV(I->getPointerOperand());
@@ -154,7 +154,7 @@ bool LoadElim::hoist(LoadInst *I) {
 	return true;
 }
 
-char LoadElim::ID;
+char LoadRewrite::ID;
 
-static RegisterPass<LoadElim>
-X("load-elim", "Load instruction elimination");
+static RegisterPass<LoadRewrite>
+X("load-rewrite", "Rewrite load instructions");
