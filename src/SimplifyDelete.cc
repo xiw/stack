@@ -2,6 +2,7 @@
 // for C++ delete.
 
 #define DEBUG_TYPE "simplify-delete"
+#include "BugOn.h"
 #include <llvm/Pass.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
@@ -45,14 +46,8 @@ bool SimplifyDelete::visitDeleteBB(BasicBlock *BB) {
 	BranchInst *BI = dyn_cast<BranchInst>(Pred->getTerminator());
 	if (!BI || !BI->isConditional())
 		return false;
-	ICmpInst *ICI = dyn_cast<ICmpInst>(BI->getCondition());
-	if (!ICI || !ICI->isEquality())
-		return false;
-	if (ICI->getDebugLoc().isUnknown())
-		return false;
 	// Remove debugging information to ignore the check.
-	ICI->setDebugLoc(DebugLoc());
-	return true;
+	return BugOnPass::clearDebugLoc(BI->getCondition());
 }
 
 char SimplifyDelete::ID;

@@ -32,6 +32,8 @@ struct BugOnPass : llvm::FunctionPass {
 	virtual void getAnalysisUsage(llvm::AnalysisUsage &) const;
 	virtual bool runOnFunction(llvm::Function &);
 
+	static bool clearDebugLoc(llvm::Value *);
+
 protected:
 	typedef BugOnPass super;
 	typedef llvm::IRBuilder<> BuilderTy;

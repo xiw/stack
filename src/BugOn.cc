@@ -50,6 +50,14 @@ bool BugOnPass::runOnFunction(Function &F) {
 	return Changed;
 }
 
+bool BugOnPass::clearDebugLoc(Value *V) {
+	if (Instruction *I = dyn_cast<Instruction>(V)) {
+		I->setDebugLoc(DebugLoc());
+		return true;
+	}
+	return false;
+}
+
 bool BugOnPass::insert(Value *V, StringRef Bug) {
 	const DebugLoc &DbgLoc = Builder->GetInsertPoint()->getDebugLoc();
 	return insert(V, Bug, DbgLoc);
