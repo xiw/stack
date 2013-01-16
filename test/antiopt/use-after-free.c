@@ -1,5 +1,7 @@
 // RUN: %cc %s | optck | diagdiff --prefix=exp %s
 
+#include <stdlib.h>
+
 void foo() {
   char *p = malloc(8);
   p[2] = 1;
