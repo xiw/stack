@@ -24,7 +24,7 @@ int SMTFork()
 	if (pid)
 		return 1;
 	// Child process.
-	struct itimerval itv = {{0, 0}, {SMTTimeoutOpt / 1000, SMTTimeoutOpt % 1000 * 1000}};
+	struct itimerval itv = {{0, 0}, {(time_t)SMTTimeoutOpt / 1000, (suseconds_t)SMTTimeoutOpt % 1000 * 1000}};
 	setitimer(ITIMER_VIRTUAL, &itv, NULL);
 	return 0;
 }
