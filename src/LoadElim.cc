@@ -1,4 +1,4 @@
-#define DEBUG_TYPE "load-hoist"
+#define DEBUG_TYPE "load-elim"
 #include <llvm/Pass.h>
 #include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/IR/Instructions.h>
@@ -11,9 +11,9 @@ using namespace llvm;
 
 namespace {
 
-struct LoadHoist : FunctionPass {
+struct LoadElim : FunctionPass {
 	static char ID;
-	LoadHoist() : FunctionPass(ID) {
+	LoadElim() : FunctionPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
 		initializeAliasAnalysisAnalysisGroup(Registry);
 	}
@@ -29,26 +29,25 @@ private:
 	AliasAnalysis *AA;
 	TargetLibraryInfo *TLI;
 
-	bool hoist(GetElementPtrInst *);
-	bool hoist(LoadInst *);
+	bool merge(LoadInst *);
 };
 
 } // anonymous namespace
 
-bool LoadHoist::runOnFunction(Function &F) {
+bool LoadElim::runOnFunction(Function &F) {
 	AA = &getAnalysis<AliasAnalysis>();
 	TLI = getAnalysisIfAvailable<TargetLibraryInfo>();
 	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
 		Instruction *I = &*i++;
 		if (LoadInst *LI = dyn_cast<LoadInst>(I))
-			Changed |= hoist(LI);
+			Changed |= merge(LI);
 	}
 	return Changed;
 }
 
 // For now just merge loads in the same block.
-bool LoadHoist::hoist(LoadInst *I) {
+bool LoadElim::merge(LoadInst *I) {
 	if (I->isVolatile())
 		return false;
 	AliasAnalysis::Location Loc = AA->getLocation(I);
@@ -76,7 +75,7 @@ bool LoadHoist::hoist(LoadInst *I) {
 	return false;
 }
 
-char LoadHoist::ID;
+char LoadElim::ID;
 
-static RegisterPass<LoadHoist>
-X(DEBUG_TYPE, "Hoist and merge load instructions");
+static RegisterPass<LoadElim>
+X(DEBUG_TYPE, "Eliminate redundant load instructions");
