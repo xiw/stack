@@ -2,10 +2,13 @@
 // for C++ delete.
 
 #define DEBUG_TYPE "simplify-delete"
+#include "BugOn.h"
 #include <llvm/Pass.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include <llvm/Transforms/Utils/Local.h>
 
 using namespace llvm;
 
@@ -14,10 +17,6 @@ namespace {
 struct SimplifyDelete : FunctionPass {
 	static char ID;
 	SimplifyDelete() : FunctionPass(ID) {}
-
-	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-		AU.setPreservesCFG();
-	}
 
 	virtual bool runOnFunction(Function &);
 
@@ -29,8 +28,14 @@ private:
 
 bool SimplifyDelete::runOnFunction(Function &F) {
 	bool Changed = false;
-	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i)
-		Changed |= visitDeleteBB(i);
+	for (Function::iterator i = F.begin(), e = F.end(); i != e; ) {
+		BasicBlock *BB = i++;
+		Changed |= visitDeleteBB(BB);
+	        Changed |= ConstantFoldTerminator(BB, true);
+	        Changed |= EliminateDuplicatePHINodes(BB);
+		// Must be the last one.
+		Changed |= MergeBlockIntoPredecessor(BB, this);
+	}
 	return Changed;
 }
 
@@ -45,14 +50,8 @@ bool SimplifyDelete::visitDeleteBB(BasicBlock *BB) {
 	BranchInst *BI = dyn_cast<BranchInst>(Pred->getTerminator());
 	if (!BI || !BI->isConditional())
 		return false;
-	ICmpInst *ICI = dyn_cast<ICmpInst>(BI->getCondition());
-	if (!ICI || !ICI->isEquality())
-		return false;
-	if (ICI->getDebugLoc().isUnknown())
-		return false;
 	// Remove debugging information to ignore the check.
-	ICI->setDebugLoc(DebugLoc());
-	return true;
+	return BugOnPass::clearDebugLoc(BI->getCondition());
 }
 
 char SimplifyDelete::ID;

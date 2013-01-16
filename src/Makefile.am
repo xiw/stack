@@ -16,7 +16,7 @@ libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc SMTSolver.cc
 libsat_la_SOURCES += PHIRange.cc LoopPrepare.cc ElimAssert.cc
 libsat_la_SOURCES += BugOn.cc BugOnInt.cc BugOnNull.cc BugOnGep.cc
 libsat_la_SOURCES += BugOnAlias.cc BugOnFree.cc BugOnBounds.cc BugOnUndef.cc
-libsat_la_SOURCES += BugOnLoop.cc
+libsat_la_SOURCES += BugOnLoop.cc BugOnAssert.cc
 libsat_la_SOURCES += BugOnLibc.cc BugOnLinux.cc
 libsat_la_SOURCES += ValueGen.h PathGen.h Diagnostic.h SMTSolver.h BugOn.h
 libsat_la_SOURCES += SMTBoolector.cc
@@ -29,7 +29,7 @@ libsat_la_LDFLAGS  = -L$(top_builddir)/lib
 
 libintck_la_SOURCES = IntRewrite.cc IntLibcalls.cc IntSat.cc \
 	OverflowIdiom.cc OverflowSimplify.cc \
-	LoadElim.cc
+	LoadRewrite.cc
 libintck_la_LIBADD  = libsat.la
 libintck_la_LDFLAGS = -module
 
@@ -38,7 +38,7 @@ libcmpck_la_LIBADD  = libsat.la
 libcmpck_la_LDFLAGS = -module
 
 libantiopt_la_SOURCES = AntiFunctionPass.cc AntiDCE.cc AntiAlgebra.cc AntiSimplify.cc
-libantiopt_la_SOURCES += InlineOnly.cc SimplifyDelete.cc IgnoreLoopInitial.cc
+libantiopt_la_SOURCES += InlineOnly.cc SimplifyDelete.cc IgnoreLoopInitial.cc LoadElim.cc
 libantiopt_la_SOURCES += AntiFunctionPass.h
 libantiopt_la_LIBADD  = libsat.la
 libantiopt_la_LDFLAGS = -module

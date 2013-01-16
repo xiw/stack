@@ -45,15 +45,23 @@ bool BugOnBounds::runOnFunction(llvm::Function &F) {
 bool BugOnBounds::runOnInstruction(Instruction *I) {
 	Value *Ptr = NULL, *Val = NULL;
 	if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
+		if (LI->isVolatile())
+			return false;
 		Ptr = LI->getPointerOperand();
 		Val = LI;
 	} else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
+		if (SI->isVolatile())
+			return false;
 		Ptr = SI->getPointerOperand();
 		Val = SI->getValueOperand();
 	} else if (AtomicCmpXchgInst *AI = dyn_cast<AtomicCmpXchgInst>(I)) {
+		if (AI->isVolatile())
+			return false;
 		Ptr = AI->getPointerOperand();
 		Val = AI->getCompareOperand();
 	} else if (AtomicRMWInst *AI = dyn_cast<AtomicRMWInst>(I)) {
+		if (AI->isVolatile())
+			return false;
 		Ptr = AI->getPointerOperand();
 		Val = AI->getValOperand();
 	} else {

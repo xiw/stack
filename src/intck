@@ -12,6 +12,6 @@ exec ${OPT} -disable-output -load=${DIR}/../lib/libintck.so \
 	-int-rewrite -overflow-simplify -int-libcalls \
 	-std-compile-opts \
 	-overflow-simplify -adce -simplifycfg \
-	-load-elim \
+	-load-rewrite \
 	-O2 \
 	-int-sat $@ 2>&1
