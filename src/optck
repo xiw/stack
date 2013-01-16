@@ -15,7 +15,6 @@ exec ${OPT} --disable-output -load=${DIR}/../lib/libantiopt.so \
 	-bugon-alias \
 	-bugon-int \
 	-bugon-libc -bugon-linux \
-	-simplifycfg -adce \
 	-anti-simplify \
 	-simplifycfg \
 	-anti-dce \
