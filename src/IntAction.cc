@@ -19,7 +19,15 @@ class ExtractMacros : public PPCallbacks {
 public:
 	ExtractMacros(std::vector<SourceRange> &R) : Ranges(R) {}
 
-	virtual void MacroExpands(const Token &, const MacroInfo *, SourceRange Range) {
+	virtual void MacroExpands(const Token &MacroNameTok, const MacroInfo *MI, SourceRange Range) {
+		if (MI->isObjectLike())
+			return;
+		StringRef Name = MacroNameTok.getIdentifierInfo()->getName();
+		// Allow macros such as [un]likely(...).
+		if (Name.find("likely") != StringRef::npos)
+			return;
+		if (Name == "access_ok")
+			return;
 		Ranges.push_back(Range);
 	}
 
