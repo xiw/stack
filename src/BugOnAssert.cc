@@ -52,14 +52,14 @@ bool BugOnAssert::runOnFunction(Function &F) {
 	Builder = &TheBuilder;
 	DL = getAnalysisIfAvailable<DataLayout>();
 	bool Changed = markInfiniteLoops(F);
-	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i) {
-		BasicBlock *BB = i;
+	for (Function::iterator i = F.begin(), e = F.end(); i != e; ) {
+		BasicBlock *BB = i++;
 		if (isAssertBlock(BB)) {
-			Changed |= visitAssertBlock(i);
+			Changed |= visitAssertBlock(BB);
 			continue;
 		}
 		if (isPrintBlock(BB)) {
-			Changed |= visitPrintBlock(i);
+			Changed |= visitPrintBlock(BB);
 			continue;
 		}
 	}
@@ -106,6 +106,9 @@ bool BugOnAssert::markInfiniteLoops(Function &F) {
 
 bool BugOnAssert::isAssertBlock(BasicBlock *BB) {
 	TerminatorInst *TI = BB->getTerminator();
+	// Cannot be return or anything other than unreachable/br.
+	if (!isa<UnreachableInst>(TI) && !isa<BranchInst>(TI))
+		return false;
 	unsigned NumSucc = TI->getNumSuccessors();
 	// A single unreachable?
 	if (TI == &BB->front())
