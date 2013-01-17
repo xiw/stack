@@ -1,17 +1,18 @@
-AM_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall
+AM_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall -std=c++11
 
 noinst_LTLIBRARIES = libsat.la
-lib_LTLIBRARIES    = libintck.la libcmpck.la libantiopt.la
+lib_LTLIBRARIES    = libintck.la libcmpck.la libantiopt.la libintfe.la
 bin_PROGRAMS       = intglobal
 EXTRA_DIST         = intck cmpck antiopt llvm/DataLayout.h llvm/DebugInfo.h llvm/IRBuilder.h
 
-all-local: libintck.la libcmpck.la
+all-local: libintck.la libcmpck.la libintfe.la
 	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libintck.so
 	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libcmpck.so
 	@cd $(top_builddir)/bin && $(LN_S) -f ../src/intglobal
 	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libantiopt.so
+	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libintfe.so
 
-libsat_la_CPPFLAGS = -I$(top_builddir)/lib -std=c++11
+libsat_la_CPPFLAGS = -I$(top_builddir)/lib
 libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc SMTSolver.cc
 libsat_la_SOURCES += PHIRange.cc LoopPrepare.cc ElimAssert.cc
 libsat_la_SOURCES += BugOn.cc BugOnInt.cc BugOnNull.cc BugOnGep.cc
@@ -42,6 +43,9 @@ libantiopt_la_SOURCES += InlineOnly.cc SimplifyDelete.cc IgnoreLoopInitial.cc Lo
 libantiopt_la_SOURCES += AntiFunctionPass.h
 libantiopt_la_LIBADD  = libsat.la
 libantiopt_la_LDFLAGS = -module
+
+libintfe_la_SOURCES = IntAction.cc
+libintfe_la_LDFLAGS = -module
 
 intglobal_LDFLAGS = `llvm-config --ldflags` -lLLVM-`llvm-config --version`
 intglobal_SOURCES = IntGlobal.cc Annotation.cc CallGraph.cc Taint.cc Range.cc \
