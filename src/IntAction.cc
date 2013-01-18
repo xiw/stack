@@ -1,38 +1,68 @@
+#include <clang/AST/ASTConsumer.h>
+#include <clang/AST/ASTContext.h>
+#include <clang/AST/RecursiveASTVisitor.h>
 #include <clang/CodeGen/CodeGenAction.h>
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/FrontendPluginRegistry.h>
-#include <clang/Lex/PPCallbacks.h>
-#include <clang/Lex/Preprocessor.h>
+#include <clang/Frontend/MultiplexConsumer.h>
 #include <llvm/DebugInfo.h>
-#include <llvm/ADT/DenseSet.h>
 #include <llvm/ADT/StringMap.h>
 #include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/InstIterator.h>
+#include <set>
 
 using namespace clang;
 using namespace llvm;
 
+typedef std::set<SourceLocation> LocSet;
+
 namespace {
 
-class ExtractMacros : public PPCallbacks {
+// Add macro-expanded code with if or ?: conditions.
+class ExtractMacroVisitor : public RecursiveASTVisitor<ExtractMacroVisitor> {
 public:
-	ExtractMacros(std::vector<SourceRange> &R) : Ranges(R) {}
+	ExtractMacroVisitor(SourceManager &SM, LocSet &L) : SM(SM), Locs(L) {}
 
-	virtual void MacroExpands(const Token &MacroNameTok, const MacroInfo *MI, SourceRange Range) {
-		if (MI->isObjectLike())
-			return;
-		StringRef Name = MacroNameTok.getIdentifierInfo()->getName();
-		// Allow macros such as [un]likely(...).
-		if (Name.find("likely") != StringRef::npos)
-			return;
-		if (Name == "access_ok")
-			return;
-		Ranges.push_back(Range);
+	bool VisitIfStmt(IfStmt *S) {
+		addMacroLoc(S->getLocStart());
+		return true;
+	}
+
+	bool VisitConditionalOperator(ConditionalOperator *E) {
+		addMacroLoc(E->getLocStart());
+		return true;
+	}
+
+	// GNU extension ?:, the middle operand omitted.
+	bool VisitBinaryConditionalOperator(BinaryConditionalOperator *E) {
+		addMacroLoc(E->getLocStart());
+		return true;
 	}
 
 private:
-	std::vector<SourceRange> &Ranges;
+	SourceManager &SM;
+	LocSet &Locs;
+
+	void addMacroLoc(SourceLocation Loc) {
+		if (SM.isMacroBodyExpansion(Loc))
+			Locs.insert(Loc);
+	}
+};
+
+class ExtractMacroConsumer : public ASTConsumer {
+public:
+	ExtractMacroConsumer(LocSet &L) : Locs(L) {}
+
+	virtual void HandleTranslationUnit(ASTContext &Ctx) {
+		ExtractMacroVisitor Visitor(Ctx.getSourceManager(), Locs);
+		Visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
+	}
+
+private:
+	LocSet &Locs;
 };
 
 // Use multiple inheritance to intercept code generation.
@@ -73,7 +103,11 @@ protected:
 
 	virtual ASTConsumer *CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
 		OS = CI.createDefaultOutputFile(true, InFile, "bc");
-		return Delegate::CreateASTConsumer(CI, InFile);
+		ASTConsumer *C[] = {
+			new ExtractMacroConsumer(Locs),
+			Delegate::CreateASTConsumer(CI, InFile)
+		};
+		return new MultiplexConsumer(C);
 	}
 
 	virtual bool BeginInvocation(CompilerInstance &CI) {
@@ -81,8 +115,6 @@ protected:
 	}
 
 	virtual bool BeginSourceFileAction(CompilerInstance &CI, StringRef Filename) {
-		Preprocessor &PP = CI.getPreprocessor();
-		PP.addPPCallbacks(new ExtractMacros(Ranges));
 		Delegate::setCurrentInput(super::getCurrentInput());
 		Delegate::setCompilerInstance(&CI);
 		return Delegate::BeginSourceFileAction(CI, Filename);
@@ -97,35 +129,34 @@ protected:
 		OwningPtr<llvm::Module> M(Delegate::takeModule());
 		if (!M)
 			return;
-		clearMacroLocations(*M);
+		markMacroLocations(*M);
 		WriteBitcodeToFile(M.get(), *OS);
 	}
 
 private:
-	std::vector<SourceRange> Ranges;
+	LocSet Locs;
 	raw_ostream *OS;
 
-	void clearMacroLocations(llvm::Module &);
+	void markMacroLocations(llvm::Module &);
 };
 
 } // anonymous namespace
 
-void IntAction::clearMacroLocations(llvm::Module &M) {
+void IntAction::markMacroLocations(llvm::Module &M) {
 	// Filename => set<Line>.
 	StringMap< DenseSet<unsigned> > MacroLines;
 	SourceManager &SM = super::getCompilerInstance().getSourceManager();
-	for (SourceRange &R : Ranges) {
-		if (R.isInvalid())
+	for (SourceLocation Loc : Locs) {
+		if (Loc.isInvalid())
 			continue;
-		// Clang only emits the start location.
-		SourceLocation Loc = R.getBegin();
 		PresumedLoc PLoc = SM.getPresumedLoc(Loc);
 		if (PLoc.isInvalid())
 			continue;
 		MacroLines[PLoc.getFilename()].insert(PLoc.getLine());
 	}
-	// Remove !dbg if it is expanded from a macro.
 	LLVMContext &C = M.getContext();
+	unsigned MD_macro = C.getMDKindID("macro");
+	MDNode *Dummy = MDNode::get(C, MDString::get(C, "dummy"));
 	for (Function &F : M) {
 		for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 			Instruction *I = &*i;
@@ -135,7 +166,7 @@ void IntAction::clearMacroLocations(llvm::Module &M) {
 			StringRef Filename = DIScope(DbgLoc.getScope(C)).getFilename();
 			unsigned Line = DbgLoc.getLine();
 			if (MacroLines.lookup(Filename).count(Line))
-				I->setDebugLoc(DebugLoc());
+				I->setMetadata(MD_macro, Dummy);
 		}
 	}
 }

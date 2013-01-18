@@ -17,6 +17,9 @@ bool Diagnostic::hasSingleDebugLocation(Instruction *I) {
 	// Skip inlined instructions.
 	if (DbgLoc.getInlinedAt(I->getContext()))
 		return false;
+	// Macro-expanded code.
+	if (I->getMetadata("macro"))
+		return false;
 	return true;
 }
 
