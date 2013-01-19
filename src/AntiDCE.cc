@@ -87,10 +87,8 @@ int AntiDCE::shouldKeepCode(BasicBlock *BB) {
 	SMTExpr Delta = getDeltaForBlock(BB, VG);
 	if (!Delta)
 		return 1;
-	SMTExpr Q = SMT.bvand(R, Delta);
+	SMTStatus Status = queryWithDelta(R, Delta, VG);
 	SMT.decref(Delta);
-	SMTStatus Status = SMT.query(Q);
-	SMT.decref(Q);
 	if (Status == SMT_UNSAT)
 		return 0;
 	return 1;

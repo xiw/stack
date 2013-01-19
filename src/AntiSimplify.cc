@@ -76,12 +76,7 @@ int AntiSimplify::foldConst(Instruction *I) {
 		SMT.assume(R);
 	}
 	SMTExpr E = VG.get(I);
-	int Status;
-	{
-		SMTExpr Q = SMT.bvand(E, Delta);
-		Status = SMT.query(Q);
-		SMT.decref(Q);
-	}
+	int Status = queryWithDelta(E, Delta, VG);
 	if (Status == SMT_UNSAT) {
 		// I must be false with Delta.
 		// Can I be true without Delta?
@@ -91,9 +86,7 @@ int AntiSimplify::foldConst(Instruction *I) {
 		// I can be false with Delta.
 		// Let's try if it can be true.
 		SMTExpr NE = SMT.bvnot(E);
-		SMTExpr Q = SMT.bvand(NE, Delta);
-		Status = SMT.query(Q);
-		SMT.decref(Q);
+		Status = queryWithDelta(NE, Delta, VG);
 		if (Status == SMT_UNSAT) {
 			// I must be true with Delta.
 			// Can I be false with Delta?

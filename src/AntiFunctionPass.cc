@@ -1,5 +1,4 @@
 #include "AntiFunctionPass.h"
-#include "BugOn.h"
 #include <llvm/ADT/SCCIterator.h>
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
@@ -81,8 +80,27 @@ void AntiFunctionPass::recalculate(Function &F) {
 	calculateBackedges(F, Backedges, InLoopBlocks);
 }
 
+static SMTExpr computeDelta(ValueGen &VG, SmallVectorImpl<BugOnInst *> &Assertions) {
+	SMTSolver &SMT = VG.SMT;
+	SMTExpr U = SMT.bvfalse();
+	// Compute R and U.
+	for (BugOnInst *I : Assertions) {
+		// ->queryWithAssertions() may mask some assertions.
+		if (!I)
+			continue;
+		Value *V = I->getCondition();
+		SMTExpr E = VG.get(V);
+		SMTExpr Tmp = SMT.bvor(U, E);
+		SMT.decref(U);
+		U = Tmp;
+	}
+	SMTExpr NotU = SMT.bvnot(U);
+	SMT.decref(U);
+	return NotU;
+}
+
 SMTExpr AntiFunctionPass::getDeltaForBlock(BasicBlock *BB, ValueGen &VG) {
-	SmallVector<SMTExpr, 32> Dom;
+	Assertions.clear();
 	// Ignore post-dominators if the option is set or BB is in a loop.
 	bool IgnorePostdom = IgnorePostOpt
 		|| (std::find(InLoopBlocks.begin(), InLoopBlocks.end(), BB) != InLoopBlocks.end());
@@ -100,25 +118,19 @@ SMTExpr AntiFunctionPass::getDeltaForBlock(BasicBlock *BB, ValueGen &VG) {
 				continue;
 		}
 		for (BasicBlock::iterator i = Blk->begin(), e = Blk->end(); i != e; ++i) {
-			CallInst *CI = dyn_cast<CallInst>(i);
-			if (!CI || CI->getCalledFunction() != BugOn)
-				continue;
-			Value *V = CI->getArgOperand(0);
-			SMTExpr E = VG.get(V);
-			Dom.push_back(E);
+			if (BugOnInst *BOI = dyn_cast<BugOnInst>(i))
+				Assertions.push_back(BOI);
 		}
 	}
-	if (Dom.empty())
+	if (Assertions.empty())
 		return NULL;
+	return computeDelta(VG, Assertions);
+}
+
+SMTStatus AntiFunctionPass::queryWithDelta(SMTExpr E, SMTExpr Delta, ValueGen &VG) {
 	SMTSolver &SMT = VG.SMT;
-	SMTExpr U = SMT.bvfalse();
-	// Compute R and U.
-	for (unsigned i = 0, n = Dom.size(); i != n; ++i) {
-		SMTExpr Tmp = SMT.bvor(U, Dom[i]);
-		SMT.decref(U);
-		U = Tmp;
-	}
-	SMTExpr NotU = SMT.bvnot(U);
-	SMT.decref(U);
-	return NotU;
+	SMTExpr Q = SMT.bvand(E, Delta);
+	SMTStatus Status = SMT.query(Q);
+	SMT.decref(Q);
+	return Status;
 }

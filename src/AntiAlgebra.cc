@@ -114,10 +114,9 @@ int AntiAlgebra::checkEqv(ICmpInst *I0, ICmpInst *I1) {
 	if (SMT.query(Q) == SMT_SAT) {
 		SMTExpr Delta = getDeltaForBlock(BB, VG);
 		if (Delta) {
-			SMT.assume(Delta);
-			SMT.decref(Delta);
 			// E0 == E1 with bug-free assertions.
-			int Status = SMT.query(Q);
+			SMTStatus Status = queryWithDelta(Q, Delta, VG);
+			SMT.decref(Delta);
 			if (Status == SMT_UNSAT)
 				isEqv = 1;
 		}
