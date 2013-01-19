@@ -1,4 +1,4 @@
-AM_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall -std=c++11
+AM_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall -std=c++11 -fno-strict-aliasing
 
 noinst_LTLIBRARIES = libsat.la
 lib_LTLIBRARIES    = libintck.la libcmpck.la libantiopt.la libintfe.la
