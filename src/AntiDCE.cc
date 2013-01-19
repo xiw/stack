@@ -5,7 +5,6 @@
 
 #define DEBUG_TYPE "anti-dce"
 #include "AntiFunctionPass.h"
-#include "Diagnostic.h"
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/IR/Constants.h>
@@ -31,8 +30,6 @@ struct AntiDCE: AntiFunctionPass {
 	virtual bool runOnAntiFunction(Function &);
 
 private:
-	Diagnostic Diag;
-
 	bool shouldCheck(BasicBlock *BB);
 	int shouldKeepCode(BasicBlock *BB);
 	void markAsDead(BasicBlock *BB);
@@ -103,6 +100,7 @@ void AntiDCE::markAsDead(BasicBlock *BB) {
 	for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ++i) {
 		if (!i->getDebugLoc().isUnknown()) {
 			Diag.backtrace(i);
+			printMinimalAssertions();
 			break;
 		}
 	}

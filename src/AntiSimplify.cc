@@ -4,7 +4,6 @@
 
 #define DEBUG_TYPE "anti-simplify"
 #include "AntiFunctionPass.h"
-#include "Diagnostic.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/InstIterator.h>
@@ -25,8 +24,6 @@ struct AntiSimplify: AntiFunctionPass {
 	virtual bool runOnAntiFunction(Function &);
 
 private:
-	Diagnostic Diag;
-
 	int foldConst(Instruction *);
 };
 
@@ -52,6 +49,7 @@ bool AntiSimplify::runOnAntiFunction(Function &F) {
 		Diag << "model: |\n" << *I << "\n  -->  "
 		     << (ConstVal ? "true" : "false") << "\n";
 		Diag.backtrace(I);
+		printMinimalAssertions();
 		Constant *C = ConstantInt::get(T, ConstVal);
 		I->replaceAllUsesWith(C);
 		Changed = true;

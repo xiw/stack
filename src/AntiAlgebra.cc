@@ -7,7 +7,6 @@
 
 #define DEBUG_TYPE "anti-algebra"
 #include "AntiFunctionPass.h"
-#include "Diagnostic.h"
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpander.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
@@ -39,7 +38,6 @@ struct AntiAlgebra : AntiFunctionPass {
 	virtual bool runOnAntiFunction(Function &);
 
 private:
-	Diagnostic Diag;
 	TargetLibraryInfo *TLI;
 	ScalarEvolution *SE;
 
@@ -94,6 +92,7 @@ bool AntiAlgebra::visitICmpInst(ICmpInst *I) {
 	Diag.bug(DEBUG_TYPE);
 	Diag << "model: |\n" << *I << "\n  -->" << *NewCmp << "\n";
 	Diag.backtrace(I);
+	printMinimalAssertions();
 	I->replaceAllUsesWith(NewCmp);
 	RecursivelyDeleteTriviallyDeadInstructions(I, TLI);
 	return true;

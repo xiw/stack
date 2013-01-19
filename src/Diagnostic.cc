@@ -23,7 +23,23 @@ bool Diagnostic::hasSingleDebugLocation(Instruction *I) {
 	return true;
 }
 
-void Diagnostic::writeLocation(raw_ostream &OS, MDNode *MD) {
+Diagnostic::Diagnostic() : OS(errs()) {}
+
+void Diagnostic::backtrace(Instruction *I) {
+	MDNode *MD = I->getDebugLoc().getAsMDNode(I->getContext());
+	if (!MD)
+		return;
+	OS << "stack: \n";
+	DILocation Loc(MD);
+	for (;;) {
+		this->location(Loc);
+		Loc = Loc.getOrigLocation();
+		if (!Loc.Verify())
+			break;
+	}
+}
+
+void Diagnostic::location(MDNode *MD) {
 	DILocation Loc(MD);
 	SmallString<64> Path;
 	StringRef Filename = Loc.getFilename();
@@ -34,22 +50,6 @@ void Diagnostic::writeLocation(raw_ostream &OS, MDNode *MD) {
 	OS << "  - " << Path
 	   << ':' << Loc.getLineNumber()
 	   << ':' << Loc.getColumnNumber() << "\n";
-}
-
-Diagnostic::Diagnostic() : OS(errs()) {}
-
-void Diagnostic::backtrace(Instruction *I) {
-	MDNode *MD = I->getDebugLoc().getAsMDNode(I->getContext());
-	if (!MD)
-		return;
-	OS << "stack: \n";
-	DILocation Loc(MD);
-	for (;;) {
-		writeLocation(OS, Loc);
-		Loc = Loc.getOrigLocation();
-		if (!Loc.Verify())
-			break;
-	}
 }
 
 void Diagnostic::bug(Instruction *I) {

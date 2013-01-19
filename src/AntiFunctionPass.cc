@@ -1,5 +1,4 @@
 #include "AntiFunctionPass.h"
-#include "Diagnostic.h"
 #include <llvm/ADT/SCCIterator.h>
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
@@ -9,6 +8,7 @@
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Transforms/Utils/BasicBlockUtils.h>
+#include <sys/mman.h>
 #include <algorithm>
 #include <cxxabi.h>
 
@@ -18,11 +18,24 @@ static cl::opt<bool>
 IgnorePostOpt("ignore-bugon-post",
               cl::desc("Ignore bugon conditions on post-dominators"));
 
-AntiFunctionPass::AntiFunctionPass(char &ID) : FunctionPass(ID) {
+static cl::opt<bool>
+MinBugOnOpt("min-bugon",
+            cl::desc("Compute minimal bugon set"), cl::init(true));
+
+static const size_t BUFFER_SIZE = 4096;
+
+AntiFunctionPass::AntiFunctionPass(char &ID) : FunctionPass(ID), Buffer(NULL) {
 	PassRegistry &Registry = *PassRegistry::getPassRegistry();
 	initializeDataLayoutPass(Registry);
 	initializeDominatorTreePass(Registry);
 	initializePostDominatorTreePass(Registry);
+	if (MinBugOnOpt)
+		Buffer = mmap(NULL, BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
+}
+
+AntiFunctionPass::~AntiFunctionPass() {
+	if (Buffer)
+		munmap(Buffer, BUFFER_SIZE);
 }
 
 void AntiFunctionPass::getAnalysisUsage(AnalysisUsage &AU) const {
@@ -134,7 +147,7 @@ SMTStatus AntiFunctionPass::queryWithDelta(SMTExpr E, SMTExpr Delta, ValueGen &V
 		SMTExpr Q = SMT.bvand(E, Delta);
 		SMTStatus Status = SMT.query(Q);
 		SMT.decref(Q);
-		if (Status != SMT_UNSAT)
+		if (!Buffer || Status != SMT_UNSAT)
 			return Status;
 	}
 	unsigned n = Assertions.size();
@@ -157,12 +170,25 @@ SMTStatus AntiFunctionPass::queryWithDelta(SMTExpr E, SMTExpr Delta, ValueGen &V
 			--n;
 	}
 	// Output the unsat core.
-	LLVMContext &C = BugOn->getContext();
-	raw_ostream &OS = dbgs();
+	BugOnInst **p = (BugOnInst **)Buffer;
 	for (BugOnInst *I : Assertions) {
-		MDNode *MD = I->getDebugLoc().getAsMDNode(C);
-		Diagnostic::writeLocation(OS, MD);
-		OS << "    - " << I->getAnnotation() << "\n";
+		if (!I)
+			continue;
+		*p++ = I;
 	}
+	*p = NULL;
 	return SMT_UNSAT;
+}
+
+void AntiFunctionPass::printMinimalAssertions() {
+	if (!Buffer)
+		return;
+	Diag << "core: \n";
+	LLVMContext &C = BugOn->getContext();
+	for (BugOnInst **p = (BugOnInst **)Buffer; *p; ++p) {
+		BugOnInst *I = *p;
+		MDNode *MD = I->getDebugLoc().getAsMDNode(C);
+		Diag.location(MD);
+		Diag << "    - " << I->getAnnotation() << "\n";
+	}
 }

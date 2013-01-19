@@ -15,8 +15,6 @@ public:
 	// Return if I has a non-inlined debug location.
 	static bool hasSingleDebugLocation(Instruction *I);
 
-	static void writeLocation(llvm::raw_ostream &, llvm::MDNode *);
-
 	Diagnostic();
 
 	llvm::raw_ostream &os() { return OS; }
@@ -25,6 +23,7 @@ public:
 	void bug(const llvm::Twine &);
 
 	void backtrace(Instruction *);
+	void location(llvm::MDNode *);
 	void status(int);
 
 	template <typename T> Diagnostic &
