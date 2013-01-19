@@ -23,29 +23,29 @@ bool Diagnostic::hasSingleDebugLocation(Instruction *I) {
 	return true;
 }
 
-Diagnostic::Diagnostic() : OS(errs()) {}
-
-static void getPath(SmallVectorImpl<char> &Path, const MDNode *MD) {
-	StringRef Filename = DIScope(MD).getFilename();
+void Diagnostic::writeLocation(raw_ostream &OS, MDNode *MD) {
+	DILocation Loc(MD);
+	SmallString<64> Path;
+	StringRef Filename = Loc.getFilename();
 	if (sys::path::is_absolute(Filename))
 		Path.append(Filename.begin(), Filename.end());
 	else
-		sys::path::append(Path, DIScope(MD).getDirectory(), Filename);
+		sys::path::append(Path, Loc.getDirectory(), Filename);
+	OS << "  - " << Path
+	   << ':' << Loc.getLineNumber()
+	   << ':' << Loc.getColumnNumber() << "\n";
 }
 
+Diagnostic::Diagnostic() : OS(errs()) {}
+
 void Diagnostic::backtrace(Instruction *I) {
-	const char *Prefix = " - ";
 	MDNode *MD = I->getDebugLoc().getAsMDNode(I->getContext());
 	if (!MD)
 		return;
 	OS << "stack: \n";
 	DILocation Loc(MD);
 	for (;;) {
-		SmallString<64> Path;
-		getPath(Path, Loc.getScope());
-		OS << Prefix << Path
-		   << ':' << Loc.getLineNumber()
-		   << ':' << Loc.getColumnNumber() << '\n';
+		writeLocation(OS, Loc);
 		Loc = Loc.getOrigLocation();
 		if (!Loc.Verify())
 			break;

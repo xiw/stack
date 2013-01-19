@@ -1,4 +1,5 @@
 #include "AntiFunctionPass.h"
+#include "Diagnostic.h"
 #include <llvm/ADT/SCCIterator.h>
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
@@ -129,8 +130,39 @@ SMTExpr AntiFunctionPass::getDeltaForBlock(BasicBlock *BB, ValueGen &VG) {
 
 SMTStatus AntiFunctionPass::queryWithDelta(SMTExpr E, SMTExpr Delta, ValueGen &VG) {
 	SMTSolver &SMT = VG.SMT;
-	SMTExpr Q = SMT.bvand(E, Delta);
-	SMTStatus Status = SMT.query(Q);
-	SMT.decref(Q);
-	return Status;
+	{
+		SMTExpr Q = SMT.bvand(E, Delta);
+		SMTStatus Status = SMT.query(Q);
+		SMT.decref(Q);
+		if (Status != SMT_UNSAT)
+			return Status;
+	}
+	unsigned n = Assertions.size();
+	// Compute the minimal bugon set.
+	for (BugOnInst *&I : Assertions) {
+		if (n <= 1)
+			break;
+		BugOnInst *Tmp = I;
+		// Mask out this bugon and see if still unsat.
+		I = NULL;
+		SMTExpr MinDelta = computeDelta(VG, Assertions);
+		SMTExpr Q = SMT.bvand(E, MinDelta);
+		SMT.decref(MinDelta);
+		SMTStatus Status = SMT.query(Q);
+		SMT.decref(Q);
+		// Keep this assertions.
+		if (Status != SMT_UNSAT)
+			I = Tmp;
+		else
+			--n;
+	}
+	// Output the unsat core.
+	LLVMContext &C = BugOn->getContext();
+	raw_ostream &OS = dbgs();
+	for (BugOnInst *I : Assertions) {
+		MDNode *MD = I->getDebugLoc().getAsMDNode(C);
+		Diagnostic::writeLocation(OS, MD);
+		OS << "    - " << I->getAnnotation() << "\n";
+	}
+	return SMT_UNSAT;
 }

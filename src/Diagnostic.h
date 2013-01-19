@@ -2,6 +2,7 @@
 
 namespace llvm {
 	class Instruction;
+	class MDNode;
 	class raw_ostream;
 	class Twine;
 } // namespace llvm
@@ -13,6 +14,8 @@ public:
 
 	// Return if I has a non-inlined debug location.
 	static bool hasSingleDebugLocation(Instruction *I);
+
+	static void writeLocation(llvm::raw_ostream &, llvm::MDNode *);
 
 	Diagnostic();
 
