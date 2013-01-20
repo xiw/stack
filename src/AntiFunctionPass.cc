@@ -183,7 +183,10 @@ SMTStatus AntiFunctionPass::queryWithDelta(SMTExpr E, SMTExpr Delta, ValueGen &V
 void AntiFunctionPass::printMinimalAssertions() {
 	if (!Buffer)
 		return;
-	Diag << "core: \n";
+	int Count = 0;
+	for (BugOnInst **p = (BugOnInst **)Buffer; *p; ++p)
+		Count++;
+	Diag << "core: [" << Count << "]\n";
 	LLVMContext &C = BugOn->getContext();
 	for (BugOnInst **p = (BugOnInst **)Buffer; *p; ++p) {
 		BugOnInst *I = *p;
