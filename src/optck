@@ -4,8 +4,8 @@ DIR=$(dirname "${BASH_SOURCE[0]}")
 OPT="`llvm-config --bindir`/opt"
 exec ${OPT} --disable-output -load=${DIR}/../lib/libantiopt.so \
 	-targetlibinfo -tbaa -basicaa -globalopt -sccp -deadargelim \
-	-simplify-delete -load-elim \
-	-basiccg -prune-eh -inline-only -functionattrs -argpromotion \
+	-basiccg -prune-eh -simplify-delete -load-elim \
+	-inline-only -functionattrs -argpromotion \
 	-strip-dead-prototypes \
 	-simplify-libcalls -adce \
 	-elim-assert \

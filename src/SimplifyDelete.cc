@@ -4,6 +4,7 @@
 #define DEBUG_TYPE "simplify-delete"
 #include "BugOn.h"
 #include <llvm/Pass.h>
+#include <llvm/Analysis/Dominators.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -16,11 +17,19 @@ namespace {
 
 struct SimplifyDelete : FunctionPass {
 	static char ID;
-	SimplifyDelete() : FunctionPass(ID) {}
+	SimplifyDelete() : FunctionPass(ID) {
+		PassRegistry &Registry = *PassRegistry::getPassRegistry();
+		initializeDominatorTreePass(Registry);
+	}
+
+	void getAnalysisUsage(AnalysisUsage &AU) const {
+		AU.addRequired<DominatorTree>();
+	}
 
 	virtual bool runOnFunction(Function &);
 
 private:
+	bool removeUnreachable(Function &);
 	bool visitDeleteBB(BasicBlock *);
 };
 
@@ -28,6 +37,7 @@ private:
 
 bool SimplifyDelete::runOnFunction(Function &F) {
 	bool Changed = false;
+	Changed |= removeUnreachable(F);
 	for (Function::iterator i = F.begin(), e = F.end(); i != e; ) {
 		BasicBlock *BB = i++;
 		Changed |= visitDeleteBB(BB);
@@ -37,6 +47,27 @@ bool SimplifyDelete::runOnFunction(Function &F) {
 		Changed |= MergeBlockIntoPredecessor(BB, this);
 	}
 	return Changed;
+}
+
+bool SimplifyDelete::removeUnreachable(Function &F) {
+	DominatorTree &DT = getAnalysis<DominatorTree>();
+	SmallVector<BasicBlock *, 4> UnreachableBB;
+	for (BasicBlock &BB : F) {
+		if (DT.isReachableFromEntry(&BB))
+			continue;
+		for (succ_iterator i = succ_begin(&BB), e = succ_end(&BB); i != e; ++i) {
+			BasicBlock *Succ = *i;
+			if (DT.isReachableFromEntry(Succ))
+				Succ->removePredecessor(&BB);
+		}
+		BB.dropAllReferences();
+		UnreachableBB.push_back(&BB);
+	}
+	if (UnreachableBB.empty())
+		return false;
+	for (BasicBlock *BB : UnreachableBB)
+		BB->eraseFromParent();
+	return true;
 }
 
 bool SimplifyDelete::visitDeleteBB(BasicBlock *BB) {
