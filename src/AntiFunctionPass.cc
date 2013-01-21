@@ -186,7 +186,8 @@ void AntiFunctionPass::printMinimalAssertions() {
 	int Count = 0;
 	for (BugOnInst **p = (BugOnInst **)Buffer; *p; ++p)
 		Count++;
-	Diag << "core: [" << Count << "]\n";
+	Diag << "ncore: " << Count << "\n";
+	Diag << "core: \n";
 	LLVMContext &C = BugOn->getContext();
 	for (BugOnInst **p = (BugOnInst **)Buffer; *p; ++p) {
 		BugOnInst *I = *p;
