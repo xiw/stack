@@ -102,7 +102,7 @@ bool BugOnFree::insertNoFree(Value *P, CallInst *CI) {
 	if (F == NULL)
 		return false;
 
-	P = GetUnderlyingObject(P, DL, 0);
+	P = GetUnderlyingObject(P, DL, 1000);
 	Value *V = createAnd(
 		createIsNotNull(F),
 		Builder->CreateICmpEQ(F, Builder->CreatePointerCast(P, F->getType()))
@@ -128,7 +128,7 @@ bool BugOnFree::insertNoRealloc(Value *P, CallInst *CI) {
 	if (F == NULL)
 		return false;
 
-	P = GetUnderlyingObject(P, DL, 0);
+	P = GetUnderlyingObject(P, DL, 1000);
 	Value *V = createAnd(
 		createAnd(
 			createAnd(

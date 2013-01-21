@@ -49,7 +49,7 @@ bool BugOnNull::runOnInstruction(Instruction *I) {
 	if (!P)
 		return false;
 	// Strip pointer offset to get the base pointer.
-	Value *Base = GetUnderlyingObject(P, DL, 0);
+	Value *Base = GetUnderlyingObject(P, DL, 1000);
 	if (!Visited.insert(Base))
 		return false;
 	return insert(createIsNull(Base), "null pointer dereference");

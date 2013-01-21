@@ -46,7 +46,7 @@ private:
 void BugOnAlias::addObject(Value *O) {
 	if (!O->getType()->isPointerTy())
 		return;
-	O = GetUnderlyingObject(O, DL, 0);
+	O = GetUnderlyingObject(O, DL, 1000);
 	Objects.insert(O);
 }
 
