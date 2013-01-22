@@ -2,12 +2,13 @@
 
 #define DEBUG_TYPE "bugon-free"
 #include "BugOn.h"
+#include <llvm/ADT/SmallPtrSet.h>
+#include <llvm/ADT/STLExtras.h>
 #include <llvm/Analysis/Dominators.h>
-#include <llvm/Analysis/ValueTracking.h>
-#include <llvm/IR/Function.h>
-#include <llvm/IR/Instructions.h>
+#include <llvm/Analysis/MemoryBuiltins.h>
+#include <llvm/Support/CallSite.h>
 #include <llvm/Support/InstIterator.h>
-#include <algorithm>
+#include <llvm/Target/TargetLibraryInfo.h>
 
 using namespace llvm;
 
@@ -17,129 +18,100 @@ struct BugOnFree : BugOnPass {
 	static char ID;
 	BugOnFree() : BugOnPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
-		initializeDominatorTreePass(Registry);
 		initializeDataLayoutPass(Registry);
+		initializeTargetLibraryInfoPass(Registry);
+		initializeDominatorTreePass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
-		AU.addRequired<DominatorTree>();
 		AU.addRequired<DataLayout>();
+		AU.addRequired<TargetLibraryInfo>();
+		AU.addRequired<DominatorTree>();
 	}
 
 	virtual bool runOnFunction(Function &);
 	virtual bool runOnInstruction(Instruction *);
 
 private:
-	DominatorTree *DT;
 	DataLayout *DL;
-	Function *CurrentF;
+	TargetLibraryInfo *TLI;
+	DominatorTree *DT;
+	SmallPtrSet<Use *, 4> FreePtrs; // Use is a <call, arg> pair.
 
-	bool insertNoFree(Value *P, CallInst *CI);
-	bool insertNoRealloc(Value *P, CallInst *CI);
+	Use *extractFree(CallSite CS);
 };
 
 } // anonymous namespace
 
 bool BugOnFree::runOnFunction(Function &F) {
 	DT = &getAnalysis<DominatorTree>();
+	TLI = &getAnalysis<TargetLibraryInfo>();
 	DL = &getAnalysis<DataLayout>();
-	CurrentF = &F;
+	// Collect free/realloc calls.
+	FreePtrs.clear();
+	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
+		Instruction &I = *i;
+		if (I.getDebugLoc().isUnknown())
+			continue;
+		CallSite CS(&I);
+		if (!CS || !CS.getCalledFunction())
+			continue;
+		if (Use *U = extractFree(CS)) {
+			FreePtrs.insert(U);
+			continue;
+		}
+	}
 	return super::runOnFunction(F);
 }
 
 bool BugOnFree::runOnInstruction(Instruction *I) {
-	bool Changed = false;
-	Value *P = NULL;
-
-	if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
-		if (!LI->isVolatile())
-			P = LI->getPointerOperand();
-	} else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
-		if (!SI->isVolatile())
-			P = SI->getPointerOperand();
-	}
-
-	if (!P)
+	if (FreePtrs.empty())
 		return false;
 
-	for (inst_iterator i = inst_begin(CurrentF), e = inst_end(CurrentF);
-	     i != e; ) {
-		Instruction *FI = &*i++;
-		if (FI->getDebugLoc().isUnknown())
-			continue;
-		if (CallInst *CI = dyn_cast<CallInst>(FI)) {
-			if (!DT->dominates(FI, I))
-				continue;
-			Changed |= insertNoFree(P, CI);
-			Changed |= insertNoRealloc(P, CI);
-		}
-	}
+	Value *P = NULL, *Dummy;
+	tie(P, Dummy) = getNonvolatileAddressAndValue(I);
+	if (!P)
+		return false;
+	P = getUnderlyingObject(P, DL);
 
+	bool Changed = false;
+	// free(x): x == p (p must be nonnull).
+	for (Use *U : FreePtrs) {
+		Instruction *FreeCall = cast<Instruction>(U->getUser());
+		if (!DT->dominates(FreeCall, I))
+			continue;
+		Value *X = U->get();
+		Value *V = Builder->CreateICmpEQ(X, Builder->CreatePointerCast(P, X->getType()));
+		// x' = realloc(x, n): x == p && x' != null.
+		if (FreeCall->getType()->isPointerTy())
+			V = createAnd(createIsNotNull(FreeCall), V);
+		StringRef Name = CallSite(FreeCall).getCalledFunction()->getName();
+		Changed |= insert(V, Name, FreeCall->getDebugLoc());
+	}
 	return Changed;
 }
 
-// free(f): f != NULL && f == p
-bool BugOnFree::insertNoFree(Value *P, CallInst *CI) {
-	#define P std::make_pair
+Use *BugOnFree::extractFree(CallSite CS) {
+#define P std::make_pair
 	static std::pair<const char *, int> Frees[] = {
-		P("free", 0),
-		P("_ZdlPv", 0),		// operator delete(void*)
-		P("_ZdaPv", 0),		// operator delete[](void*)
 		P("kfree", 0),
 		P("vfree", 0),
 		P("__kfree_skb", 0),
 	};
-	#undef P
-
-	Value *F = NULL;
-	if (!CI->getCalledFunction())
-		return false;
-	StringRef Name = CI->getCalledFunction()->getName();
-	for (unsigned i = 0; i < sizeof(Frees) / sizeof(Frees[0]); i++)
+#undef P
+	// Builtin free/delete/realloc.
+	Instruction *I = CS.getInstruction();
+	if (isFreeCall(I, TLI) || isReallocLikeFn(I, TLI))
+		return CS.arg_begin();
+	// Custom function.
+	StringRef Name = CS.getCalledFunction()->getName();
+	for (unsigned i = 0; i < sizeof(Frees) / sizeof(Frees[0]); i++) {
 		if (Name == Frees[i].first)
-			F = CI->getArgOperand(Frees[i].second);
-	if (F == NULL)
-		return false;
+			return CS.arg_begin() + Frees[i].second;
+	}
+	return NULL;
 
-	P = GetUnderlyingObject(P, DL, 1000);
-	Value *V = createAnd(
-		createIsNotNull(F),
-		Builder->CreateICmpEQ(F, Builder->CreatePointerCast(P, F->getType()))
-	);
-	return insert(V, "nofree");
-}
-
-// r=realloc(f, n): f != NULL && r != NULL && f != r && f == p
-bool BugOnFree::insertNoRealloc(Value *P, CallInst *CI) {
-	#define P std::make_pair
-	static std::pair<const char *, int> Reallocs[] = {
-		P("realloc", 0),
-	};
-	#undef P
-
-	Value *F = NULL;
-	if (!CI->getCalledFunction())
-		return false;
-	StringRef Name = CI->getCalledFunction()->getName();
-	for (unsigned i = 0; i < sizeof(Reallocs) / sizeof(Reallocs[0]); i++)
-		if (Name == Reallocs[i].first)
-			F = CI->getArgOperand(Reallocs[i].second);
-	if (F == NULL)
-		return false;
-
-	P = GetUnderlyingObject(P, DL, 1000);
-	Value *V = createAnd(
-		createAnd(
-			createAnd(
-				createIsNotNull(F),
-				createIsNotNull(CI)
-			),
-			Builder->CreateICmpNE(F, CI)
-		),
-		Builder->CreateICmpEQ(F, Builder->CreatePointerCast(P, F->getType()))
-	);
-	return insert(V, "norealloc");
 }
 
 char BugOnFree::ID;

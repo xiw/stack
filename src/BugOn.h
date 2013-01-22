@@ -5,6 +5,10 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/Intrinsics.h>
 
+namespace llvm {
+	class DataLayout;
+} // namespace llvm
+
 llvm::Function *getBugOn(const llvm::Module *);
 llvm::Function *getOrInsertBugOn(llvm::Module *);
 
@@ -29,18 +33,22 @@ public:
 };
 
 struct BugOnPass : llvm::FunctionPass {
+	typedef llvm::Value Value;
+
 	BugOnPass(char &ID) : llvm::FunctionPass(ID), BugOn(NULL) {}
 
 	virtual void getAnalysisUsage(llvm::AnalysisUsage &) const;
 	virtual bool runOnFunction(llvm::Function &);
 
-	static bool clearDebugLoc(llvm::Value *);
-	static bool recursivelyClearDebugLoc(llvm::Value *);
+	static bool clearDebugLoc(Value *);
+	static bool recursivelyClearDebugLoc(Value *);
+
+	static Value *getUnderlyingObject(Value *, llvm::DataLayout *);
+	static std::pair<Value *, Value *> getNonvolatileAddressAndValue(Value *);
 
 protected:
 	typedef BugOnPass super;
 	typedef llvm::IRBuilder<> BuilderTy;
-	typedef llvm::Value Value;
 	typedef llvm::Instruction Instruction;
 	BuilderTy *Builder;
 

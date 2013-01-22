@@ -16,11 +16,9 @@ int foo(char *p) {
     return 3;
 
   char *s = realloc(r, 8);
-  if (s == r)
+  if (!s)
     return 4;
 
-  r[0] = 0;
-  if (!s) // exp: {{anti-simplify}}
-    return 5;
-  return 6;
+  r[0] = 0;  // exp: {{anti-dce}}
+  return 5;
 }

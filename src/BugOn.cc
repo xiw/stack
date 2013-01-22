@@ -1,5 +1,6 @@
 #include "BugOn.h"
 #include "Diagnostic.h"
+#include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/DebugLoc.h>
@@ -69,6 +70,36 @@ bool BugOnPass::recursivelyClearDebugLoc(Value *V) {
 			recursivelyClearDebugLoc(U);
 	}
 	return true;
+}
+
+Value *BugOnPass::getUnderlyingObject(Value *V, DataLayout *DL) {
+	return GetUnderlyingObject(V, DL, 1000);
+}
+
+std::pair<Value *, Value *> BugOnPass::getNonvolatileAddressAndValue(Value *I) {
+	Value *Ptr = NULL, *Val = NULL;
+	if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
+		if (!LI->isVolatile()) {
+			Ptr = LI->getPointerOperand();
+			Val = LI;
+		}
+	} else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
+		if (!SI->isVolatile()) {
+			Ptr = SI->getPointerOperand();
+			Val = SI->getValueOperand();
+		}
+	} else if (AtomicCmpXchgInst *AI = dyn_cast<AtomicCmpXchgInst>(I)) {
+		if (!AI->isVolatile()) {
+			Ptr = AI->getPointerOperand();
+			Val = AI->getCompareOperand();
+		}
+	} else if (AtomicRMWInst *AI = dyn_cast<AtomicRMWInst>(I)) {
+		if (!AI->isVolatile()) {
+			Ptr = AI->getPointerOperand();
+			Val = AI->getValOperand();
+		}
+	}
+	return std::make_pair(Ptr, Val);
 }
 
 bool BugOnPass::insert(Value *V, StringRef Bug) {
