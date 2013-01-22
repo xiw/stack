@@ -34,6 +34,7 @@ public:
 
 struct BugOnPass : llvm::FunctionPass {
 	typedef llvm::Value Value;
+	typedef llvm::DataLayout DataLayout;
 
 	BugOnPass(char &ID) : llvm::FunctionPass(ID), BugOn(NULL) {}
 
@@ -43,8 +44,9 @@ struct BugOnPass : llvm::FunctionPass {
 	static bool clearDebugLoc(Value *);
 	static bool recursivelyClearDebugLoc(Value *);
 
-	static Value *getUnderlyingObject(Value *, llvm::DataLayout *);
+	static Value *getUnderlyingObject(Value *, DataLayout *);
 	static std::pair<Value *, Value *> getNonvolatileAddressAndValue(Value *);
+	static Value *getNonvolatileBaseAddress(Value *, DataLayout *);
 
 protected:
 	typedef BugOnPass super;

@@ -1,5 +1,6 @@
 #include "BugOn.h"
 #include "Diagnostic.h"
+#include <llvm/ADT/STLExtras.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/CommandLine.h>
@@ -100,6 +101,14 @@ std::pair<Value *, Value *> BugOnPass::getNonvolatileAddressAndValue(Value *I) {
 		}
 	}
 	return std::make_pair(Ptr, Val);
+}
+
+Value *BugOnPass::getNonvolatileBaseAddress(Value *I, DataLayout *DL) {
+	Value *Ptr, *Val;
+	tie(Ptr, Val) = getNonvolatileAddressAndValue(I);
+	if (Ptr)
+		return getUnderlyingObject(Ptr, DL);
+	return NULL;
 }
 
 bool BugOnPass::insert(Value *V, StringRef Bug) {

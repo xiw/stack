@@ -3,7 +3,6 @@
 #define DEBUG_TYPE "bugon-free"
 #include "BugOn.h"
 #include <llvm/ADT/SmallPtrSet.h>
-#include <llvm/ADT/STLExtras.h>
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/MemoryBuiltins.h>
 #include <llvm/Support/CallSite.h>
@@ -69,11 +68,9 @@ bool BugOnFree::runOnInstruction(Instruction *I) {
 	if (FreePtrs.empty())
 		return false;
 
-	Value *P = NULL, *Dummy;
-	tie(P, Dummy) = getNonvolatileAddressAndValue(I);
+	Value *P = getNonvolatileBaseAddress(I, DL);
 	if (!P)
 		return false;
-	P = getUnderlyingObject(P, DL);
 
 	bool Changed = false;
 	// free(x): x == p (p must be nonnull).

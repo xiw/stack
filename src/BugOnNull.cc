@@ -36,20 +36,13 @@ bool BugOnNull::runOnFunction(Function &F) {
 }
 
 bool BugOnNull::runOnInstruction(Instruction *I) {
-	Value *P = NULL;
 	if (isa<TerminatorInst>(I)) {
 		Visited.clear();
-	} else if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
-		if (!LI->isVolatile())
-			P = LI->getPointerOperand();
-	} else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
-		if (!SI->isVolatile())
-			P = SI->getPointerOperand();
-	}
-	if (!P)
 		return false;
-	// Strip pointer offset to get the base pointer.
-	Value *Base = GetUnderlyingObject(P, DL, 1000);
+	}
+	Value *Base = getNonvolatileBaseAddress(I, DL);
+	if (!Base)
+		return false;
 	if (!Visited.insert(Base))
 		return false;
 	return insert(createIsNull(Base), "null pointer dereference");
