@@ -1,7 +1,6 @@
 #define DEBUG_TYPE "inline-only"
 #include <llvm/ADT/DenseMap.h>
 #include <llvm/Analysis/InlineCost.h>
-#include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Transforms/IPO/InlinerPass.h>
 
@@ -11,10 +10,20 @@ namespace {
 
 struct InlineOnly : Inliner {
 	static char ID;
-	InlineOnly() : Inliner(ID) {}
+	InlineOnly() : Inliner(ID), CA(nullptr) {
+		PassRegistry &Registry = *PassRegistry::getPassRegistry();
+		initializeInlineCostAnalysisPass(Registry);
+	}
+
+	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+		super::getAnalysisUsage(AU);
+		AU.addRequired<InlineCostAnalysis>();
+	}
 
 	virtual InlineCost getInlineCost(CallSite CS) {
-		return CA.getInlineCost(CS, getInlineThreshold(CS));
+		if (!CA)
+			CA = &getAnalysis<InlineCostAnalysis>();
+		return CA->getInlineCost(CS, getInlineThreshold(CS));
 	}
 
 	virtual bool doInitialization(CallGraph &CG);
@@ -25,7 +34,7 @@ struct InlineOnly : Inliner {
 	using super::doFinalization;
 
 private:
-	InlineCostAnalyzer CA;
+	InlineCostAnalysis *CA;
 	typedef DenseMap<Function *, GlobalValue::LinkageTypes> LinkageMapTy;
 	LinkageMapTy LinkageMap;
 };
@@ -33,7 +42,6 @@ private:
 } // anonymous namespace
 
 bool InlineOnly::doInitialization(CallGraph &CG) {
-	CA.setDataLayout(getAnalysisIfAvailable<DataLayout>());
 	Module &M = CG.getModule();
 	LinkageMap.clear();
 	// Temporarily change local functions to linkonce_odr.
