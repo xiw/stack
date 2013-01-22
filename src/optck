@@ -10,6 +10,7 @@ exec ${OPT} --disable-output -load=${DIR}/../lib/libantiopt.so \
 	-simplify-libcalls -adce \
 	-elim-assert \
 	-bugon-null \
+	-bugon-gep \
 	-bugon-bounds \
 	-bugon-free \
 	-bugon-alias \

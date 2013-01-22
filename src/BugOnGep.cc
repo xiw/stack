@@ -74,6 +74,11 @@ bool BugOnGep::insertIndexOverflow(GEPOperator *GEP) {
 }
 
 bool BugOnGep::insertOffsetOverflow(GEPOperator *GEP) {
+	// Ignore struct offset, which is likely to be in range.
+	for (gep_type_iterator GTI = gep_type_begin(GEP), E = gep_type_end(GEP); GTI != E; ++GTI) {
+		if (isa<StructType>(*GTI))
+			return false;
+	}
 	Value *P = GEP->getPointerOperand();
 	Value *Offset = EmitGEPOffset(Builder, *DL, GEP);
 	unsigned PtrBits = DL->getPointerSizeInBits(/*GEP->getPointerAddressSpace()*/);
