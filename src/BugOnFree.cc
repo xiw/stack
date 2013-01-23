@@ -79,7 +79,7 @@ bool BugOnFree::runOnInstruction(Instruction *I) {
 		if (!DT->dominates(FreeCall, I))
 			continue;
 		Value *X = U->get();
-		Value *V = Builder->CreateICmpEQ(X, Builder->CreatePointerCast(P, X->getType()));
+		Value *V = createPointerEQ(X, P);
 		// x' = realloc(x, n): x == p && x' != null.
 		if (FreeCall->getType()->isPointerTy())
 			V = createAnd(createIsNotNull(FreeCall), V);

@@ -248,3 +248,9 @@ Value *BugOnPass::createSExtOrTrunc(Value *V, IntegerType *T) {
 		return Builder->CreateTrunc(V, T);
 	return V;
 }
+
+Value *BugOnPass::createPointerEQ(Value *V0, Value *V1) {
+	if (V0 == V1)
+		return Builder->getTrue();
+	return Builder->CreateICmpEQ(V0, Builder->CreatePointerCast(V1, V0->getType()));
+}

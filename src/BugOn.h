@@ -75,6 +75,7 @@ protected:
 	Value *createIsSDivWrap(Value *, Value *);
 	Value *createAnd(Value *, Value *);
 	Value *createSExtOrTrunc(Value *, llvm::IntegerType *);
+	Value *createPointerEQ(Value *, Value *);
 
 private:
 	llvm::Function *BugOn;
