@@ -7,6 +7,7 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/InstIterator.h>
+#include <llvm/Transforms/Utils/Local.h>
 
 using namespace llvm;
 
@@ -52,6 +53,7 @@ bool AntiSimplify::runOnAntiFunction(Function &F) {
 		printMinimalAssertions();
 		Constant *C = ConstantInt::get(T, ConstVal);
 		I->replaceAllUsesWith(C);
+		RecursivelyDeleteTriviallyDeadInstructions(I);
 		Changed = true;
 	}
 	return Changed;
