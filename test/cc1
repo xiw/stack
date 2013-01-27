@@ -19,12 +19,14 @@ def cc(llvmcc, src, argv):
 	argv = [x for x in argv if not x.startswith('-W')]
 	# Linux kernel hack: disable asm goto.
 	argv = [x for x in argv if x != '-DCC_HAVE_ASM_GOTO']
+	# Remove std flags (error in C++).
+	argv = [x for x in argv if x not in ['-std=gnu99']]
 	# Use -fstrict-overflow to distinguish signed/unsigned integers.
 	argv = [x for x in argv if x not in ['-fwrapv', '-fno-strict-overflow']]
 	# Drop existing _FORTIFY_SOURCE.
 	argv = [x for x in argv if not x.startswith('-D_FORTIFY_SOURCE')]
 	# Additional options.
-	more = ['-Qunused-arguments', '-w', '-flto', '-O0', '-g', '-D_FORTIFY_SOURCE=0']
+	more = ['-Qunused-arguments', '-w', '-S', '-flto', '-O0', '-g', '-D_FORTIFY_SOURCE=0']
 	# Frontend plugin.
 	intfe = os.path.join(os.path.dirname(__file__), '..', '..', 'lib', 'libintfe.so')
 	plugin = ['-Xclang', '-load', '-Xclang', intfe, '-Xclang', '-plugin', '-Xclang', 'intfe']
