@@ -72,8 +72,9 @@ bool SimplifyDelete::removeUnreachable(Function &F) {
 
 bool SimplifyDelete::visitDeleteBB(BasicBlock *BB) {
 	// Clang emits BB with this special name for BB.
-	// It works better with overloaded delete.
-	if (!BB->getName().startswith("delete.notnull"))
+	// It works better with overloaded new/delete.
+	StringRef Name = BB->getName();
+	if (!Name.startswith("new.notnull") && !Name.startswith("delete.notnull"))
 		return false;
 	BasicBlock *Pred = BB->getSinglePredecessor();
 	if (!Pred)
