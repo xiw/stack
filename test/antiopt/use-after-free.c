@@ -11,5 +11,5 @@ void foo() {
 void bar() {
   char *p = malloc(8); // exp: {{anti-dce}}
   free(p);
-  p[4] = 2;
+  p[4] = 2;            // exp: {{bugon-free}}
 }
