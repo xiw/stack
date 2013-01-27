@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 DIR=$(dirname "${BASH_SOURCE[0]}")
 ABS_DIR=$(cd "${DIR}/kint"; pwd)

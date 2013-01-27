@@ -9,12 +9,12 @@ libboolector.a: $(BOOLECTOR).tar.gz liblgl.a
 	tar xzf $<
 	$(LN_S) -f $(BOOLECTOR) boolector
 	sed -i -e "s/CFLAGS=/CFLAGS=-fPIC /" boolector/makefile.in
-	cd boolector && ./configure && make
+	cd boolector && ./configure && $(MAKE)
 	$(LN_S) -f boolector/libboolector.a
 
 liblgl.a: $(LINGELING).tar.gz
 	tar xzf $<
 	$(LN_S) -f $(LINGELING) lingeling
 	sed -i -e "s/CFLAGS=/CFLAGS=-fPIC /" lingeling/makefile.in
-	cd lingeling && ./configure && make
+	cd lingeling && ./configure && $(MAKE)
 	$(LN_S) -f lingeling/liblgl.a

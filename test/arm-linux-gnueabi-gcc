@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 DIR=$(dirname "${BASH_SOURCE[0]}")
 export LLVMCC='/usr/bin/clang -no-integrated-as -target armv7-gnu-linux-eabi'
 "$DIR/cc1" "$@" > /dev/null
