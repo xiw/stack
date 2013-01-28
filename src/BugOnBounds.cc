@@ -1,6 +1,5 @@
 #define DEBUG_TYPE "bugon-bounds"
 #include "BugOn.h"
-#include <llvm/ADT/STLExtras.h>
 #include <llvm/Analysis/MemoryBuiltins.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
@@ -44,9 +43,8 @@ bool BugOnBounds::runOnFunction(llvm::Function &F) {
 }
 
 bool BugOnBounds::runOnInstruction(Instruction *I) {
-	Value *Ptr, *Val;
-	tie(Ptr, Val) = getNonvolatileAddressAndValue(I);
-	if (!Ptr || !Val)
+	Value *Ptr = getNonvolatileAddressOperand(I);
+	if (!Ptr)
 		return false;
 	SizeOffsetEvalType SizeOffset = ObjSizeEval->compute(Ptr);
 	if (!ObjSizeEval->bothKnown(SizeOffset))
@@ -55,7 +53,8 @@ bool BugOnBounds::runOnInstruction(Instruction *I) {
 	Value *Offset = SizeOffset.second;
 	Type *T = Offset->getType();
 	assert(T == Size->getType());
-	Value *StoreSize = ConstantInt::get(T, DL->getTypeStoreSize(Val->getType()));
+	Type *ElemTy = cast<PointerType>(Ptr->getType())->getElementType();
+	Value *StoreSize = ConstantInt::get(T, DL->getTypeStoreSize(ElemTy));
 	// Bug condition: Offset < 0.
 	{
 		Value *V = Builder->CreateICmpSLT(Offset, Constant::getNullValue(T));

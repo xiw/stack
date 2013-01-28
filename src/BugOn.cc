@@ -77,37 +77,22 @@ Value *BugOnPass::getUnderlyingObject(Value *V, DataLayout *DL) {
 	return GetUnderlyingObject(V, DL, 1000);
 }
 
-std::pair<Value *, Value *> BugOnPass::getNonvolatileAddressAndValue(Value *I) {
-	Value *Ptr = NULL, *Val = NULL;
+Value *BugOnPass::getAddressOperand(Value *I, bool skipVolatile) {
+#define IS_VOLATILE(x) (skipVolatile && (x)->isVolatile())
 	if (LoadInst *LI = dyn_cast<LoadInst>(I)) {
-		if (!LI->isVolatile()) {
-			Ptr = LI->getPointerOperand();
-			Val = LI;
-		}
+		if (!IS_VOLATILE(LI))
+			return LI->getPointerOperand();
 	} else if (StoreInst *SI = dyn_cast<StoreInst>(I)) {
-		if (!SI->isVolatile()) {
-			Ptr = SI->getPointerOperand();
-			Val = SI->getValueOperand();
-		}
+		if (!IS_VOLATILE(SI))
+			return SI->getPointerOperand();
 	} else if (AtomicCmpXchgInst *AI = dyn_cast<AtomicCmpXchgInst>(I)) {
-		if (!AI->isVolatile()) {
-			Ptr = AI->getPointerOperand();
-			Val = AI->getCompareOperand();
-		}
+		if (!IS_VOLATILE(AI))
+			return AI->getPointerOperand();
 	} else if (AtomicRMWInst *AI = dyn_cast<AtomicRMWInst>(I)) {
-		if (!AI->isVolatile()) {
-			Ptr = AI->getPointerOperand();
-			Val = AI->getValOperand();
-		}
+		if (!IS_VOLATILE(AI))
+			return AI->getPointerOperand();
 	}
-	return std::make_pair(Ptr, Val);
-}
-
-Value *BugOnPass::getNonvolatileBaseAddress(Value *I, DataLayout *DL) {
-	Value *Ptr, *Val;
-	tie(Ptr, Val) = getNonvolatileAddressAndValue(I);
-	if (Ptr)
-		return getUnderlyingObject(Ptr, DL);
+#undef IS_VOLATILE
 	return NULL;
 }
 
