@@ -58,19 +58,24 @@ bool LoadElim::merge(LoadInst *I) {
 	BasicBlock::iterator It(I);
 	for (; &*It != Begin; ) {
 		Instruction *Src = --It;
+		Value *V = NULL, *P = NULL;
+		// Only deal with load/store.
+		if (LoadInst *LI = dyn_cast<LoadInst>(Src)) {
+			V = LI;
+			P = LI->getPointerOperand();
+		} else if (StoreInst *SI = dyn_cast<StoreInst>(Src)) {
+			V = SI->getValueOperand();
+			P = SI->getPointerOperand();
+		}
+		// Replace I if this is a load/store at the same location.
+		if (V && P && V->getType() == T && AA->isMustAlias(Addr, P)) {
+			I->replaceAllUsesWith(V);
+			RecursivelyDeleteTriviallyDeadInstructions(I, TLI);
+			return true;
+		}
 		// First check if current instruction modifies Loc.
 		if (AA->getModRefInfo(Src, Loc) & AliasAnalysis::Mod)
 			return false;
-		LoadInst *LI = dyn_cast<LoadInst>(Src);
-		if (!LI)
-			continue;
-		if (LI->getType() != T)
-			continue;
-		if (!AA->isMustAlias(Addr, LI->getPointerOperand()))
-			continue;
-		I->replaceAllUsesWith(LI);
-		RecursivelyDeleteTriviallyDeadInstructions(I, TLI);
-		return true;
 	}
 	return false;
 }
