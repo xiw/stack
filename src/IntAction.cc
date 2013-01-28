@@ -5,6 +5,7 @@
 #include <clang/Frontend/CompilerInstance.h>
 #include <clang/Frontend/FrontendPluginRegistry.h>
 #include <clang/Frontend/MultiplexConsumer.h>
+#include <clang/Lex/Preprocessor.h>
 #include <llvm/DebugInfo.h>
 #include <llvm/ADT/StringMap.h>
 #include <llvm/Bitcode/ReaderWriter.h>
@@ -17,14 +18,15 @@
 using namespace clang;
 using namespace llvm;
 
-typedef std::set<SourceLocation> LocSet;
+// Filename, Line => Location.
+typedef StringMap< DenseMap<unsigned, std::set<SourceLocation> > > MacroMap;
 
 namespace {
 
 // Add macro-expanded code with if or ?: conditions.
 class ExtractMacroVisitor : public RecursiveASTVisitor<ExtractMacroVisitor> {
 public:
-	ExtractMacroVisitor(SourceManager &SM, LocSet &L) : SM(SM), Locs(L) {}
+	ExtractMacroVisitor(SourceManager &SM, MacroMap &MM) : SM(SM), MM(MM) {}
 
 	bool VisitIfStmt(IfStmt *S) {
 		addMacroLoc(S->getLocStart());
@@ -42,27 +44,40 @@ public:
 		return true;
 	}
 
+	// p && p->x.
+	bool VisitBinaryOperator(BinaryOperator *E) {
+		if (E->isLogicalOp() || E->isEqualityOp())
+			addMacroLoc(E->getLocStart());
+		return true;
+	}
+
 private:
 	SourceManager &SM;
-	LocSet &Locs;
+	MacroMap &MM;
 
 	void addMacroLoc(SourceLocation Loc) {
-		if (SM.isMacroBodyExpansion(Loc))
-			Locs.insert(Loc);
+		if (Loc.isInvalid())
+			return;
+		if (!Loc.isMacroID())
+			return;
+		PresumedLoc PLoc = SM.getPresumedLoc(Loc);
+		if (PLoc.isInvalid())
+			return;
+		MM[PLoc.getFilename()][PLoc.getLine()].insert(Loc);
 	}
 };
 
 class ExtractMacroConsumer : public ASTConsumer {
 public:
-	ExtractMacroConsumer(LocSet &L) : Locs(L) {}
+	ExtractMacroConsumer(MacroMap &MM) : MM(MM) {}
 
 	virtual void HandleTranslationUnit(ASTContext &Ctx) {
-		ExtractMacroVisitor Visitor(Ctx.getSourceManager(), Locs);
+		ExtractMacroVisitor Visitor(Ctx.getSourceManager(), MM);
 		Visitor.TraverseDecl(Ctx.getTranslationUnitDecl());
 	}
 
 private:
-	LocSet &Locs;
+	MacroMap &MM;
 };
 
 // Use multiple inheritance to intercept code generation.
@@ -104,7 +119,7 @@ protected:
 	virtual ASTConsumer *CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
 		OS = CI.createDefaultOutputFile(true, InFile, "bc");
 		ASTConsumer *C[] = {
-			new ExtractMacroConsumer(Locs),
+			new ExtractMacroConsumer(MM),
 			Delegate::CreateASTConsumer(CI, InFile)
 		};
 		return new MultiplexConsumer(C);
@@ -134,7 +149,7 @@ protected:
 	}
 
 private:
-	LocSet Locs;
+	MacroMap MM;
 	raw_ostream *OS;
 
 	void markMacroLocations(llvm::Module &);
@@ -144,19 +159,10 @@ private:
 
 void IntAction::markMacroLocations(llvm::Module &M) {
 	// Filename => set<Line>.
-	StringMap< DenseSet<unsigned> > MacroLines;
-	SourceManager &SM = super::getCompilerInstance().getSourceManager();
-	for (SourceLocation Loc : Locs) {
-		if (Loc.isInvalid())
-			continue;
-		PresumedLoc PLoc = SM.getPresumedLoc(Loc);
-		if (PLoc.isInvalid())
-			continue;
-		MacroLines[PLoc.getFilename()].insert(PLoc.getLine());
-	}
 	LLVMContext &C = M.getContext();
 	unsigned MD_macro = C.getMDKindID("macro");
-	MDNode *Dummy = MDNode::get(C, MDString::get(C, "dummy"));
+	CompilerInstance &CI = super::getCompilerInstance();
+	Preprocessor &PP = CI.getPreprocessor();
 	for (Function &F : M) {
 		for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
 			Instruction *I = &*i;
@@ -165,8 +171,14 @@ void IntAction::markMacroLocations(llvm::Module &M) {
 				continue;
 			StringRef Filename = DIScope(DbgLoc.getScope(C)).getFilename();
 			unsigned Line = DbgLoc.getLine();
-			if (MacroLines.lookup(Filename).count(Line))
-				I->setMetadata(MD_macro, Dummy);
+			SmallVector<Value *, 4> MDElems;
+			for (SourceLocation Loc : MM.lookup(Filename).lookup(Line)) {
+				StringRef MacroName = PP.getImmediateMacroName(Loc);
+				MDElems.push_back(MDString::get(C, MacroName));
+			}
+			if (MDElems.empty())
+				continue;
+			I->setMetadata(MD_macro, MDNode::get(C, MDElems));
 		}
 	}
 }
