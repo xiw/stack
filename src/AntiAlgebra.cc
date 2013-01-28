@@ -15,6 +15,7 @@
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Target/TargetLibraryInfo.h>
 #include <llvm/Transforms/Utils/Local.h>
+#include <algorithm>
 
 using namespace llvm;
 
@@ -61,19 +62,53 @@ bool AntiAlgebra::runOnAntiFunction(Function &F) {
 	return Changed;
 }
 
-static unsigned getNumTerms(const SCEV *S) {
-	if (const SCEVAddExpr *Add = dyn_cast<SCEVAddExpr>(S))
-		return Add->getNumOperands();
-	return 1;
+static void getAdditiveTerms(const SCEV *S, SmallVectorImpl<const SCEV *> &Terms) {
+	const SCEVAddExpr *A = dyn_cast<SCEVAddExpr>(S);
+	if (!A) {
+		Terms.push_back(S);
+		return;
+	}
+	Terms.append(A->op_begin(), A->op_end());
+	std::sort(Terms.begin(), Terms.end());
+}
+
+static bool contains(const SCEV *L, const SCEV *R) {
+	SmallVector<const SCEV *, 4> LTerms, RTerms;
+	getAdditiveTerms(L, LTerms);
+	getAdditiveTerms(R, RTerms);
+	if (LTerms.size() < RTerms.size())
+		LTerms.swap(RTerms);
+	// Ignore LHS cmp C for now.
+	if (RTerms.size() == 1) {
+		if (isa<SCEVConstant>(RTerms[0]))
+			return false;
+	}
+	return std::includes(LTerms.begin(), LTerms.end(), RTerms.begin(), RTerms.end());
+}
+
+static const char *getPredicateStr(CmpInst::Predicate Pred) {
+	switch (Pred) {
+	default: assert(0);
+	case CmpInst::ICMP_EQ:  return " == ";
+	case CmpInst::ICMP_NE:  return " != ";
+	case CmpInst::ICMP_UGT: return " >u ";
+	case CmpInst::ICMP_UGE: return " ≥u ";
+	case CmpInst::ICMP_ULT: return " <u ";
+	case CmpInst::ICMP_ULE: return " ≤u ";
+	case CmpInst::ICMP_SGT: return " >s ";
+	case CmpInst::ICMP_SGE: return " ≥s ";
+	case CmpInst::ICMP_SLT: return " <s ";
+	case CmpInst::ICMP_SLE: return " ≤s ";
+	}
 }
 
 bool AntiAlgebra::visitICmpInst(ICmpInst *I) {
 	const SCEV *L = SE->getSCEV(I->getOperand(0));
 	const SCEV *R = SE->getSCEV(I->getOperand(1));
-	const SCEV *S = SE->getMinusSCEV(L, R);
-	// Is S simpler than L and R?
-	if (getNumTerms(S) >= getNumTerms(L) + getNumTerms(R))
+	// Is L part of R (or vice versa)?
+	if (!contains(L, R))
 		return false;
+	const SCEV *S = SE->getMinusSCEV(L, R);
 	LLVMContext &C = I->getContext();
 	IntegerType *T = IntegerType::get(C, DL->getTypeSizeInBits(S->getType()));
 	Value *V = SCEVExpander(*SE, "").expandCodeFor(S, T, I);
@@ -90,7 +125,10 @@ bool AntiAlgebra::visitICmpInst(ICmpInst *I) {
 		return false;
 	}
 	Diag.bug(DEBUG_TYPE);
-	Diag << "model: |\n" << *I << "\n  -->" << *NewCmp << "\n";
+	Diag << "model: |\n" << *I << "\n  -->" << *NewCmp << "\n"
+	     << "  ************************************************************\n  "
+	     << *L << getPredicateStr(I->getPredicate()) << *R << "\n  -->  "
+	     << *S << getPredicateStr(I->getSignedPredicate()) << "0\n";
 	Diag.backtrace(I);
 	printMinimalAssertions();
 	I->replaceAllUsesWith(NewCmp);
