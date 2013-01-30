@@ -49,18 +49,24 @@ static std::pair<Value *, const SCEVConstant *>
 extractPointerBaseAndOffset(const SCEV *S) {
 	Value *V = NULL;
 	const SCEVConstant *Offset = NULL;
-	// p + 0.
-	if (const SCEVUnknown *Unknown = dyn_cast<SCEVUnknown>(S))
-		return std::make_pair(Unknown->getValue(), Offset);
-	// p + offset.
-	if (const SCEVAddExpr *Add = dyn_cast<SCEVAddExpr>(S)) {
+	if (const SCEVUnknown *Unknown = dyn_cast<SCEVUnknown>(S)) {
+		// p + 0.
+		V = Unknown->getValue();
+	} else if (const SCEVAddExpr *Add = dyn_cast<SCEVAddExpr>(S)) {
+		// p + offset.
 		if (Add->getNumOperands() == 2) {
 			const SCEVConstant *L = dyn_cast<SCEVConstant>(Add->getOperand(0));
 			const SCEVUnknown *R = dyn_cast<SCEVUnknown>(Add->getOperand(1));
-			if (L && R)
-				return std::make_pair(R->getValue(), L);
+			if (L && R) {
+				V = R->getValue();
+				Offset = L;
+			}
 		}
 	}
+	// In some special case (e.g., null pointer dereference),
+	// S is a pure integer expression.
+	if (V && !V->getType()->isPointerTy())
+		V = NULL;
 	return std::make_pair(V, Offset);
 }
 
