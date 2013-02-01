@@ -10,6 +10,9 @@ def cc(llvmcc, src, argv):
 		out = src
 	else:
 		out = argv[out[-1] + 1]
+		# Why hiding .o?
+		if out.startswith('/tmp/') or out.startswith('/var/tmp/'):
+			out = src
 	if out != '-':
 		out = os.path.splitext(out)[0] + '.ll'
 	argv += ['-o', '-']
