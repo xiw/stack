@@ -1,6 +1,7 @@
 #define DEBUG_TYPE "load-elim"
 #include <llvm/Pass.h>
 #include <llvm/Analysis/AliasAnalysis.h>
+#include <llvm/Analysis/MemoryDependenceAnalysis.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/InstIterator.h>
@@ -21,12 +22,14 @@ struct LoadElim : FunctionPass {
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		AU.setPreservesCFG();
 		AU.addRequired<AliasAnalysis>();
+		AU.addRequired<MemoryDependenceAnalysis>();
 	}
 
 	virtual bool runOnFunction(Function &);
 
 private:
 	AliasAnalysis *AA;
+	MemoryDependenceAnalysis *MDA;
 	TargetLibraryInfo *TLI;
 
 	bool merge(LoadInst *);
@@ -36,6 +39,7 @@ private:
 
 bool LoadElim::runOnFunction(Function &F) {
 	AA = &getAnalysis<AliasAnalysis>();
+	MDA = &getAnalysis<MemoryDependenceAnalysis>();
 	TLI = getAnalysisIfAvailable<TargetLibraryInfo>();
 	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
@@ -50,34 +54,29 @@ bool LoadElim::runOnFunction(Function &F) {
 bool LoadElim::merge(LoadInst *I) {
 	if (I->isVolatile())
 		return false;
-	AliasAnalysis::Location Loc = AA->getLocation(I);
-	Value *Addr = I->getPointerOperand();
-	Type *T = I->getType();
-	BasicBlock *BB = I->getParent();
-	Instruction *Begin = BB->getFirstNonPHI();
-	BasicBlock::iterator It(I);
-	for (; &*It != Begin; ) {
-		Instruction *Src = --It;
-		Value *V = NULL, *P = NULL;
-		// Only deal with load/store.
-		if (LoadInst *LI = dyn_cast<LoadInst>(Src)) {
-			V = LI;
-			P = LI->getPointerOperand();
-		} else if (StoreInst *SI = dyn_cast<StoreInst>(Src)) {
-			V = SI->getValueOperand();
-			P = SI->getPointerOperand();
-		}
-		// Replace I if this is a load/store at the same location.
-		if (V && P && V->getType() == T && AA->isMustAlias(Addr, P)) {
-			I->replaceAllUsesWith(V);
-			RecursivelyDeleteTriviallyDeadInstructions(I, TLI);
-			return true;
-		}
-		// First check if current instruction modifies Loc.
-		if (AA->getModRefInfo(Src, Loc) & AliasAnalysis::Mod)
-			return false;
+	Instruction *Dep = MDA->getDependency(I).getInst();
+	if (!Dep)
+		return false;
+	Value *P = NULL, *V = NULL;
+	// Find a previous load/store.
+	if (LoadInst *LI = dyn_cast<LoadInst>(Dep)) {
+		P = LI->getPointerOperand();
+		V = LI;
+	} else if (StoreInst *SI = dyn_cast<StoreInst>(Dep)) {
+		P = SI->getPointerOperand();
+		V = SI->getValueOperand();
 	}
-	return false;
+	if (!P || !V)
+		return false;
+	// Must be the same type.
+	if (V->getType() != I->getType())
+		return false;
+	// Must be the same address.
+	if (!AA->isMustAlias(P, I->getPointerOperand()))
+		return false;
+	I->replaceAllUsesWith(V);
+	RecursivelyDeleteTriviallyDeadInstructions(I, TLI);
+	return true;
 }
 
 char LoadElim::ID;
