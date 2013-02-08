@@ -17,9 +17,11 @@ struct BugOnLibc : BugOnPass {
 
 private:
 	typedef bool (BugOnLibc::*handler_t)(CallInst *);
-	DenseMap<Function *, handler_t> Handlers;
+	DenseMap<Function *, handler_t> FunctionMap;
+	DenseMap<unsigned int, handler_t> IntrinsicMap;
 
 	bool visitAbs(CallInst *);
+	bool visitCtz(CallInst *);
 	bool visitDiv(CallInst *);
 	bool visitMemcpy(CallInst *);
 };
@@ -29,7 +31,7 @@ private:
 bool BugOnLibc::doInitialization(Module &M) {
 #define HANDLER(method, name) \
 	if (Function *F = M.getFunction(name)) \
-		Handlers[F] = &BugOnLibc::method;
+		FunctionMap[F] = &BugOnLibc::method;
 
 	HANDLER(visitAbs, "abs");
 	HANDLER(visitAbs, "labs");
@@ -43,8 +45,15 @@ bool BugOnLibc::doInitialization(Module &M) {
 
 	HANDLER(visitMemcpy, "memcpy");
 	HANDLER(visitMemcpy, "__memcpy");	// Linux kernel internal
-	HANDLER(visitMemcpy, "llvm.memcpy.p0i8.p0i8.i32");
-	HANDLER(visitMemcpy, "llvm.memcpy.p0i8.p0i8.i64");
+
+#undef HANDLER
+
+#define HANDLER(method, id) \
+	IntrinsicMap[id] = &BugOnLibc::method;
+
+	HANDLER(visitMemcpy, Intrinsic::memcpy);
+	HANDLER(visitCtz, Intrinsic::ctlz);
+	HANDLER(visitCtz, Intrinsic::cttz);
 
 #undef HANDLER
 	return false;
@@ -57,7 +66,12 @@ bool BugOnLibc::runOnInstruction(Instruction *I) {
 	Function *F = CI->getCalledFunction();
 	if (!F)
 		return false;
-	handler_t Handler = Handlers.lookup(F);
+	handler_t Handler = NULL;
+	if (F->isIntrinsic()) {
+		Handler = IntrinsicMap.lookup(F->getIntrinsicID());
+	} else {
+		Handler = FunctionMap.lookup(F);
+	}
 	if (!Handler)
 		return false;
 	return (this->*Handler)(CI);
@@ -78,6 +92,25 @@ bool BugOnLibc::visitAbs(CallInst *I) {
 	Value *Abs = Builder->CreateSelect(IsNeg, Builder->CreateNeg(R), R);
 	I->replaceAllUsesWith(Abs);
 	return true;
+}
+
+bool BugOnLibc::visitCtz(CallInst *I) {
+	if (I->getNumArgOperands() != 2)
+		return false;
+	Value *X = I->getArgOperand(0);
+	// Skip vectors for now.
+	if (!X->getType()->isIntegerTy())
+		return false;
+	// Test if zero is undef.
+	ConstantInt *IsZeroUndef = dyn_cast<ConstantInt>(I->getArgOperand(1));
+	if (!IsZeroUndef || IsZeroUndef->isZero())
+		return false;
+	Value *V = createIsZero(X);
+	StringRef Name = I->getCalledFunction()->getName();
+	if (Name.startswith("llvm."))
+		Name = Name.substr(5);
+	Name = Name.split('.').first;
+	return insert(V, Name);
 }
 
 // div(numer, denom): denom == 0 || (numer == INT_MIN && denom == -1)
