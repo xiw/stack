@@ -6,12 +6,8 @@
 #include "ValueGen.h"
 #include <llvm/Pass.h>
 #include <llvm/ADT/SmallVector.h>
+#include <llvm/Analysis/Dominators.h>
 #include <llvm/IR/DataLayout.h>
-
-namespace llvm {
-	class DominatorTree;
-	class PostDominatorTree;
-} // namespace llvm
 
 class SMTSolver;
 
