@@ -1,0 +1,2 @@
+Treat some function arguments (free, memcpy, memset, ...) as accessing
+memory much like StoreInst or LoadInst.
