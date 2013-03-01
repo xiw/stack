@@ -120,7 +120,7 @@ bool AntiAlgebra::visitICmpInst(ICmpInst *I) {
 	if (SMTFork() == 0)
 		isEqv = checkEqv(I, NewCmp);
 	SMTJoin(&isEqv);
-	if (!isEqv) {
+	if (isEqv <= 0) {
 		RecursivelyDeleteTriviallyDeadInstructions(NewCmp, TLI);
 		return false;
 	}
