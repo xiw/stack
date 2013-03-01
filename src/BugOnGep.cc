@@ -2,8 +2,10 @@
 
 #define DEBUG_TYPE "bugon-gep"
 #include "BugOn.h"
+#include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Operator.h>
+#include <llvm/Target/TargetLibraryInfo.h>
 #include <llvm/Transforms/Utils/Local.h>
 
 using namespace llvm;
@@ -17,6 +19,7 @@ struct BugOnGep : BugOnPass {
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
 		AU.addRequired<DataLayout>();
+		AU.addRequired<TargetLibraryInfo>();
 	}
 	virtual bool runOnFunction(Function &);
 
@@ -24,16 +27,19 @@ struct BugOnGep : BugOnPass {
 
 private:
 	DataLayout *DL;
+	TargetLibraryInfo *TLI;
 
 	bool insertIndexOverflow(GEPOperator *GEP);
 	bool insertOffsetOverflow(GEPOperator *GEP);
+	bool isAlwaysInBounds(Value *P, Value *Offset);
 };
 
 } // anonymous namespace
 
 bool BugOnGep::runOnFunction(Function &F) {
-        DL = &getAnalysis<DataLayout>();
-        return super::runOnFunction(F);
+	DL = &getAnalysis<DataLayout>();
+	TLI = &getAnalysis<TargetLibraryInfo>();
+	return super::runOnFunction(F);
 }
 
 bool BugOnGep::runOnInstruction(Instruction *I) {
@@ -81,7 +87,11 @@ bool BugOnGep::insertOffsetOverflow(GEPOperator *GEP) {
 	}
 	Value *P = GEP->getPointerOperand();
 	Value *Offset = EmitGEPOffset(Builder, *DL, GEP);
-	unsigned PtrBits = DL->getPointerSizeInBits(/*GEP->getPointerAddressSpace()*/);
+	if (isAlwaysInBounds(P, Offset)) {
+		RecursivelyDeleteTriviallyDeadInstructions(Offset, TLI);
+		return false;
+	}
+	unsigned PtrBits = DL->getPointerSizeInBits(GEP->getPointerAddressSpace());
 	LLVMContext &VMCtx = GEP->getContext();
 	// Extend to n + 1 bits to avoid overflowing ptr + offset.
 	IntegerType *PtrIntExTy = Type::getIntNTy(VMCtx, PtrBits + 1);
@@ -89,18 +99,53 @@ bool BugOnGep::insertOffsetOverflow(GEPOperator *GEP) {
 		Builder->CreatePtrToInt(P, PtrIntExTy),
 		createSExtOrTrunc(Offset, PtrIntExTy)
 	);
+	bool Changed = false;
 	// Bug condition: ptr + offset > uintptr_max.
 	{
 		Value *PtrMax = ConstantInt::get(VMCtx, APInt::getMaxValue(PtrBits).zext(PtrBits + 1));
 		Value *V = Builder->CreateICmpSGT(End, PtrMax);
-		insert(V, "pointer overflow");
+		Changed |= insert(V, "pointer overflow");
 	}
 	// Bug condition: ptr + offset < 0.
 	{
 		Value *V = Builder->CreateICmpSLT(End, Constant::getNullValue(PtrIntExTy));
-		insert(V, "pointer overflow");
+		Changed |= insert(V, "pointer overflow");
 	}
-	return true;
+	if (!Changed)
+		RecursivelyDeleteTriviallyDeadInstructions(End, TLI);
+	return Changed;
+}
+
+// Ignore p + foo(p, ...) that is always in-bounds.
+bool BugOnGep::isAlwaysInBounds(Value *P, Value *Offset) {
+	// n + 0 => n.
+	if (auto I = dyn_cast<Instruction>(Offset))
+		Offset = SimplifyInstruction(I, DL, TLI);
+	auto CI = dyn_cast<CallInst>(Offset);
+	if (!CI)
+		return false;
+	auto Callee = CI->getCalledFunction();
+	if (!Callee)
+		return false;
+	LibFunc::Func F;
+	if (!TLI->getLibFunc(Callee->getName(), F) || !TLI->has(F))
+		return false;
+	Value *S;
+	switch (F) {
+	default:
+		return false;
+	case LibFunc::fwrite:
+	case LibFunc::strcspn:
+	case LibFunc::strlen:
+	case LibFunc::strnlen:
+	case LibFunc::strspn:
+		S = CI->getArgOperand(0);
+		break;
+	}
+	S = S->stripPointerCasts();
+	if (S == P->stripPointerCasts())
+		return true;
+	return false;
 }
 
 char BugOnGep::ID;
