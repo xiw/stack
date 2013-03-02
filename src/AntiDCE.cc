@@ -41,11 +41,14 @@ bool AntiDCE::shouldCheck(BasicBlock *BB) {
 	// Skip exception handlers.
 	if (BB->isLandingPad())
 		return false;
-	// BB may become unreachable after marking some block as unreachable.
-	if (!DT->isReachableFromEntry(BB))
-		return false;
 	// Ignore unreachable blocks, often from BUG_ON() or assert().
 	if (isa<UnreachableInst>(BB->getTerminator()))
+		return false;
+	// Ignore empty blocks.
+	if (isa<TerminatorInst>(BB->getFirstInsertionPt()))
+		return false;
+	// BB may become unreachable after marking some block as unreachable.
+	if (!DT->isReachableFromEntry(BB))
 		return false;
 	for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ++i) {
 		if (Diagnostic::hasSingleDebugLocation(i))
