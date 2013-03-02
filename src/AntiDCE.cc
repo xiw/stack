@@ -38,6 +38,9 @@ private:
 } // anonymous namespace
 
 bool AntiDCE::shouldCheck(BasicBlock *BB) {
+	// Skip exception handlers.
+	if (BB->isLandingPad())
+		return false;
 	// BB may become unreachable after marking some block as unreachable.
 	if (!DT->isReachableFromEntry(BB))
 		return false;
