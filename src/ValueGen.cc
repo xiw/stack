@@ -269,7 +269,8 @@ private:
 		std::string Name;
 		{
 			raw_string_ostream OS(Name);
-			WriteAsOperand(OS, V, false);
+			if (false)	// Generating pretty names is slow
+				WriteAsOperand(OS, V, false);
 			// Make name unique, e.g., undef.
 			OS << "@" << V;
 		}
