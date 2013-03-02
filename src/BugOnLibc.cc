@@ -61,7 +61,7 @@ bool BugOnLibc::doInitialization(Module &M) {
 
 bool BugOnLibc::runOnInstruction(Instruction *I) {
 	CallInst *CI = dyn_cast<CallInst>(I);
-	if (!CI)
+	if (!CI || isa<BugOnInst>(CI))
 		return false;
 	Function *F = CI->getCalledFunction();
 	if (!F)
@@ -83,7 +83,7 @@ bool BugOnLibc::visitAbs(CallInst *I) {
 		return false;
 	Value *R = I->getArgOperand(0);
 	IntegerType *T = dyn_cast<IntegerType>(R->getType());
-	if (!T)
+	if (!T || I->getType() != T)
 		return false;
 	Constant *SMin = ConstantInt::get(T, APInt::getSignedMinValue(T->getBitWidth()));
 	Value *V = Builder->CreateICmpEQ(R, SMin);
