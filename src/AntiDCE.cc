@@ -40,23 +40,16 @@ private:
 } // anonymous namespace
 
 bool AntiDCE::shouldCheck(BasicBlock *BB) {
-	// Skip exception handlers.
-	if (BB->isLandingPad())
-		return false;
 	// Ignore unreachable blocks, often from BUG_ON() or assert().
 	if (isa<UnreachableInst>(BB->getTerminator()))
 		return false;
-	// Ignore empty default.
-	if (BasicBlock *Pred = BB->getSinglePredecessor()) {
-		if (SwitchInst *SI = dyn_cast<SwitchInst>(Pred->getTerminator()))
-			if (SI->getDefaultDest() == BB)
-				return false;
-	}
 	if (isa<TerminatorInst>(BB->getFirstInsertionPt()))
 		return false;
 	// BB may become unreachable after marking some block as unreachable.
-	if (!DT->isReachableFromEntry(BB))
+	if (!DT->isReachableFromEntry(BB)) {
+		markAsDead(BB);
 		return false;
+	}
 	for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ++i) {
 		if (Diagnostic::hasSingleDebugLocation(i))
 			return true;
@@ -140,8 +133,8 @@ void AntiDCE::markAsDead(BasicBlock *BB) {
 	std::vector<BasicBlock *> Succs(succ_begin(BB), succ_end(BB));
 	for (unsigned i = 0, e = Succs.size(); i != e; ++i)
 		Succs[i]->removePredecessor(BB);
-	// Empty BB.
-	for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ) {
+	// Empty BB; ignore PHI and LandingPad, which are trikcy to remove.
+	for (auto i = BB->getFirstInsertionPt(), e = BB->end(); i != e; ) {
 		Instruction *I = i++;
 		Type *T = I->getType();
 		if (!I->use_empty())
