@@ -12,6 +12,7 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/Support/CFG.h>
 #include <llvm/Support/Debug.h>
+#include <llvm/Transforms/Utils/Local.h>
 
 using namespace llvm;
 
@@ -108,12 +109,19 @@ void AntiDCE::report(BasicBlock *BB) {
 	// Prove BB is dead; output warning message.
 	Diag.bug(DEBUG_TYPE);
 	Diag << "model: |\n";
-	if (auto Pred = BB->getUniquePredecessor()) {
-		if (auto BI = dyn_cast<BranchInst>(Pred->getTerminator()))
-			if (auto Cond = dyn_cast<Instruction>(BI->getCondition()))
-				Diag << *Cond << "\n  -->  "
-				     << ((BI->getSuccessor(0) == BB) ? "false" : "true")
-				     << "\n  ************************************************************\n";
+	for (auto i = pred_begin(BB), e = pred_end(BB); i != e; ++i) {
+		auto BI = dyn_cast<BranchInst>((*i)->getTerminator());
+		if (!BI)
+			continue;
+		auto CondInst = dyn_cast<Instruction>(BI->getCondition());
+		if (!CondInst)
+			continue;
+		bool CondVal = (BI->getSuccessor(1) == BB);
+		Diag << *CondInst << "\n  -->  "
+		     << (CondVal ? "true" : "false")
+		     << "\n  ************************************************************\n";
+		BI->setCondition(ConstantInt::get(CondInst->getType(), CondVal));
+		RecursivelyDeleteTriviallyDeadInstructions(CondInst);
 	}
 	Diag << "  " << BB->getName() << ":\n";
 	for (Instruction &I: *BB)
