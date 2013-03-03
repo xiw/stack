@@ -16,8 +16,8 @@ exec ${OPT} --disable-output -load=${DIR}/../lib/libantiopt.so \
 	-bugon-alias \
 	-bugon-int \
 	-bugon-libc -bugon-linux \
+	-anti-dce \
 	-anti-simplify \
 	-anti-algebra \
-	-anti-dce \
 	-show-bugon-true \
 	"$@" 2>&1

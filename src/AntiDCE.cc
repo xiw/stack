@@ -32,6 +32,7 @@ struct AntiDCE: AntiFunctionPass {
 private:
 	bool shouldCheck(BasicBlock *BB);
 	int shouldKeepCode(BasicBlock *BB);
+	void report(BasicBlock *BB);
 	void markAsDead(BasicBlock *BB);
 };
 
@@ -74,6 +75,7 @@ bool AntiDCE::runOnAntiFunction(Function &F) {
 		SMTJoin(&Keep);
 		if (Keep)
 			continue;
+		report(BB);
 		Changed = true;
 		markAsDead(BB);
 		// Update if any optimization performed.
@@ -102,19 +104,30 @@ int AntiDCE::shouldKeepCode(BasicBlock *BB) {
 	return 1;
 }
 
-void AntiDCE::markAsDead(BasicBlock *BB) {
+void AntiDCE::report(BasicBlock *BB) {
 	// Prove BB is dead; output warning message.
 	Diag.bug(DEBUG_TYPE);
-	Diag << "model: |\n  " << BB->getName() << ":\n";
-	for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ++i)
-		Diag << *i << '\n';
-	for (BasicBlock::iterator i = BB->begin(), e = BB->end(); i != e; ++i) {
-		if (!i->getDebugLoc().isUnknown()) {
-			Diag.backtrace(i);
-			printMinimalAssertions();
+	Diag << "model: |\n";
+	if (auto Pred = BB->getUniquePredecessor()) {
+		if (auto BI = dyn_cast<BranchInst>(Pred->getTerminator()))
+			if (auto Cond = dyn_cast<Instruction>(BI->getCondition()))
+				Diag << *Cond << "\n  -->  "
+				     << ((BI->getSuccessor(0) == BB) ? "false" : "true")
+				     << "\n  ************************************************************\n";
+	}
+	Diag << "  " << BB->getName() << ":\n";
+	for (Instruction &I: *BB)
+		Diag << I << '\n';
+	for (Instruction &I: *BB) {
+		if (!I.getDebugLoc().isUnknown()) {
+			Diag.backtrace(&I);
 			break;
 		}
 	}
+	printMinimalAssertions();
+}
+
+void AntiDCE::markAsDead(BasicBlock *BB) {
 	// Remove BB from successors.
 	std::vector<BasicBlock *> Succs(succ_begin(BB), succ_end(BB));
 	for (unsigned i = 0, e = Succs.size(); i != e; ++i)
