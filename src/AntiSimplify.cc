@@ -36,9 +36,8 @@ bool AntiSimplify::runOnAntiFunction(Function &F) {
 		Instruction *I = &*i++;
 		if (!Diagnostic::hasSingleDebugLocation(I))
 			continue;
-		Type *T = I->getType();
 		// For now we are only interested in bool expressions.
-		if (!T->isIntegerTy(1))
+		if (!isa<ICmpInst>(I))
 			continue;
 		int ConstVal;
 		if (SMTFork() == 0)
@@ -51,6 +50,7 @@ bool AntiSimplify::runOnAntiFunction(Function &F) {
 		     << (ConstVal ? "true" : "false") << "\n";
 		Diag.backtrace(I);
 		printMinimalAssertions();
+		Type *T = I->getType();
 		Constant *C = ConstantInt::get(T, ConstVal);
 		I->replaceAllUsesWith(C);
 		RecursivelyDeleteTriviallyDeadInstructions(I);
