@@ -22,7 +22,7 @@ static void global_check(union sigval) {
 		printf("Global timeout: self %ld.%06ld, child %ld.%06ld\n",
 			ru_self.ru_utime.tv_sec, ru_self.ru_utime.tv_usec,
 			ru_child.ru_utime.tv_sec, ru_child.ru_utime.tv_usec);
-		exit(-1);
+		exit(0);
 	}
 }
 
