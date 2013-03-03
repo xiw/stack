@@ -1,7 +1,6 @@
 #include "ValueGen.h"
 #include <llvm/InstVisitor.h>
 #include <llvm/ADT/APInt.h>
-#include <llvm/Assembly/Writer.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Operator.h>
@@ -269,8 +268,8 @@ private:
 		std::string Name;
 		{
 			raw_string_ostream OS(Name);
-			if (false)	// Generating pretty names is slow
-				WriteAsOperand(OS, V, false);
+			if (V->hasName())
+				OS << V->getName();
 			// Make name unique, e.g., undef.
 			OS << "@" << V;
 		}
