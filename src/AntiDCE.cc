@@ -44,7 +44,12 @@ bool AntiDCE::shouldCheck(BasicBlock *BB) {
 	// Ignore unreachable blocks, often from BUG_ON() or assert().
 	if (isa<UnreachableInst>(BB->getTerminator()))
 		return false;
-	// Ignore empty blocks.
+	// Ignore empty default.
+	if (BasicBlock *Pred = BB->getSinglePredecessor()) {
+		if (SwitchInst *SI = dyn_cast<SwitchInst>(Pred->getTerminator()))
+			if (SI->getDefaultDest() == BB)
+				return false;
+	}
 	if (isa<TerminatorInst>(BB->getFirstInsertionPt()))
 		return false;
 	// BB may become unreachable after marking some block as unreachable.
