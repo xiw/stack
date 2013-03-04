@@ -104,7 +104,7 @@ void AntiDCE::report(BasicBlock *BB) {
 	Diag << "model: |\n";
 	for (auto i = pred_begin(BB), e = pred_end(BB); i != e; ++i) {
 		auto BI = dyn_cast<BranchInst>((*i)->getTerminator());
-		if (!BI)
+		if (!BI || !BI->isConditional())
 			continue;
 		auto CondInst = dyn_cast<Instruction>(BI->getCondition());
 		if (!CondInst)
