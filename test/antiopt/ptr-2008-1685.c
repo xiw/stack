@@ -7,6 +7,6 @@ void bar(void);
 void foo(char *buf)
 {
 	unsigned int len = 1<<30;
-	if (buf + len < buf) // exp: {{anti-simplify}}
-        	bar();
+	if (buf + len < buf)
+		bar();		// exp: {{anti-dce}}
 }

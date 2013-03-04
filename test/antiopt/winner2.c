@@ -11,6 +11,6 @@ int main()
   int *q = (int*)realloc(p, sizeof(int));
   *p = 1;
   *q = 2;
-  if (p == q) // exp: {{anti-simplify}}
+  if (p == q)
     printf("%d %d\n", *p, *q);
 }

@@ -6,7 +6,7 @@ void bar(void);
 
 int foo(int a)
 {
-	if (!(a + 100 > a)) // exp: {{anti-simplify}}
-		bar();
+	if (!(a + 100 > a))
+		bar();		// exp: {{anti-dce}}
 	return a;
 }

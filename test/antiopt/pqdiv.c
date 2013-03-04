@@ -10,7 +10,7 @@ void my_raise(void) NORETURN;
 
 int foo(int x, int y)
 {
-	if (y == 0) // exp: {{anti-simplify}}
-		my_raise();
+	if (y == 0)
+		my_raise();	// exp: {{anti-dce}}
 	return x / y;
 }
