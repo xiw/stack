@@ -11,6 +11,7 @@
 #include <sys/mman.h>
 #include <algorithm>
 #include <cxxabi.h>
+#include <stdlib.h>
 
 using namespace llvm;
 
@@ -23,6 +24,16 @@ MinBugOnOpt("min-bugon",
             cl::desc("Compute minimal bugon set"), cl::init(true));
 
 static const size_t BUFFER_SIZE = 4096;
+
+bool BenchmarkFlag;
+
+namespace {
+	struct BenchmarkInit {
+		BenchmarkInit() { BenchmarkFlag = !!::getenv("BENCHMARK"); }
+	};
+}
+
+static BenchmarkInit X;
 
 AntiFunctionPass::AntiFunctionPass(char &ID) : FunctionPass(ID), Buffer(NULL) {
 	PassRegistry &Registry = *PassRegistry::getPassRegistry();

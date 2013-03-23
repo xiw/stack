@@ -9,6 +9,10 @@
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/IR/DataLayout.h>
 
+#define BENCHMARK(e) if (BenchmarkFlag) { e; }
+
+extern bool BenchmarkFlag;
+
 class SMTSolver;
 
 class AntiFunctionPass : public llvm::FunctionPass {

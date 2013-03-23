@@ -57,6 +57,15 @@ bool AntiDCE::shouldCheck(BasicBlock *BB) {
 	return false;
 }
 
+static inline
+const char *qstr(int Keep) {
+	switch (Keep) {
+	default: return "timeout";
+	case 0:  return "succ";
+	case 1:  return "fail";
+	}
+}
+
 bool AntiDCE::runOnAntiFunction(Function &F) {
 	bool Changed = false;
 	for (Function::iterator i = F.begin(), e = F.end(); i != e; ++i) {
@@ -67,6 +76,7 @@ bool AntiDCE::runOnAntiFunction(Function &F) {
 		if (SMTFork() == 0)
 			Keep = shouldKeepCode(BB);
 		SMTJoin(&Keep);
+		BENCHMARK(Diagnostic() << "query: " << qstr(Keep) << "\n");
 		if (Keep)
 			continue;
 		report(BB);

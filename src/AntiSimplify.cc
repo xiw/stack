@@ -30,6 +30,20 @@ private:
 
 } // anonymous namespace
 
+#define FOLD_FAIL 2
+
+static inline
+const char *qstr(int ConstVal) {
+	switch (ConstVal) {
+	default:
+		return "timeout";
+	case 0: case 1:
+		return "succ";
+	case FOLD_FAIL:
+		return "fail";
+	}
+}
+
 bool AntiSimplify::runOnAntiFunction(Function &F) {
 	bool Changed = false;
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ) {
@@ -43,6 +57,7 @@ bool AntiSimplify::runOnAntiFunction(Function &F) {
 		if (SMTFork() == 0)
 			ConstVal = foldConst(I);
 		SMTJoin(&ConstVal);
+		BENCHMARK(Diagnostic() << "query: " << qstr(ConstVal) << "\n");
 		if (ConstVal != 0 && ConstVal != 1)
 			continue;
 		Diag.bug(DEBUG_TYPE);
@@ -58,8 +73,6 @@ bool AntiSimplify::runOnAntiFunction(Function &F) {
 	}
 	return Changed;
 }
-
-#define FOLD_FAIL 2
 
 int AntiSimplify::foldConst(Instruction *I) {
 	int Result = FOLD_FAIL;

@@ -102,6 +102,14 @@ static const char *getPredicateStr(CmpInst::Predicate Pred) {
 	}
 }
 
+static inline const char *qstr(int isEqv) {
+	switch (isEqv) {
+	default: return "timeout";
+	case 0:  return "fail";
+	case 1:  return "succ";
+	}
+}
+
 bool AntiAlgebra::visitICmpInst(ICmpInst *I) {
 	const SCEV *L = SE->getSCEV(I->getOperand(0));
 	const SCEV *R = SE->getSCEV(I->getOperand(1));
@@ -120,6 +128,7 @@ bool AntiAlgebra::visitICmpInst(ICmpInst *I) {
 	if (SMTFork() == 0)
 		isEqv = checkEqv(I, NewCmp);
 	SMTJoin(&isEqv);
+	BENCHMARK(Diagnostic() << "query: " << qstr(isEqv) << "\n");
 	if (isEqv <= 0) {
 		RecursivelyDeleteTriviallyDeadInstructions(NewCmp, TLI);
 		return false;
