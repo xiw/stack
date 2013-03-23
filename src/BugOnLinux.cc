@@ -20,8 +20,9 @@ private:
 	typedef bool (BugOnLinux::*handler_t)(CallInst *);
 	DenseMap<Function *, handler_t> Handlers;
 
-	bool visitFfz(CallInst *);
 	bool visitDmaPoolCreate(CallInst *);
+	bool visitDupUser(CallInst *);
+	bool visitFfz(CallInst *);
 };
 
 } // anonymous namespace
@@ -31,10 +32,16 @@ bool BugOnLinux::doInitialization(Module &M) {
 	if (Function *F = M.getFunction(name)) \
 		Handlers[F] = &BugOnLinux::method;
 
-	// bitops
-	HANDLER(visitFfz, "ffz");
+#if 0
+	// *dup_user
+	HANDLER(visitDupUser, "memdup_user");
+	HANDLER(visitDupUser, "strndup_user");
 
 	HANDLER(visitDmaPoolCreate, "dma_pool_create");
+#endif
+
+	// bitops
+	HANDLER(visitFfz, "ffz");
 
 #undef HANDLER
 	return false;
@@ -51,6 +58,27 @@ bool BugOnLinux::runOnInstruction(Instruction *I) {
 	if (!Handler)
 		return false;
 	return (this->*Handler)(CI);
+}
+
+bool BugOnLinux::visitDupUser(CallInst *I) {
+	if (!isa<PointerType>(I->getType()))
+		return false;
+	Instruction *OldIP = setInsertPointAfter(I);
+	Value *V = createIsNull(I);
+	insert(V, I->getCalledFunction()->getName());
+	setInsertPoint(OldIP);
+	return true;
+}
+
+// dma_pool_create(name, dev, size, align, allocation): dev == null
+bool BugOnLinux::visitDmaPoolCreate(CallInst *I) {
+	if (I->getNumArgOperands() != 5)
+		return false;
+	Value *Dev = I->getArgOperand(1);
+	if (!isa<PointerType>(Dev->getType()))
+		return false;
+	Value *V = createIsNull(Dev);
+	return insert(V, I->getCalledFunction()->getName());
 }
 
 // ffz(x): cttz(~x).
@@ -74,17 +102,6 @@ bool BugOnLinux::visitFfz(CallInst *I) {
 	I->replaceAllUsesWith(NewInst);
 	I->eraseFromParent();
 	return true;
-}
-
-// dma_pool_create(name, dev, size, align, allocation): dev == null
-bool BugOnLinux::visitDmaPoolCreate(CallInst *I) {
-	if (I->getNumArgOperands() != 5)
-		return false;
-	Value *Dev = I->getArgOperand(1);
-	if (!isa<PointerType>(Dev->getType()))
-		return false;
-	Value *V = createIsNull(Dev);
-	return insert(V, I->getCalledFunction()->getName());
 }
 
 char BugOnLinux::ID;
