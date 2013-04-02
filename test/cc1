@@ -14,7 +14,7 @@ def cc(llvmcc, src, argv):
 		if out.startswith('/tmp/') or out.startswith('/var/tmp/'):
 			out = src
 	if out != '-':
-		out = os.path.splitext(out)[0] + '.ll'
+		out = os.path.splitext(out)[0] + '.%d.ll' % os.getpid()
 	argv += ['-o', '-']
 	# Remove profiling flags.
 	argv = [x for x in argv if x not in ['-pg', '-fprofile-arcs', '-ftest-coverage']]
