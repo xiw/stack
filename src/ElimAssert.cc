@@ -70,7 +70,7 @@ bool ElimAssert::safeBB(BasicBlock *BB) {
 		StringRef N = CI->getCalledFunction()->getName();
 		if (AssertFailures.find(N) == AssertFailures.end() &&
 		    SafeFunctions.find(N) == SafeFunctions.end()) {
-			Diagnostic() << "ElimAssert: unsafe call to " << N << "\n";
+			// Diagnostic() << "ElimAssert: unsafe call to " << N << "\n";
 			return false;
 		}
 	}
