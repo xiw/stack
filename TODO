@@ -1,2 +1,6 @@
 Treat some function arguments (free, memcpy, memset, ...) as accessing
 memory much like StoreInst or LoadInst.
+
+Fix invocations of cc1 without -o; should write to foo.pid.ll in the
+current directory, instead of in the source directory.
+
