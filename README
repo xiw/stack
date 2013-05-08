@@ -15,41 +15,16 @@ uses Clang to obtain LLVM bitcode from your source code, stored in
 	$ kint-build make
 
 
-Integer overflow checker
-------------------------
+Unstable code checker
+---------------------
 
-To find integer overflows, you can first run Kint's global analysis
-on the generated LLVM bitcode (the .ll files) to generate some
-whole-program constraints that will reduce false positives in the
-subsequent analysis steps.  This step is optional, and if it doesn't
-work (e.g., due to some bug), you can skip it and continue on to
-the next step.
+To find unstable code that can be eliminated due to undefined behavior,
+simply run the following command in the project directory after building
+LLVM bitcode:
 
-This global analysis writes its output back to the LLVM bitcode .ll
-files, so it produces no terminal output (unless you specify the
--v flag).  In our example, you can run the global analysis as
-follows:
+	$ poptck
 
-	$ find . -name "*.ll" > bitcode.lst
-	$ intglobal @bitcode.lst
-
-Finally, run the following command in the project directory.
-
-	$ pintck
-
-You can find bug reports in `pintck.txt`.
-
-
-Tautological comparison checker
--------------------------------
-
-Tautological control flow decisions (i.e., branches that are always
-taken or never taken) are often indicative of bugs.  To find them,
-simply run the following command in the project directory.
-
-	$ pcmpck
-
-You can find bug reports in `pcmpck.txt`.
+You can find bug reports in `poptck.txt`.
 
 
 Contact
