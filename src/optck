@@ -7,7 +7,7 @@ exec ${OPT} --disable-output -load=${DIR}/../lib/libantiopt.so \
 	-basiccg -prune-eh -simplify-delete -load-elim \
 	-inline-only -functionattrs -argpromotion \
 	-strip-dead-prototypes \
-	-simplify-libcalls -adce \
+	-adce \
 	-elim-assert \
 	-bugon-null \
 	-bugon-gep \
