@@ -1,20 +1,24 @@
 #pragma once
 
-#include <llvm/Support/Debug.h>
+#include <llvm/Support/Compiler.h>
 #include <llvm/Support/ConstantRange.h>
+#include <llvm/Support/Debug.h>
 
 // llvm::ConstantRange fixup.
 class CRange : public llvm::ConstantRange {
-	typedef llvm::APInt APInt;
 	typedef llvm::ConstantRange super;
+	// duplicate private APIntMoveTy from ConstantRange
+#if LLVM_HAS_RVALUE_REFERENCES
+	typedef llvm::APInt APIntMoveTy;
+#else
+	typedef const llvm::APInt &APIntMoveTy;
+#endif
 public:
 	CRange(uint32_t BitWidth, bool isFullSet) : super(BitWidth, isFullSet) {}
 	// Constructors.
 	CRange(const super &CR) : super(CR) {}
-	CRange(const APInt &Value)
-		: super(Value) {}
-	CRange(const APInt &Lower, const APInt &Upper)
-		: super(Lower, Upper) {}
+	CRange(APIntMoveTy Value) : super(Value) {}
+	CRange(APIntMoveTy Lower, APIntMoveTy Upper) : super(Lower, Upper) {}
 	static CRange makeFullSet(uint32_t BitWidth) {
 		return CRange(BitWidth, true);
 	}

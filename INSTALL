@@ -5,11 +5,11 @@ Clang and LLVM, as detailed at:
 
 We use the following parameters to LLVM's configure:
 
-	--enable-targets=host --enable-bindings=none --enable-shared --enable-debug-symbols --enable-optimized
+	--enable-cxx11 --enable-targets=host --enable-bindings=none --enable-shared --enable-debug-symbols --enable-optimized
 
 but if you want Clang and LLVM to build faster, use:
 
-	--enable-targets=host --enable-bindings=none --enable-shared --disable-assertions
+	--enable-cxx11 --enable-targets=host --enable-bindings=none --enable-shared --disable-assertions
 
 Then build Kint in its source root directory.
 

@@ -38,7 +38,7 @@ void doWriteback(Module *M, StringRef name)
 {
 	std::string err;
 	OwningPtr<tool_output_file> out(
-		new tool_output_file(name.data(), err, raw_fd_ostream::F_Binary));
+		new tool_output_file(name.data(), err, sys::fs::F_Binary));
 	if (!err.empty()) {
 		Diag << "Cannot write back to " << name << ": " << err << "\n";
 		return;
