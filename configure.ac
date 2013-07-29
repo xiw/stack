@@ -1,7 +1,7 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT([kint],[0.3],[int@pdos.csail.mit.edu])
+AC_INIT([stack],[0.3],[int@pdos.csail.mit.edu])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([config.h])
 
@@ -25,26 +25,21 @@ AC_CONFIG_FILES([
 	src/Makefile
 	test/Makefile
 	test/lit.cfg
-	doc/Makefile
 ])
 AC_CONFIG_LINKS([
-	bin/kint/gcc:test/gcc
-	bin/kint/g++:test/g++
-	bin/kint/cc:test/gcc
-	bin/kint/c++:test/g++
-	bin/kint/cc1:test/cc1
-	bin/kint/clang:test/clang
-	bin/kint/clang++:test/clang++
-	bin/kint/arm-linux-gnueabi-gcc:test/arm-linux-gnueabi-gcc
-	bin/kint/arm-linux-gnueabi-g++:test/arm-linux-gnueabi-g++
-	bin/kint-build:test/kint-build
+	bin/stackcc/gcc:test/gcc
+	bin/stackcc/g++:test/g++
+	bin/stackcc/cc:test/gcc
+	bin/stackcc/c++:test/g++
+	bin/stackcc/cc1:test/cc1
+	bin/stackcc/clang:test/clang
+	bin/stackcc/clang++:test/clang++
+	bin/stackcc/arm-linux-gnueabi-gcc:test/arm-linux-gnueabi-gcc
+	bin/stackcc/arm-linux-gnueabi-g++:test/arm-linux-gnueabi-g++
+	bin/stack-build:test/stack-build
 	bin/ncpu:src/ncpu
-	bin/intck:src/intck
-	bin/pintck:src/pintck
-	bin/cmpck:src/cmpck
-	bin/pcmpck:src/pcmpck
-	bin/antiopt:src/antiopt
-	bin/optck:src/optck
-	bin/poptck:src/poptck
+	bin/stack:src/stack
+	bin/pstack:src/pstack
+	bin/optck:src/stack
 ])
 AC_OUTPUT

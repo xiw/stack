@@ -14,11 +14,11 @@ if 'LLVMCC' in os.environ:
 llvm_obj_root = lit.util.capture(['llvm-config', '--obj-root']).strip()
 llvm_build_mode = lit.util.capture(['llvm-config', '--build-mode']).strip()
 llvm_bindir = os.path.join(llvm_obj_root, llvm_build_mode, 'bin')
-kint_bindir = os.path.join("@abs_top_builddir@", 'bin')
-path = os.path.pathsep.join( (kint_bindir, config.test_source_root, llvm_bindir, config.environment['PATH']) )
+stack_bindir = os.path.join("@abs_top_builddir@", 'bin')
+path = os.path.pathsep.join( (stack_bindir, config.test_source_root, llvm_bindir, config.environment['PATH']) )
 config.environment['PATH'] = path
 
-cc1     = os.path.join(kint_bindir, 'kint', 'cc1')
+cc1     = os.path.join(stack_bindir, 'stackcc', 'cc1')
 cc      = cc1 + ' -c -o -'
 linuxcc = cc1 + ' -nostdinc -fno-builtin -c -o -'
 config.substitutions.append( ('%cc', cc) )

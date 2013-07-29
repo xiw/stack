@@ -1,16 +1,12 @@
 AM_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall -std=c++11 -fno-strict-aliasing
 
 noinst_LTLIBRARIES = libsat.la
-lib_LTLIBRARIES    = libintck.la libcmpck.la libantiopt.la libintfe.la
-bin_PROGRAMS       = intglobal
-EXTRA_DIST         = intck cmpck antiopt llvm/DataLayout.h llvm/DebugInfo.h llvm/IRBuilder.h
+lib_LTLIBRARIES    = liboptck.la liboptfe.la
+EXTRA_DIST         = stack pstack ncpu
 
-all-local: libintck.la libcmpck.la libintfe.la
-	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libintck.so
-	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libcmpck.so
-	@cd $(top_builddir)/bin && $(LN_S) -f ../src/intglobal
-	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libantiopt.so
-	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/libintfe.so
+all-local: liboptck.la liboptfe.la
+	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/liboptck.so
+	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/liboptfe.so
 
 libsat_la_CPPFLAGS = -I$(top_builddir)/lib
 libsat_la_SOURCES  = ValueGen.cc PathGen.cc Diagnostic.cc SMTSolver.cc
@@ -28,25 +24,11 @@ libsat_la_LIBADD   = -lboolector -llgl -lrt
 #libsat_la_LIBADD   = -lz3 -lgomp
 libsat_la_LDFLAGS  = -L$(top_builddir)/lib
 
-libintck_la_SOURCES = IntRewrite.cc IntLibcalls.cc IntSat.cc \
-	OverflowIdiom.cc OverflowSimplify.cc \
-	LoadRewrite.cc
-libintck_la_LIBADD  = libsat.la
-libintck_la_LDFLAGS = -module
+liboptck_la_SOURCES = AntiFunctionPass.cc AntiDCE.cc AntiAlgebra.cc AntiSimplify.cc
+liboptck_la_SOURCES += InlineOnly.cc SimplifyDelete.cc IgnoreLoopInitial.cc LoadElim.cc
+liboptck_la_SOURCES += AntiFunctionPass.h
+liboptck_la_LIBADD  = libsat.la
+liboptck_la_LDFLAGS = -module
 
-libcmpck_la_SOURCES = CmpTautology.cc CmpOverflow.cc CmpSat.cc
-libcmpck_la_LIBADD  = libsat.la
-libcmpck_la_LDFLAGS = -module
-
-libantiopt_la_SOURCES = AntiFunctionPass.cc AntiDCE.cc AntiAlgebra.cc AntiSimplify.cc
-libantiopt_la_SOURCES += InlineOnly.cc SimplifyDelete.cc IgnoreLoopInitial.cc LoadElim.cc
-libantiopt_la_SOURCES += AntiFunctionPass.h
-libantiopt_la_LIBADD  = libsat.la
-libantiopt_la_LDFLAGS = -module
-
-libintfe_la_SOURCES = IntAction.cc
-libintfe_la_LDFLAGS = -module
-
-intglobal_LDFLAGS = `llvm-config --ldflags` -lLLVM-`llvm-config --version`
-intglobal_SOURCES = IntGlobal.cc Annotation.cc CallGraph.cc Taint.cc Range.cc \
-	IntGlobal.h Annotation.h CRange.h
+liboptfe_la_SOURCES = IntAction.cc
+liboptfe_la_LDFLAGS = -module

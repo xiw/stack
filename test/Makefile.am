@@ -1,4 +1,4 @@
-EXTRA_DIST = lit.cfg.in kint-cc1 kint-gcc kint-g++ diagdiff
+EXTRA_DIST = lit.cfg.in cc1 diagdiff gcc g++
 
 LITFLAGS ?= -v
 LITTESTS ?= $(builddir)

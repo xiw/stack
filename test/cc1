@@ -33,7 +33,7 @@ def cc(llvmcc, src, argv):
 	# Additional options.
 	more = ['-Qunused-arguments', '-w', '-S', '-flto', '-O0', '-g', '-D_FORTIFY_SOURCE=0']
 	# Frontend plugin.
-	intfe = os.path.join(os.path.dirname(__file__), '..', '..', 'lib', 'libintfe.so')
+	intfe = os.path.join(os.path.dirname(__file__), '..', '..', 'lib', 'liboptfe.so')
 	plugin = ['-Xclang', '-load', '-Xclang', intfe, '-Xclang', '-plugin', '-Xclang', 'intfe']
 	p1 = subprocess.Popen(llvmcc + argv + more + plugin + [src], stdout=subprocess.PIPE)
 	# Don't invoke -early-cse, which may hide undefined behavior bugs.

@@ -2,7 +2,7 @@
 
 DIR=$(dirname "${BASH_SOURCE[0]}")
 NCPU=`${DIR}/ncpu`
-OUT='poptck.txt'
+OUT='pstack.txt'
 TIMEOUT=5000
 TOTALSEC=1000
 find . -name '*.ll' -type f -print0 | xargs -0 -P ${NCPU} -I{} -t bash -c "${DIR}/optck -smt-timeout=${TIMEOUT} -global-timeout-sec=${TOTALSEC} -enable-global-timeout '{}' > '{}.out'"

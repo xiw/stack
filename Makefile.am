@@ -1,4 +1,4 @@
-SUBDIRS = lib src test doc
+SUBDIRS = lib src test
 
 EXTRA_DIST = COPYING INSTALL README
 
