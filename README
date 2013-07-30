@@ -22,9 +22,9 @@ To find unstable code that can be eliminated due to undefined behavior,
 simply run the following command in the project directory after building
 LLVM bitcode:
 
-	$ pstack
+	$ poptck
 
-You can find bug reports in `pstack.txt`.
+You can find bug reports in `poptck.txt`.
 
 
 Contact

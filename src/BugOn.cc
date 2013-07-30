@@ -9,14 +9,14 @@
 
 using namespace llvm;
 
-#define KINT_BUGON "kint.bugon"
+#define OPT_BUGON "opt.bugon"
 
 static cl::opt<bool>
 ShowTrueOpt("show-bugon-true",
             cl::desc("Show always true bug conditions"));
 
 Function *getBugOn(const Module *M) {
-	return M->getFunction(KINT_BUGON);
+	return M->getFunction(OPT_BUGON);
 }
 
 Function *getOrInsertBugOn(Module *M) {
@@ -24,7 +24,7 @@ Function *getOrInsertBugOn(Module *M) {
 	Type *VoidTy = Type::getVoidTy(C);
 	Type *BoolTy = Type::getInt1Ty(C);
 	FunctionType *T = FunctionType::get(VoidTy, BoolTy, false);
-	Function *F = cast<Function>(M->getOrInsertFunction(KINT_BUGON, T));
+	Function *F = cast<Function>(M->getOrInsertFunction(OPT_BUGON, T));
 	F->setDoesNotThrow();
 	return F;
 }

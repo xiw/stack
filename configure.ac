@@ -27,19 +27,18 @@ AC_CONFIG_FILES([
 	test/lit.cfg
 ])
 AC_CONFIG_LINKS([
-	bin/stackcc/gcc:test/gcc
-	bin/stackcc/g++:test/g++
-	bin/stackcc/cc:test/gcc
-	bin/stackcc/c++:test/g++
-	bin/stackcc/cc1:test/cc1
-	bin/stackcc/clang:test/clang
-	bin/stackcc/clang++:test/clang++
-	bin/stackcc/arm-linux-gnueabi-gcc:test/arm-linux-gnueabi-gcc
-	bin/stackcc/arm-linux-gnueabi-g++:test/arm-linux-gnueabi-g++
+	bin/stack/gcc:test/gcc
+	bin/stack/g++:test/g++
+	bin/stack/cc:test/gcc
+	bin/stack/c++:test/g++
+	bin/stack/cc1:test/cc1
+	bin/stack/clang:test/clang
+	bin/stac/clang++:test/clang++
+	bin/stack/arm-linux-gnueabi-gcc:test/arm-linux-gnueabi-gcc
+	bin/stack/arm-linux-gnueabi-g++:test/arm-linux-gnueabi-g++
 	bin/stack-build:test/stack-build
 	bin/ncpu:src/ncpu
-	bin/stack:src/stack
-	bin/pstack:src/pstack
-	bin/optck:src/stack
+	bin/optck:src/optck
+	bin/poptck:src/poptck
 ])
 AC_OUTPUT

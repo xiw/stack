@@ -2,7 +2,7 @@ AM_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall -std=c++11 -fno-strict-alia
 
 noinst_LTLIBRARIES = libsat.la
 lib_LTLIBRARIES    = liboptck.la liboptfe.la
-EXTRA_DIST         = stack pstack ncpu
+EXTRA_DIST         = optck poptck ncpu
 
 all-local: liboptck.la liboptfe.la
 	@cd $(top_builddir)/lib && $(LN_S) -f ../src/.libs/liboptck.so
