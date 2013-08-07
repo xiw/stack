@@ -19,6 +19,12 @@ AC_PROG_SED
 LT_INIT([disable-static pic-only])
 AC_PROG_LIBTOOL
 
+# Checks for timer
+AC_SEARCH_LIBS(
+	[timer_create],[rt],
+	AC_DEFINE([HAVE_TIMER],[1],[Define to 1 if you have the per-process timer.])
+)
+
 AC_CONFIG_FILES([
 	Makefile
 	lib/Makefile

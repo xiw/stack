@@ -4,6 +4,7 @@
 #include <sys/resource.h>
 #include <llvm/Pass.h>
 #include <llvm/Support/CommandLine.h>
+#include "config.h"
 
 using namespace llvm;
 
@@ -14,24 +15,26 @@ GlobalTimeoutOpt("global-timeout-sec",
 
 namespace {
 
+#ifdef HAVE_TIMER
 static void global_check(union sigval) {
 	struct rusage ru_self, ru_child;
 	getrusage(RUSAGE_SELF, &ru_self);
 	getrusage(RUSAGE_CHILDREN, &ru_child);
 	if (ru_self.ru_utime.tv_sec + ru_child.ru_utime.tv_sec > GlobalTimeoutOpt) {
 		printf("Global timeout: self %ld.%06ld, child %ld.%06ld\n",
-			ru_self.ru_utime.tv_sec, ru_self.ru_utime.tv_usec,
-			ru_child.ru_utime.tv_sec, ru_child.ru_utime.tv_usec);
+			(long)ru_self.ru_utime.tv_sec, (long)ru_self.ru_utime.tv_usec,
+			(long)ru_child.ru_utime.tv_sec, (long)ru_child.ru_utime.tv_usec);
 		exit(0);
 	}
 }
+#endif
 
 struct GlobalTimeout : ImmutablePass {
 	static char ID;
 	GlobalTimeout() : ImmutablePass(ID) {
 		if (!GlobalTimeoutOpt)
 			return;
-
+#ifdef HAVE_TIMER
 		timer_t tid;
 		struct sigevent sigev;
 		sigev.sigev_notify = SIGEV_THREAD;
@@ -52,6 +55,7 @@ struct GlobalTimeout : ImmutablePass {
 			perror("timer_settime");
 			return;
 		}
+#endif
 	}
 };
 
