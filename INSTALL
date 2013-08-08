@@ -9,7 +9,7 @@ We use the following parameters to LLVM's configure:
 
 but if you want Clang and LLVM to build faster, use:
 
-	--enable-cxx11 --enable-targets=host --enable-bindings=none --enable-shared --disable-assertions
+	--enable-cxx11 --enable-targets=host --enable-bindings=none --enable-shared --disable-assertions --disable-clang-arcmt --disable-clang-static-analyzer --disable-clang-rewriter
 
 Then build STACK in its source root directory.
 
