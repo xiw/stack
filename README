@@ -9,9 +9,16 @@ STACK works on LLVM bitcode.  To analyze a software project, the
 first step is to generate LLVM bitcode.  STACK provides a script
 called `stack-build`, which both calls gcc (or g++) and in parallel
 uses Clang to obtain LLVM bitcode from your source code, stored in
-.ll files. For example:
+.ll files.  For example:
 
 	$ cd /path/to/your/project
+	$ stack-build ./configure
+	$ stack-build make
+
+or if analyzing a project that is configured using CMake:
+
+	$ cd /path/to/your/project
+	$ stack-build cmake
 	$ stack-build make
 
 
@@ -24,7 +31,7 @@ LLVM bitcode:
 
 	$ poptck
 
-You can find bug reports in `poptck.txt`.
+You can find bug reports in `pstack.txt`.
 
 
 Contact
