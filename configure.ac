@@ -39,7 +39,7 @@ AC_CONFIG_LINKS([
 	bin/stack/c++:test/g++
 	bin/stack/cc1:test/cc1
 	bin/stack/clang:test/clang
-	bin/stac/clang++:test/clang++
+	bin/stack/clang++:test/clang++
 	bin/stack/arm-linux-gnueabi-gcc:test/arm-linux-gnueabi-gcc
 	bin/stack/arm-linux-gnueabi-g++:test/arm-linux-gnueabi-g++
 	bin/stack-build:test/stack-build
