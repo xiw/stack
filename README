@@ -31,7 +31,23 @@ LLVM bitcode:
 
 	$ poptck
 
-You can find bug reports in `pstack.txt`.
+You can find bug reports in `pstack.txt`, in the YAML format.
+
+Here's one example:
+
+	bug: anti-simplify
+	model: |
+	  %tobool = icmp ne i8* %p, null, !dbg !14
+	  -->  true
+	stack: 
+	  - p.c:4:0
+	ncore: 1
+	core: 
+	  - p.c:3:0
+	    - null pointer dereference
+
+This means the null pointer check at line 4 ("stack:") may be simplified
+into false ("model:") due to the pointer dereference at line 3 ("core:").
 
 
 Contact
