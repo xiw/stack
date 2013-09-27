@@ -34,12 +34,12 @@ AC_CONFIG_FILES([
 ])
 AC_CONFIG_LINKS([
 	bin/stack/gcc:test/gcc
-	bin/stack/g++:test/g++
+	bin/stack/g++:test/gcc
 	bin/stack/cc:test/gcc
-	bin/stack/c++:test/g++
+	bin/stack/c++:test/gcc
 	bin/stack/cc1:test/cc1
-	bin/stack/clang:test/clang
-	bin/stack/clang++:test/clang++
+	bin/stack/clang:test/gcc
+	bin/stack/clang++:test/gcc
 	bin/stack/arm-linux-gnueabi-gcc:test/arm-linux-gnueabi-gcc
 	bin/stack/arm-linux-gnueabi-g++:test/arm-linux-gnueabi-g++
 	bin/stack-build:test/stack-build
