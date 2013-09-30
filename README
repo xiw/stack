@@ -47,7 +47,7 @@ Here's one example:
 	    - null pointer dereference
 
 This means the null pointer check at line 4 ("stack:") may be simplified
-into false ("model:") due to the pointer dereference at line 3 ("core:").
+into true ("model:") due to the pointer dereference at line 3 ("core:").
 
 
 Contact
