@@ -16,5 +16,5 @@ liblgl.a: $(LINGELING).tar.gz
 	tar xzf $<
 	$(LN_S) -f $(LINGELING) lingeling
 	$(SED) -i -e "s/CFLAGS=/CFLAGS=-fPIC /" lingeling/makefile.in
-	cd lingeling && ./configure && $(MAKE)
+	cd lingeling && ./configure && $(MAKE) liblgl.a
 	$(LN_S) -f lingeling/liblgl.a
