@@ -11,6 +11,12 @@ but if you want Clang and LLVM to build faster, use:
 
 	--enable-cxx11 --enable-targets=host --enable-bindings=none --enable-shared --disable-assertions --disable-clang-arcmt --disable-clang-static-analyzer --disable-clang-rewriter
 
+Then run in in the llvm build directory
+
+        # make install
+        
+This will install llvm and clang with the headers in the default prefix /usr/local
+
 Then build STACK in its source root directory.
 
 If building from git, first do:
