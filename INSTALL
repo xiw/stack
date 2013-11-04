@@ -7,10 +7,6 @@ We use the following parameters to LLVM's configure:
 
 	--enable-cxx11 --enable-targets=host --enable-bindings=none --enable-shared --enable-debug-symbols --enable-optimized
 
-but if you want Clang and LLVM to build faster, use:
-
-	--enable-cxx11 --enable-targets=host --enable-bindings=none --enable-shared --disable-assertions --disable-clang-arcmt --disable-clang-static-analyzer --disable-clang-rewriter
-
 If you prefer to install Clang and LLVM in a directory other than
 /usr/local, also pass --prefix=... to its configure, and add that
 directory to your PATH.
