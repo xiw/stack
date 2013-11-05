@@ -8,7 +8,7 @@
 
 using namespace llvm;
 
-static cl::opt<unsigned>
+static cl::opt<time_t>
 GlobalTimeoutOpt("global-timeout-sec",
 		 cl::desc("Specify a global timeout for entire analysis"),
 		 cl::value_desc("seconds"));
