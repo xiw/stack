@@ -8,7 +8,7 @@
 
 using namespace llvm;
 
-static cl::opt<time_t>
+static cl::opt<unsigned>
 GlobalTimeoutOpt("global-timeout-sec",
 		 cl::desc("Specify a global timeout for entire analysis"),
 		 cl::value_desc("seconds"));
@@ -20,7 +20,7 @@ static void global_check(union sigval) {
 	struct rusage ru_self, ru_child;
 	getrusage(RUSAGE_SELF, &ru_self);
 	getrusage(RUSAGE_CHILDREN, &ru_child);
-	if (ru_self.ru_utime.tv_sec + ru_child.ru_utime.tv_sec > GlobalTimeoutOpt) {
+	if (ru_self.ru_utime.tv_sec + ru_child.ru_utime.tv_sec > (time_t)GlobalTimeoutOpt) {
 		printf("Global timeout: self %ld.%06ld, child %ld.%06ld\n",
 			(long)ru_self.ru_utime.tv_sec, (long)ru_self.ru_utime.tv_usec,
 			(long)ru_child.ru_utime.tv_sec, (long)ru_child.ru_utime.tv_usec);
