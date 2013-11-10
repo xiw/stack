@@ -1,3 +1,6 @@
+Prerequisites
+-------------
+
 To build STACK from source code, you need the development version of
 Clang and LLVM, as detailed at:
 
@@ -15,15 +18,22 @@ Then run in the LLVM build directory:
 
 	$ make install
 
-This will install Clang and LLVM.
+This will install Clang and LLVM.  To use them, prepend their bin
+directory to PATH.
 
-Then build STACK in its source root directory.
+
+STACK
+-----
+
+You need to choose an SMT solver for constraint solving.  The default
+one is Boolector, which is released under GPL.  If you need a more
+liberal license, see "Use other solvers".
+
+Build STACK in its source root directory.
 
 If building from git, first do:
 
 	$ autoreconf -fvi
-
-If building from a source tarball, skip the above step.
 
 Then configure and make.
 
@@ -33,3 +43,26 @@ Then configure and make.
 	$ make
 
 Finally, add `<STACK_ROOT>/build/bin` to PATH.
+
+
+Use other solvers
+-----------------
+
+By default, STACK links the Boolector solver 1.5.116 [1], which is
+released under GPLv3.  If you want to use the MIT license, choose
+other solvers.
+
+One option is the STP solver [2], which uses the MIT license.
+Download and build STP, and you should get the executable `stp`.
+Then, add the following parameter to STACK's configure:
+
+	--with-smtlib="path/to/stp --SMTLIB2"
+
+STACK also works with the CVC4 solver [3].  To use it, add the
+following parameter to STACK's configure:
+
+	--with-smtlib="path/to/cvc4 --lang smt -q"
+
+[1] Boolector. http://fmv.jku.at/boolector/
+[2] STP. https://sites.google.com/site/stpfastprover/
+[3] CVC4. http://cvc4.cs.nyu.edu/
