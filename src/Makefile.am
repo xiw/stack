@@ -18,6 +18,7 @@ libsat_la_SOURCES += BugOnLibc.cc BugOnLinux.cc
 libsat_la_SOURCES += ValueGen.h PathGen.h Diagnostic.h SMTSolver.h BugOn.h
 if HAVE_SMTLIB
 libsat_la_SOURCES += SMTLIB.cc
+libsat_la_LIBADD   = -lutil
 endif
 if HAVE_BOOLECTOR
 libsat_la_SOURCES += SMTBoolector.cc GlobalTimeout.cc

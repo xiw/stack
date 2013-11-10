@@ -5,7 +5,9 @@
 #include <llvm/Support/Allocator.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/raw_ostream.h>
+#include <sys/wait.h>
 #include <err.h>
+#include <stdarg.h>
 #include <termios.h>
 #include <unistd.h>
 
