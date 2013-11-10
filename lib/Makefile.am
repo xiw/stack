@@ -3,7 +3,9 @@ LINGELING = lingeling-al6-080d45d-120922
 
 EXTRA_DIST = $(BOOLECTOR).tar.gz $(LINGELING).tar.gz
 
+if HAVE_BOOLECTOR
 all-local: libboolector.a
+endif
 
 libboolector.a: $(BOOLECTOR).tar.gz liblgl.a
 	tar xzf $<
