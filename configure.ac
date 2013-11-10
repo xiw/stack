@@ -25,6 +25,28 @@ AC_SEARCH_LIBS(
 	AC_DEFINE([HAVE_TIMER],[1],[Define to 1 if you have the per-process timer.])
 )
 
+# Checks for SMT solvers.
+AC_MSG_CHECKING([for SMT solver])
+AM_CONDITIONAL([HAVE_BOOLECTOR],[true])
+AM_CONDITIONAL([HAVE_SMTLIB],[false])
+
+AC_ARG_WITH([smtlib],
+  [ AS_HELP_STRING([--with-smtlib=PATH],[use an SMT-LIB v2 compatible executable for constraint solving]) ],
+  [ case "$withval" in
+    yes|no)
+      AC_MSG_ERROR([path to SMT solver not specified])
+      ;;
+    *)
+      AC_MSG_RESULT([$withval])
+      ;;
+    esac
+    AC_DEFINE_UNQUOTED([SMTLIB],["$withval"],[path to SMT solver])
+    AM_CONDITIONAL([HAVE_BOOLECTOR],[false])
+    AM_CONDITIONAL([HAVE_SMTLIB],[true])
+  ],
+  [ AC_MSG_RESULT([Boolector (GPLv3)]) ]
+)
+
 AC_CONFIG_FILES([
 	Makefile
 	lib/Makefile
