@@ -48,8 +48,8 @@ Finally, add `<STACK_ROOT>/build/bin` to PATH.
 Use other solvers
 -----------------
 
-By default, STACK links the Boolector solver 1.5.116 [1], which is
-released under GPLv3.  If you want to use the MIT license, choose
+By default, STACK links to the Boolector solver v1.5.116 [1], which
+is released under GPLv3.  If you want to use the MIT license, choose
 other solvers.
 
 One option is the STP solver [2], which uses the MIT license.
@@ -58,11 +58,5 @@ Then, add the following parameter to STACK's configure:
 
 	--with-smtlib="path/to/stp --SMTLIB2"
 
-STACK also works with the CVC4 solver [3].  To use it, add the
-following parameter to STACK's configure:
-
-	--with-smtlib="path/to/cvc4 --lang smt -q"
-
 [1] Boolector. http://fmv.jku.at/boolector/
 [2] STP. https://sites.google.com/site/stpfastprover/
-[3] CVC4. http://cvc4.cs.nyu.edu/
