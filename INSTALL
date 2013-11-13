@@ -21,6 +21,20 @@ Then run in the LLVM build directory:
 This will install Clang and LLVM.  To use them, prepend their bin
 directory to PATH.
 
+Using distribution packages
+---------------------------
+STACK can be built against distribution-provided LLVM packages.
+On Ubuntu, install the needed packages:
+
+	$ apt-get install clang3.3 libclang-3.3-dev
+
+STACK uses llvm-config and opt, but Ubuntu only installs versioned
+versions of these commands. Add symlinks for them:
+
+	$ sudo ln -s /usr/bin/llvm-config-3.3 /usr/local/bin/llvm-config
+	$ sudo ln -s /usr/bin/opt-3.3 /usr/local/bin/opt
+
+After that, STACK can be built as described below.
 
 STACK
 -----
