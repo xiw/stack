@@ -1,6 +1,6 @@
 #include "AntiFunctionPass.h"
 #include <llvm/ADT/SCCIterator.h>
-#include <llvm/Analysis/CFG.h>
+#include <llvm/Transforms/Utils/BasicBlockUtils.h>
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/IR/Instructions.h>
