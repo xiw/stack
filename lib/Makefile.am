@@ -17,6 +17,7 @@ libboolector.a: $(BOOLECTOR).tar.gz liblgl.a
 liblgl.a: $(LINGELING).tar.gz
 	tar xzf $<
 	$(LN_S) -f $(LINGELING) lingeling
-	$(SED) -i -e "s/CFLAGS=/CFLAGS=-fPIC /" lingeling/makefile.in
+	$(SED) -i -e 's/CFLAGS=/CFLAGS=-fPIC /' lingeling/makefile.in
+	$(SED) -i -e 's/stdlib\.h/stdint.h/' lingeling/lglib.h
 	cd lingeling && ./configure && $(MAKE) liblgl.a
 	$(LN_S) -f lingeling/liblgl.a
