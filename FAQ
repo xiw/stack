@@ -1,0 +1,35 @@
+Building Problems
+-----------------
+
+* Cannot find llvm-config.
+
+You need to build your own llvm, as instructed in the INSTALL file.
+
+
+* "fatal error: llvm/Analysis/CFG.h: No such file or directory"
+
+As detailed in the INSTALL file, you need the development version of llvm.
+3.3 doesn't work.
+
+
+* "cc1plus: error unrecognized command line option -std=c++11"
+
+You need a decent C++ compiler that supports C++11.
+
+
+Bug Reports
+-----------
+
+* A lot of false positives (null pointer dereference) from C++ delete.
+
+Use the clang++ you build, as instructed in the INSTALL file, and
+you shouldn't see such false positives.  STACK relies on information
+from that custom built clang++ to recognize delete and avoid false
+positives.
+
+
+* "LLVM ERROR: Bad DataLayout ctor used."
+
+This happens if clang fails to compile your source code.  Either
+ignore such messages, or fix your code for clang.
+
