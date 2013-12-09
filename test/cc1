@@ -52,7 +52,7 @@ def path_find(progname, dirs):
 	return progname
 
 def main():
-	llvmbindir = subprocess.check_output(['llvm-config', '--bindir']).strip()
+	llvmbindir = subprocess.check_output(['llvm-config', '--bindir'], universal_newlines=True).strip()
 	clangpath = path_find('clang', [llvmbindir, '/usr/bin', '/usr/local/bin'])
 	clang = clangpath + ' -no-integrated-as'
 	llvmcc = os.getenv('LLVMCC', clang).split(' ')
