@@ -28,6 +28,10 @@ def cc(llvmcc, src, argv):
 	argv = [x for x in argv if x not in ['-std=gnu99']]
 	# Use -fstrict-overflow to distinguish signed/unsigned integers.
 	argv = [x for x in argv if x not in ['-fwrapv', '-fno-strict-overflow']]
+	# Remove runtime undefined error checking options
+	argv = [x for x in argv if x not in ['-ftrapv', '-fcatch-undefined-errors']]
+	# Remove other runtime error checking options
+	argv = [x for x in argv if not x.startswith('-fsanitize=') and not in ['-faddress-sanitizer', '-fthread-sanitizer']]
 	# Drop existing _FORTIFY_SOURCE.
 	argv = [x for x in argv if not x.startswith('-D_FORTIFY_SOURCE')]
 	# Additional options.
