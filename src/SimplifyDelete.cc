@@ -74,7 +74,9 @@ bool SimplifyDelete::visitDeleteBB(BasicBlock *BB) {
 	// Clang emits BB with this special name for BB.
 	// It works better with overloaded new/delete.
 	StringRef Name = BB->getName();
-	if (!Name.startswith("new.notnull") && !Name.startswith("delete.notnull"))
+	if (!Name.startswith("new.notnull")
+	    && !Name.startswith("delete.notnull")
+	    && !Name.startswith("cast.notnull"))
 		return false;
 	BasicBlock *Pred = BB->getSinglePredecessor();
 	if (!Pred)
