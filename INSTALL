@@ -1,25 +1,43 @@
 Prerequisites
 -------------
 
-To build STACK from source code, you need the development version of
-Clang and LLVM, as detailed at:
+To build STACK from source code, you need to build Clang and LLVM
+version 3.4.  Using pre-built versions of Clang/LLVM is not recommended,
+because Stack relies on specific Clang/LLVM build options to help reduce
+false warnings.
 
-	http://clang.llvm.org/get_started.html
+Roughly, you should do the following:
 
-We use the following parameters to LLVM's configure:
+	wget http://llvm.org/releases/3.4/llvm-3.4.src.tar.gz \
+	     http://llvm.org/releases/3.4/clang-3.4.src.tar.gz \
+	     http://llvm.org/releases/3.4/clang-tools-extra-3.4.src.tar.gz \
+	     http://llvm.org/releases/3.4/compiler-rt-3.4.src.tar.gz
+	tar zxf llvm-3.4.src.tar.gz
+	tar zxf clang-3.4.src.tar.gz -C llvm-3.4/tools
+	mv llvm-3.4/tools/clang{-3.4,}
+	tar zxf clang-tools-extra-3.4.src.tar.gz -C llvm-3.4/tools/clang/tools
+	mv llvm-3.4/tools/clang/tools/{clang-tools-extra-3.4,extra}
+	tar zxf compiler-rt-3.4.src.tar.gz -C llvm-3.4/projects
+	mv llvm-3.4/projects/compiler-rt{-3.4,}
 
-	--enable-cxx11 --enable-targets=host --enable-bindings=none --enable-shared --enable-debug-symbols --enable-optimized
+	mkdir build && cd build
+	../llvm-3.4/configure --enable-cxx11 --enable-targets=host \
+	                      --enable-bindings=none --enable-shared \
+	                      --enable-debug-symbols --enable-optimized
+	make
+	make install
 
 If you prefer to install Clang and LLVM in a directory other than
 /usr/local, also pass --prefix=... to its configure, and add that
 directory to your PATH.
 
-Then run in the LLVM build directory:
-
-	$ make install
-
 This will install Clang and LLVM.  To use them, prepend their bin
 directory to PATH.
+
+This roughly follows the build instructions from this page, except
+using Clang/LLVM 3.4 rather than checking out the code from svn:
+
+	http://clang.llvm.org/get_started.html
 
 
 STACK
