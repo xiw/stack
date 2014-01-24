@@ -3,7 +3,7 @@
 #define DEBUG_TYPE "bugon-alias"
 #include "BugOn.h"
 #include <llvm/ADT/SmallPtrSet.h>
-#include <llvm/Analysis/Dominators.h>
+#include <llvm/IR/Dominators.h>
 #include <llvm/Support/InstIterator.h>
 
 using namespace llvm;
@@ -14,13 +14,13 @@ struct BugOnAlias : BugOnPass {
 	static char ID;
 	BugOnAlias() : BugOnPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
-		initializeDominatorTreePass(Registry);
+		initializeDominatorTreeWrapperPassPass(Registry);
 		initializeDataLayoutPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
-		AU.addRequired<DominatorTree>();
+		AU.addRequired<DominatorTreeWrapperPass>();
 		AU.addRequired<DataLayout>();
 	}
 	virtual bool runOnFunction(Function &);
@@ -47,7 +47,7 @@ void BugOnAlias::addObject(Value *O) {
 }
 
 bool BugOnAlias::runOnFunction(Function &F) {
-	DT = &getAnalysis<DominatorTree>();
+	DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 	DL = &getAnalysis<DataLayout>();
 
 	// Find all of the objects first.

@@ -5,8 +5,6 @@
 
 #define DEBUG_TYPE "anti-dce"
 #include "AntiFunctionPass.h"
-#include <llvm/Analysis/Dominators.h>
-#include <llvm/Analysis/PostDominators.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -21,12 +19,6 @@ namespace {
 struct AntiDCE: AntiFunctionPass {
 	static char ID;
 	AntiDCE() : AntiFunctionPass(ID) {}
-
-	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-		AntiFunctionPass::getAnalysisUsage(AU);
-		AU.addPreserved<DominatorTree>();
-		AU.addPreserved<PostDominatorTree>();
-	}
 
 	virtual bool runOnAntiFunction(Function &);
 

@@ -3,8 +3,8 @@
 #define DEBUG_TYPE "bugon-free"
 #include "BugOn.h"
 #include <llvm/ADT/SmallPtrSet.h>
-#include <llvm/Analysis/Dominators.h>
 #include <llvm/Analysis/MemoryBuiltins.h>
+#include <llvm/IR/Dominators.h>
 #include <llvm/Support/CallSite.h>
 #include <llvm/Support/InstIterator.h>
 #include <llvm/Target/TargetLibraryInfo.h>
@@ -19,14 +19,14 @@ struct BugOnFree : BugOnPass {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
 		initializeDataLayoutPass(Registry);
 		initializeTargetLibraryInfoPass(Registry);
-		initializeDominatorTreePass(Registry);
+		initializeDominatorTreeWrapperPassPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
 		AU.addRequired<DataLayout>();
 		AU.addRequired<TargetLibraryInfo>();
-		AU.addRequired<DominatorTree>();
+		AU.addRequired<DominatorTreeWrapperPass>();
 	}
 
 	virtual bool runOnFunction(Function &);
@@ -44,7 +44,7 @@ private:
 } // anonymous namespace
 
 bool BugOnFree::runOnFunction(Function &F) {
-	DT = &getAnalysis<DominatorTree>();
+	DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 	TLI = &getAnalysis<TargetLibraryInfo>();
 	DL = &getAnalysis<DataLayout>();
 	// Collect free/realloc calls.

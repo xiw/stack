@@ -6,7 +6,8 @@
 #include "ValueGen.h"
 #include <llvm/Pass.h>
 #include <llvm/ADT/SmallVector.h>
-#include <llvm/Analysis/Dominators.h>
+#include <llvm/Analysis/PostDominators.h>
+#include <llvm/IR/Dominators.h>
 #include <llvm/IR/DataLayout.h>
 
 #define BENCHMARK(e) if (BenchmarkFlag) { e; }

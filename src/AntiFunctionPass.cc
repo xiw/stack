@@ -1,8 +1,6 @@
 #include "AntiFunctionPass.h"
 #include <llvm/ADT/SCCIterator.h>
 #include <llvm/Analysis/CFG.h>
-#include <llvm/Analysis/Dominators.h>
-#include <llvm/Analysis/PostDominators.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/CFG.h>
@@ -38,7 +36,7 @@ static BenchmarkInit X;
 AntiFunctionPass::AntiFunctionPass(char &ID) : FunctionPass(ID), Buffer(NULL) {
 	PassRegistry &Registry = *PassRegistry::getPassRegistry();
 	initializeDataLayoutPass(Registry);
-	initializeDominatorTreePass(Registry);
+	initializeDominatorTreeWrapperPassPass(Registry);
 	initializePostDominatorTreePass(Registry);
 	if (MinBugOnOpt)
 		Buffer = mmap(NULL, BUFFER_SIZE, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
@@ -51,7 +49,7 @@ AntiFunctionPass::~AntiFunctionPass() {
 
 void AntiFunctionPass::getAnalysisUsage(AnalysisUsage &AU) const {
 	AU.addRequired<DataLayout>();
-	AU.addRequired<DominatorTree>();
+	AU.addRequired<DominatorTreeWrapperPass>();
 	AU.addRequired<PostDominatorTree>();
 }
 
@@ -87,7 +85,7 @@ bool AntiFunctionPass::runOnFunction(Function &F) {
 	DEBUG(dbgs() << "Analyzing " << demangle(F) << "\n");
 	assert(BugOn->arg_size() == 1);
 	assert(BugOn->arg_begin()->getType()->isIntegerTy(1));
-	DT = &getAnalysis<DominatorTree>();
+	DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 	PDT = &getAnalysis<PostDominatorTree>();
 	DL = &getAnalysis<DataLayout>();
 	calculateBackedges(F, Backedges, InLoopBlocks);
@@ -98,7 +96,7 @@ bool AntiFunctionPass::runOnFunction(Function &F) {
 }
 
 void AntiFunctionPass::recalculate(Function &F) {
-	DT->DT->recalculate(F);
+	DT->recalculate(F);
 	PDT->DT->recalculate(F);
 	Backedges.clear();
 	InLoopBlocks.clear();
