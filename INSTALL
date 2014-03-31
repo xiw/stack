@@ -27,6 +27,8 @@ Roughly, you should do the following:
 	make
 	make install
 
+You need a compiler that supports C++11, such as gcc 4.7 or later.
+
 If you prefer to install Clang and LLVM in a directory other than
 /usr/local, also pass --prefix=... to its configure, and add that
 directory to your PATH.
