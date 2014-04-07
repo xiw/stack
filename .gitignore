@@ -11,10 +11,5 @@ Makefile.in
 /config.status
 /configure
 /m4
-/Makefile
-/tools/Makefile
-/lib/Makefile
-/src/Makefile
-/tests/Makefile
 /libtool
 /stamp-h1
