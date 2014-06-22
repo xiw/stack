@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-DIR=$(dirname "${BASH_SOURCE[0]}")
-ABS_DIR=$(cd "${DIR}/stack"; pwd)
+ABS_DIR="$(cd '@pkglibexecdir@' && pwd)"
 export PATH="${ABS_DIR}:${PATH}"
 export CC="${ABS_DIR}/cc"
 export CXX="${ABS_DIR}/c++"

@@ -2,7 +2,7 @@
 // for C++ delete.
 
 #define DEBUG_TYPE "simplify-delete"
-#include "BugOn.h"
+#include "sat/BugOn.h"
 #include <llvm/Pass.h>
 #include <llvm/Analysis/Dominators.h>
 #include <llvm/IR/BasicBlock.h>

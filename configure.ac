@@ -51,22 +51,10 @@ AC_CONFIG_FILES([
 	Makefile
 	lib/Makefile
 	src/Makefile
+	src/sat/Makefile
+	src/optck/Makefile
+	src/optfe/Makefile
 	test/Makefile
 	test/lit.cfg
-])
-AC_CONFIG_LINKS([
-	bin/stack/gcc:test/gcc
-	bin/stack/g++:test/gcc
-	bin/stack/cc:test/gcc
-	bin/stack/c++:test/gcc
-	bin/stack/cc1:test/cc1
-	bin/stack/clang:test/gcc
-	bin/stack/clang++:test/gcc
-	bin/stack/arm-linux-gnueabi-gcc:test/arm-linux-gnueabi-gcc
-	bin/stack/arm-linux-gnueabi-g++:test/arm-linux-gnueabi-g++
-	bin/stack-build:test/stack-build
-	bin/ncpu:src/ncpu
-	bin/optck:src/optck
-	bin/poptck:src/poptck
 ])
 AC_OUTPUT
