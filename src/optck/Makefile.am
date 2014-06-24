@@ -7,6 +7,7 @@ lib_LTLIBRARIES = liboptck.la
 
 EXTRA_DIST = optck.in poptck ncpu
 
+MOSTLYCLEANFILES=optck
 optck: Makefile.am optck.in
 	sed \
 	  -e 's|[@]libdir[@]|$(libdir)|g'\

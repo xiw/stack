@@ -1,4 +1,10 @@
-EXTRA_DIST = lit.cfg.in cc1 diagdiff gcc g++ stack-build.in
+EXTRA_DIST=\
+  lit.cfg.in\
+  cc1.in\
+  diagdiff\
+  stack-build.in\
+  gcc arm-linux-gnueabi-gcc arm-linux-gnueabi-g++
+
 
 bin_SCRIPTS=stack-build
 pkglibexec_SCRIPTS=\
@@ -7,6 +13,7 @@ pkglibexec_SCRIPTS=\
   arm-linux-gnueabi-gcc\
   arm-linux-gnueabi-g++
 
+MOSTLYCLEANFILES=stack-build cc1
 stack-build: Makefile.am stack-build.in
 	sed \
 	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
