@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 
-DIR=$(dirname "${BASH_SOURCE[0]}")
+DIR="$(dirname "${BASH_SOURCE[0]}" && pwd)"
 OPT="`llvm-config --bindir`/opt"
+
+LIBDIR='@libdir@/liboptck.so'
+
+if test ! "${DIR}" = "@bindir@"
+then
+    LIBDIR="${DIR}/liboptck.so"
+fi
+
 exec "${OPT}" --disable-output -load='@libdir@/liboptck.so' \
 	-targetlibinfo -tbaa -basicaa -globalopt -sccp -deadargelim \
 	-basiccg -prune-eh -simplify-delete -load-elim \

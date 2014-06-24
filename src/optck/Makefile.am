@@ -10,7 +10,9 @@ EXTRA_DIST = optck.in poptck ncpu
 optck: Makefile.am optck.in
 	sed \
 	  -e 's|[@]libdir[@]|$(libdir)|g'\
+	  -e 's|[@]bindir[@]|$(bindir)|g'\
 	  $(srcdir)/optck.in > $@
+	chmod u+x $@
 
 liboptck_la_CPPFLAGS = -I$(srcdir)/../
 liboptck_la_CXXFLAGS = `llvm-config --cxxflags` -Werror -Wall -std=c++11 -fno-strict-aliasing

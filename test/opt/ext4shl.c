@@ -1,4 +1,4 @@
-// RUN: %cc %s | optck | diagdiff --prefix=exp %s
+// RUN: %cc %s | %optck | %diagdiff --prefix=exp %s
 //
 // https://bugzilla.kernel.org/show_bug.cgi?id=14287
 

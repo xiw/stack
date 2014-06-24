@@ -1,4 +1,4 @@
-// RUN: %cc %s | optck | diagdiff --prefix=exp %s
+// RUN: %cc %s | %optck | %diagdiff --prefix=exp %s
 //
 // https://groups.google.com/d/msg/comp.os.plan9/NYdK1L7rf8Q/yfAiZoOlwNUJ 
 

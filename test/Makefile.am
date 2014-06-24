@@ -12,6 +12,12 @@ stack-build: Makefile.am stack-build.in
 	  -e 's|[@]pkglibexecdir[@]|$(pkglibexecdir)|g'\
 	  $(srcdir)/stack-build.in > $@
 
+cc1: Makefile.am cc1.in
+	sed \
+	  -e 's|[@]libdir[@]|$(libdir)|g'\
+	  $(srcdir)/cc1.in > $@
+	chmod u+x $@
+
 install-exec-hook:
 	$(LN_S) $(DESTDIR)$(pkglibexecdir)/gcc$(EXEEXT)\
 	  $(DESTDIR)$(pkglibexecdir)/cc$(EXEEXT)
@@ -29,6 +35,6 @@ uninstall-hook:
 	- (cd $(DESTDIR)$(pkglibexecdir) && rm -f clang++$(EXEEXT))
 
 LITFLAGS ?= -v
-LITTESTS ?= $(builddir)
+LITTESTS ?= $(builddir)/opt
 check-local: lit.cfg
-	@$(top_srcdir)/lib/lit/lit.py $(LITFLAGS) $(LITTESTS)
+	$(top_srcdir)/lib/lit/lit.py $(LITFLAGS) $(LITTESTS)

@@ -1,4 +1,4 @@
-// TODO: %cc %s | optck | diagdiff --prefix=exp %s
+// TODO: %cc %s | %optck | %diagdiff --prefix=exp %s
 //
 // http://blog.regehr.org/archives/767
 

@@ -1,5 +1,5 @@
-// RUN: %cc -DNORETURN= %s | optck | diagdiff --prefix=exp %s
-// RUN: %cc %s | optck | diagdiff %s
+// RUN: %cc -DNORETURN= %s | %optck | %diagdiff --prefix=exp %s
+// RUN: %cc %s | %optck | %diagdiff %s
 //
 // http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=616180
 

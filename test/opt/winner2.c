@@ -1,4 +1,4 @@
-// RUN: %cc %s | optck | diagdiff --prefix=exp %s
+// RUN: %cc %s | %optck | %diagdiff --prefix=exp %s
 //
 // http://blog.regehr.org/archives/767
 
