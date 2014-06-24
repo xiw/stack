@@ -26,13 +26,13 @@ cc1: Makefile.am cc1.in
 	chmod u+x $@
 
 install-exec-hook:
-	$(LN_S) $(DESTDIR)$(pkglibexecdir)/gcc$(EXEEXT)\
+	$(LN_S) -f $(DESTDIR)$(pkglibexecdir)/gcc$(EXEEXT)\
 	  $(DESTDIR)$(pkglibexecdir)/cc$(EXEEXT)
-	$(LN_S) $(DESTDIR)$(pkglibexecdir)/gcc$(EXEEXT)\
+	$(LN_S) -f $(DESTDIR)$(pkglibexecdir)/gcc$(EXEEXT)\
 	  $(DESTDIR)$(pkglibexecdir)/g++$(EXEEXT)
-	$(LN_S) $(DESTDIR)$(pkglibexecdir)/gcc$(EXEEXT)\
+	$(LN_S) -f $(DESTDIR)$(pkglibexecdir)/gcc$(EXEEXT)\
 	  $(DESTDIR)$(pkglibexecdir)/clang$(EXEEXT)
-	$(LN_S) $(DESTDIR)$(pkglibexecdir)/gcc$(EXEEXT)\
+	$(LN_S) -f $(DESTDIR)$(pkglibexecdir)/gcc$(EXEEXT)\
 	  $(DESTDIR)$(pkglibexecdir)/clang++$(EXEEXT)
 
 uninstall-hook:
