@@ -1,7 +1,7 @@
 BOOLECTOR = boolector-1.5.116-eeaf10b-121004
 LINGELING = lingeling-al6-080d45d-120922
 
-EXTRA_DIST = $(BOOLECTOR).tar.gz $(LINGELING).tar.gz
+EXTRA_DIST = $(BOOLECTOR).tar.gz $(LINGELING).tar.gz lit
 
 if HAVE_BOOLECTOR
 all-local: libboolector.a

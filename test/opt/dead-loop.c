@@ -1,4 +1,4 @@
-// RUN: %cc %s | optck | diagdiff --prefix=exp %s
+// RUN: %cc %s | %optck | %diagdiff --prefix=exp %s
 //
 // From krb5, krb5_ccache_copy() in clients/ksu/ccache.c.
 

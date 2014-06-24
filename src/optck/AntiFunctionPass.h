@@ -1,9 +1,9 @@
 #pragma once
 
-#include "BugOn.h"
-#include "Diagnostic.h"
-#include "PathGen.h"
-#include "ValueGen.h"
+#include "sat/BugOn.h"
+#include "sat/Diagnostic.h"
+#include "sat/PathGen.h"
+#include "sat/ValueGen.h"
 #include <llvm/Pass.h>
 #include <llvm/ADT/SmallVector.h>
 #include <llvm/Analysis/Dominators.h>
