@@ -13,13 +13,13 @@ struct BugOnBounds : BugOnPass {
 	static char ID;
 	BugOnBounds() : BugOnPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
-		initializeDataLayoutPass(Registry);
+		initializeDataLayoutPassPass(Registry);
 		initializeTargetLibraryInfoPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
-		AU.addRequired<DataLayout>();
+		AU.addRequired<DataLayoutPass>();
 		AU.addRequired<TargetLibraryInfo>();
 	}
 
@@ -27,7 +27,7 @@ struct BugOnBounds : BugOnPass {
 	virtual bool runOnInstruction(Instruction *);
 
 private:
-	DataLayout *DL;
+	const DataLayout *DL;
 	TargetLibraryInfo *TLI;
 	ObjectSizeOffsetEvaluator *ObjSizeEval;
 };
@@ -35,7 +35,7 @@ private:
 } // anonymous namespace
 
 bool BugOnBounds::runOnFunction(llvm::Function &F) {
-	DL = &getAnalysis<DataLayout>();
+	DL = &getAnalysis<DataLayoutPass>().getDataLayout();
 	TLI = &getAnalysis<TargetLibraryInfo>();
 	ObjectSizeOffsetEvaluator TheObjSizeEval(DL, TLI, F.getContext());
 	ObjSizeEval = &TheObjSizeEval;

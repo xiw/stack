@@ -4,7 +4,7 @@
 #include "BugOn.h"
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
-#include <llvm/Support/CallSite.h>
+#include <llvm/IR/CallSite.h>
 
 using namespace llvm;
 

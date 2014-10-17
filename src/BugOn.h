@@ -44,12 +44,12 @@ struct BugOnPass : llvm::FunctionPass {
 	static bool clearDebugLoc(Value *);
 	static bool recursivelyClearDebugLoc(Value *);
 
-	static Value *getUnderlyingObject(Value *, DataLayout *);
+	static Value *getUnderlyingObject(Value *, const DataLayout *);
 	static Value *getAddressOperand(Value *, bool skipVolatile = false);
 	static Value *getNonvolatileAddressOperand(Value *V) {
 		return getAddressOperand(V, true);
 	}
-	static Value *getNonvolatileBaseAddress(Value *V, DataLayout *DL) {
+	static Value *getNonvolatileBaseAddress(Value *V, const DataLayout *DL) {
 		if (Value *P = getNonvolatileAddressOperand(V))
 			return getUnderlyingObject(P, DL);
 		return NULL;

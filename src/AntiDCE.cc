@@ -5,12 +5,12 @@
 
 #define DEBUG_TYPE "anti-dce"
 #include "AntiFunctionPass.h"
-#include <llvm/Analysis/Dominators.h>
+#include <llvm/IR/Dominators.h>
 #include <llvm/Analysis/PostDominators.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/Support/CFG.h>
+#include <llvm/IR/CFG.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Transforms/Utils/Local.h>
 
@@ -24,7 +24,7 @@ struct AntiDCE: AntiFunctionPass {
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		AntiFunctionPass::getAnalysisUsage(AU);
-		AU.addPreserved<DominatorTree>();
+		AU.addPreserved<DominatorTreeWrapperPass>();
 		AU.addPreserved<PostDominatorTree>();
 	}
 

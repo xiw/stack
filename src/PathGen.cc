@@ -1,9 +1,9 @@
 #include "PathGen.h"
 #include "ValueGen.h"
-#include <llvm/Analysis/Dominators.h>
+#include <llvm/IR/Dominators.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/Support/CFG.h>
+#include <llvm/IR/CFG.h>
 
 using namespace llvm;
 

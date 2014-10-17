@@ -116,13 +116,12 @@ public:
 
 protected:
 
-	virtual ASTConsumer *CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
+	virtual std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
 		OS = CI.createDefaultOutputFile(true, InFile, "bc");
-		ASTConsumer *C[] = {
-			new ExtractMacroConsumer(MM),
-			Delegate::CreateASTConsumer(CI, InFile)
-		};
-		return new MultiplexConsumer(C);
+    std::vector<std::unique_ptr<ASTConsumer>> C;
+    C.push_back(std::unique_ptr<ASTConsumer>(new ExtractMacroConsumer(MM)));
+		C.push_back(std::unique_ptr<ASTConsumer>(Delegate::CreateASTConsumer(CI, InFile)));
+		return std::unique_ptr<ASTConsumer>(new MultiplexConsumer(std::move(C)));
 	}
 
 	virtual bool BeginInvocation(CompilerInstance &CI) {
@@ -141,7 +140,7 @@ protected:
 
 	virtual void EndSourceFileAction() {
 		Delegate::EndSourceFileAction();
-		OwningPtr<llvm::Module> M(Delegate::takeModule());
+    std::unique_ptr<llvm::Module> M(Delegate::takeModule());
 		if (!M)
 			return;
 		markMacroLocations(*M);
