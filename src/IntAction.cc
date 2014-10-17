@@ -6,13 +6,13 @@
 #include <clang/Frontend/FrontendPluginRegistry.h>
 #include <clang/Frontend/MultiplexConsumer.h>
 #include <clang/Lex/Preprocessor.h>
-#include <llvm/DebugInfo.h>
+#include <llvm/IR/DebugInfo.h>
 #include <llvm/ADT/StringMap.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
-#include <llvm/Support/InstIterator.h>
+#include <llvm/IR/InstIterator.h>
 #include <set>
 
 using namespace clang;
@@ -116,12 +116,13 @@ public:
 
 protected:
 
-	virtual std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
+  virtual ASTConsumer* CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
 		OS = CI.createDefaultOutputFile(true, InFile, "bc");
-    std::vector<std::unique_ptr<ASTConsumer>> C;
-    C.push_back(std::unique_ptr<ASTConsumer>(new ExtractMacroConsumer(MM)));
-		C.push_back(std::unique_ptr<ASTConsumer>(Delegate::CreateASTConsumer(CI, InFile)));
-		return std::unique_ptr<ASTConsumer>(new MultiplexConsumer(std::move(C)));
+    ASTConsumer *C[] =   {
+      new ExtractMacroConsumer(MM),
+		  Delegate::CreateASTConsumer(CI, InFile)
+    };
+		return new MultiplexConsumer(C);
 	}
 
 	virtual bool BeginInvocation(CompilerInstance &CI) {
