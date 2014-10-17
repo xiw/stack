@@ -3,10 +3,10 @@
 #define DEBUG_TYPE "bugon-free"
 #include "BugOn.h"
 #include <llvm/ADT/SmallPtrSet.h>
-#include <llvm/Analysis/Dominators.h>
+#include <llvm/IR/Dominators.h>
 #include <llvm/Analysis/MemoryBuiltins.h>
-#include <llvm/Support/CallSite.h>
-#include <llvm/Support/InstIterator.h>
+#include <llvm/IR/CallSite.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/Target/TargetLibraryInfo.h>
 
 using namespace llvm;
@@ -17,23 +17,23 @@ struct BugOnFree : BugOnPass {
 	static char ID;
 	BugOnFree() : BugOnPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
-		initializeDataLayoutPass(Registry);
+		initializeDataLayoutPassPass(Registry);
 		initializeTargetLibraryInfoPass(Registry);
-		initializeDominatorTreePass(Registry);
+		initializeDominatorTreeWrapperPassPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
-		AU.addRequired<DataLayout>();
+		AU.addRequired<DataLayoutPass>();
 		AU.addRequired<TargetLibraryInfo>();
-		AU.addRequired<DominatorTree>();
+		AU.addRequired<DominatorTreeWrapperPass>();
 	}
 
 	virtual bool runOnFunction(Function &);
 	virtual bool runOnInstruction(Instruction *);
 
 private:
-	DataLayout *DL;
+	const DataLayout *DL;
 	TargetLibraryInfo *TLI;
 	DominatorTree *DT;
 	SmallPtrSet<Use *, 4> FreePtrs; // Use is a <call, arg> pair.
@@ -44,9 +44,9 @@ private:
 } // anonymous namespace
 
 bool BugOnFree::runOnFunction(Function &F) {
-	DT = &getAnalysis<DominatorTree>();
+	DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 	TLI = &getAnalysis<TargetLibraryInfo>();
-	DL = &getAnalysis<DataLayout>();
+	DL = &getAnalysis<DataLayoutPass>().getDataLayout();
 	// Collect free/realloc calls.
 	FreePtrs.clear();
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {

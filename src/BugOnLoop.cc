@@ -3,7 +3,7 @@
 
 #define DEBUG_TYPE "bugon-loop"
 #include "BugOn.h"
-#include <llvm/InstVisitor.h>
+#include <llvm/IR/InstVisitor.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpander.h>

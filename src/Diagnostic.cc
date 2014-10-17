@@ -1,6 +1,6 @@
 #include "Diagnostic.h"
 #include "SMTSolver.h"
-#include <llvm/DebugInfo.h>
+#include <llvm/IR/DebugInfo.h>
 #include <llvm/ADT/SmallString.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Metadata.h>

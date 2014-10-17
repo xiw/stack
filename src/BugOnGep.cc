@@ -18,7 +18,7 @@ struct BugOnGep : BugOnPass {
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
-		AU.addRequired<DataLayout>();
+		AU.addRequired<DataLayoutPass>();
 		AU.addRequired<TargetLibraryInfo>();
 	}
 	virtual bool runOnFunction(Function &);
@@ -26,7 +26,7 @@ struct BugOnGep : BugOnPass {
 	virtual bool runOnInstruction(Instruction *);
 
 private:
-	DataLayout *DL;
+	const DataLayout *DL;
 	TargetLibraryInfo *TLI;
 
 	bool insertIndexOverflow(GEPOperator *GEP);
@@ -37,7 +37,7 @@ private:
 } // anonymous namespace
 
 bool BugOnGep::runOnFunction(Function &F) {
-	DL = &getAnalysis<DataLayout>();
+	DL = &getAnalysis<DataLayoutPass>().getDataLayout();
 	TLI = &getAnalysis<TargetLibraryInfo>();
 	return super::runOnFunction(F);
 }

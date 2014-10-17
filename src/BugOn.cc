@@ -4,8 +4,8 @@
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/CommandLine.h>
-#include <llvm/Support/DebugLoc.h>
-#include <llvm/Support/InstIterator.h>
+#include <llvm/IR/DebugLoc.h>
+#include <llvm/IR/InstIterator.h>
 
 using namespace llvm;
 
@@ -73,7 +73,7 @@ bool BugOnPass::recursivelyClearDebugLoc(Value *V) {
 	return true;
 }
 
-Value *BugOnPass::getUnderlyingObject(Value *V, DataLayout *DL) {
+Value *BugOnPass::getUnderlyingObject(Value *V, const DataLayout *DL) {
 	return GetUnderlyingObject(V, DL, 1000);
 }
 
