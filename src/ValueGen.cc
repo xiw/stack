@@ -1,10 +1,10 @@
 #include "ValueGen.h"
-#include <llvm/InstVisitor.h>
+#include <llvm/IR/InstVisitor.h>
 #include <llvm/ADT/APInt.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Operator.h>
-#include <llvm/Support/GetElementPtrTypeIterator.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/Support/raw_ostream.h>
 #include <assert.h>
 
@@ -283,7 +283,7 @@ private:
 
 } // anonymous namespace
 
-ValueGen::ValueGen(DataLayout &TD, SMTSolver &SMT)
+ValueGen::ValueGen(const DataLayout &TD, SMTSolver &SMT)
 	: TD(TD), SMT(SMT) {}
 
 ValueGen::~ValueGen() {

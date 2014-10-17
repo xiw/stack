@@ -6,13 +6,13 @@
 #include <clang/Frontend/FrontendPluginRegistry.h>
 #include <clang/Frontend/MultiplexConsumer.h>
 #include <clang/Lex/Preprocessor.h>
-#include <llvm/DebugInfo.h>
+#include <llvm/IR/DebugInfo.h>
 #include <llvm/ADT/StringMap.h>
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
-#include <llvm/Support/InstIterator.h>
+#include <llvm/IR/InstIterator.h>
 #include <set>
 
 using namespace clang;
@@ -116,12 +116,12 @@ public:
 
 protected:
 
-	virtual ASTConsumer *CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
+  virtual ASTConsumer* CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
 		OS = CI.createDefaultOutputFile(true, InFile, "bc");
-		ASTConsumer *C[] = {
-			new ExtractMacroConsumer(MM),
-			Delegate::CreateASTConsumer(CI, InFile)
-		};
+    ASTConsumer *C[] =   {
+      new ExtractMacroConsumer(MM),
+		  Delegate::CreateASTConsumer(CI, InFile)
+    };
 		return new MultiplexConsumer(C);
 	}
 
@@ -141,7 +141,7 @@ protected:
 
 	virtual void EndSourceFileAction() {
 		Delegate::EndSourceFileAction();
-		OwningPtr<llvm::Module> M(Delegate::takeModule());
+    std::unique_ptr<llvm::Module> M(Delegate::takeModule());
 		if (!M)
 			return;
 		markMacroLocations(*M);

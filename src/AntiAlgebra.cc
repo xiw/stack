@@ -12,7 +12,7 @@
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/Support/InstIterator.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/Target/TargetLibraryInfo.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include <algorithm>

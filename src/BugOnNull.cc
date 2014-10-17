@@ -12,26 +12,26 @@ struct BugOnNull : BugOnPass {
 	static char ID;
 	BugOnNull() : BugOnPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
-		initializeDataLayoutPass(Registry);
+		initializeDataLayoutPassPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
-		AU.addRequired<DataLayout>();
+		AU.addRequired<DataLayoutPass>();
 	}
 
 	virtual bool runOnFunction(Function &);
 	virtual bool runOnInstruction(Instruction *);
 
 private:
-	DataLayout *DL;
+	const DataLayout *DL;
 	SmallPtrSet<Value *, 32> Visited;
 };
 
 } // anonymous namespace
 
 bool BugOnNull::runOnFunction(Function &F) {
-	DL = &getAnalysis<DataLayout>();
+	DL = &getAnalysis<DataLayoutPass>().getDataLayout();
 	return super::runOnFunction(F);
 }
 

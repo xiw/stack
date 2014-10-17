@@ -4,7 +4,7 @@
 #define DEBUG_TYPE "simplify-delete"
 #include "BugOn.h"
 #include <llvm/Pass.h>
-#include <llvm/Analysis/Dominators.h>
+#include <llvm/IR/Dominators.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
@@ -19,11 +19,11 @@ struct SimplifyDelete : FunctionPass {
 	static char ID;
 	SimplifyDelete() : FunctionPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
-		initializeDominatorTreePass(Registry);
+		initializeDominatorTreeWrapperPassPass(Registry);
 	}
 
 	void getAnalysisUsage(AnalysisUsage &AU) const {
-		AU.addRequired<DominatorTree>();
+		AU.addRequired<DominatorTreeWrapperPass>();
 	}
 
 	virtual bool runOnFunction(Function &);
@@ -50,7 +50,7 @@ bool SimplifyDelete::runOnFunction(Function &F) {
 }
 
 bool SimplifyDelete::removeUnreachable(Function &F) {
-	DominatorTree &DT = getAnalysis<DominatorTree>();
+	DominatorTree &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 	SmallVector<BasicBlock *, 4> UnreachableBB;
 	for (BasicBlock &BB : F) {
 		if (DT.isReachableFromEntry(&BB))

@@ -6,7 +6,7 @@
 #include "ValueGen.h"
 #include <llvm/Pass.h>
 #include <llvm/ADT/SmallVector.h>
-#include <llvm/Analysis/Dominators.h>
+#include <llvm/IR/Dominators.h>
 #include <llvm/IR/DataLayout.h>
 
 #define BENCHMARK(e) if (BenchmarkFlag) { e; }
@@ -17,7 +17,7 @@ class SMTSolver;
 
 class AntiFunctionPass : public llvm::FunctionPass {
 protected:
-	llvm::DataLayout *DL;
+	const llvm::DataLayout *DL;
 	llvm::DominatorTree *DT;
 	llvm::SmallVector<PathGen::Edge, 32> Backedges;
 	Diagnostic Diag;
