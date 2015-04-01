@@ -18,7 +18,7 @@ class SMTSolver;
 
 class AntiFunctionPass : public llvm::FunctionPass {
 protected:
-	llvm::DataLayout *DL;
+	const llvm::DataLayout *DL;
 	llvm::DominatorTree *DT;
 	llvm::SmallVector<PathGen::Edge, 32> Backedges;
 	Diagnostic Diag;

@@ -1,10 +1,10 @@
 #include "ValueGen.h"
-#include <llvm/InstVisitor.h>
 #include <llvm/ADT/APInt.h>
 #include <llvm/IR/Constants.h>
+#include <llvm/IR/InstVisitor.h>
 #include <llvm/IR/IntrinsicInst.h>
 #include <llvm/IR/Operator.h>
-#include <llvm/Support/GetElementPtrTypeIterator.h>
+#include <llvm/IR/GetElementPtrTypeIterator.h>
 #include <llvm/Support/raw_ostream.h>
 #include <assert.h>
 
@@ -283,7 +283,7 @@ private:
 
 } // anonymous namespace
 
-ValueGen::ValueGen(DataLayout &TD, SMTSolver &SMT)
+ValueGen::ValueGen(const DataLayout &TD, SMTSolver &SMT)
 	: TD(TD), SMT(SMT) {}
 
 ValueGen::~ValueGen() {
@@ -319,8 +319,18 @@ void addRangeConstraints(SMTSolver &SMT, SMTExpr E, MDNode *MD) {
 	unsigned n = MD->getNumOperands();
 	assert(n % 2 == 0);
 	for (unsigned i = 0; i != n; i += 2) {
-		const APInt &Lo = cast<ConstantInt>(MD->getOperand(i))->getValue();
-		const APInt &Hi = cast<ConstantInt>(MD->getOperand(i + 1))->getValue();
+    auto LoOp = dyn_cast<ConstantAsMetadata>(MD->getOperand(i));
+    if (!LoOp)
+      report_fatal_error("Bit set element offset must be a constant");
+    const APInt &Lo = cast<ConstantInt>(LoOp->getValue())->getValue();
+
+    auto HiOp = dyn_cast<ConstantAsMetadata>(MD->getOperand(i+1));
+    if (!HiOp)
+      report_fatal_error("Bit set element offset must be a constant");
+    const APInt &Hi = cast<ConstantInt>(HiOp->getValue())->getValue();
+
+		//const APInt &Lo = cast<ConstantInt>(MD->getOperand(i))->getValue();
+		//const APInt &Hi = cast<ConstantInt>(MD->getOperand(i + 1))->getValue();
 		// Ignore empty or full set.
 		if (Lo == Hi)
 			continue;

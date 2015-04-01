@@ -18,13 +18,13 @@ struct PHIRange : FunctionPass {
 	static char ID;
 	PHIRange() : FunctionPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
-		initializeLoopInfoPass(Registry);
+		//initializeLoopInfoPass(Registry);
 		initializeScalarEvolutionPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		AU.setPreservesCFG();
-		AU.addRequired<LoopInfo>();
+		AU.addRequired<LoopInfoWrapperPass>();
 		AU.addRequired<ScalarEvolution>();
 	}
 
@@ -40,7 +40,7 @@ private:
 } // anonymous namespace
 
 bool PHIRange::runOnFunction(Function &F) {
-	LI = &getAnalysis<LoopInfo>();
+  LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
 	SE = &getAnalysis<ScalarEvolution>();
 	bool Changed = false;
 	// PHI nodes must be at the start of each block.
@@ -68,9 +68,9 @@ bool PHIRange::visitPHINode(PHINode *I) {
 	ConstantRange Range = SE->getSignedRange(S);
 	if (Range.isFullSet() || Range.isEmptySet())
 		return false;
-	Value *Vals[2] = {
-		ConstantInt::get(T, Range.getLower()),
-		ConstantInt::get(T, Range.getUpper())
+	Metadata *Vals[2] = {
+		ConstantAsMetadata::get(ConstantInt::get(T, Range.getLower())),
+	  ConstantAsMetadata::get(ConstantInt::get(T, Range.getUpper()))
 	};
 	LLVMContext &VMCtx = I->getContext();
 	MDNode *MD = MDNode::get(VMCtx, Vals);

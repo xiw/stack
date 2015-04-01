@@ -12,7 +12,7 @@
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/Support/InstIterator.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/Target/TargetLibraryInfo.h>
 #include <llvm/Transforms/Utils/Local.h>
 #include <algorithm>
@@ -119,7 +119,7 @@ bool AntiAlgebra::visitICmpInst(ICmpInst *I) {
 	const SCEV *S = SE->getMinusSCEV(L, R);
 	LLVMContext &C = I->getContext();
 	IntegerType *T = IntegerType::get(C, DL->getTypeSizeInBits(S->getType()));
-	Value *V = SCEVExpander(*SE, "").expandCodeFor(S, T, I);
+	Value *V = SCEVExpander(*SE, *DL, "").expandCodeFor(S, T, I);
 	Value *Z = Constant::getNullValue(T);
 	// Transform (lhs op rhs) to ((lhs - rhs) op 0).
 	ICmpInst *NewCmp = new ICmpInst(I, I->getSignedPredicate(), V, Z);

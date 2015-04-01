@@ -3,9 +3,9 @@
 #include <llvm/ADT/STLExtras.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/Module.h>
+#include <llvm/IR/DebugLoc.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/Support/CommandLine.h>
-#include <llvm/Support/DebugLoc.h>
-#include <llvm/Support/InstIterator.h>
 
 using namespace llvm;
 
@@ -73,7 +73,7 @@ bool BugOnPass::recursivelyClearDebugLoc(Value *V) {
 	return true;
 }
 
-Value *BugOnPass::getUnderlyingObject(Value *V, DataLayout *DL) {
+Value *BugOnPass::getUnderlyingObject(Value *V, const DataLayout &DL) {
 	return GetUnderlyingObject(V, DL, 1000);
 }
 
@@ -147,9 +147,9 @@ Instruction *BugOnPass::setInsertPointAfter(Instruction *I) {
 	return setInsertPoint(Iter);
 }
 
-Value *BugOnPass::createIsNull(Value *V) {
+Value *BugOnPass::createIsNull(Value *V, const DataLayout &DL) {
 	// Ignore trivial non-null pointers (e.g., a stack pointer).
-	if (V->isDereferenceablePointer())
+	if (V->isDereferenceablePointer(DL))
 		return Builder->getFalse();
 	return Builder->CreateIsNull(V);
 }
@@ -158,8 +158,8 @@ Value *BugOnPass::createIsZero(Value *V) {
 	return Builder->CreateIsNull(V);
 }
 
-Value *BugOnPass::createIsNotNull(Value *V) {
-	if (V->isDereferenceablePointer())
+Value *BugOnPass::createIsNotNull(Value *V, const DataLayout &DL) {
+	if (V->isDereferenceablePointer(DL))
 		return Builder->getTrue();
 	return Builder->CreateIsNotNull(V);
 }

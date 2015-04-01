@@ -3,8 +3,8 @@
 #include <llvm/Analysis/AliasAnalysis.h>
 #include <llvm/Analysis/MemoryDependenceAnalysis.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/Support/Debug.h>
-#include <llvm/Support/InstIterator.h>
 #include <llvm/Target/TargetLibraryInfo.h>
 #include <llvm/Transforms/Utils/Local.h>
 

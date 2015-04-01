@@ -4,7 +4,7 @@
 #define DEBUG_TYPE "loop-prepare"
 #include <llvm/Pass.h>
 #include <llvm/IR/IRBuilder.h>
-#include <llvm/Support/InstIterator.h>
+#include <llvm/IR/InstIterator.h>
 
 using namespace llvm;
 

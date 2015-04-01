@@ -14,9 +14,9 @@
 #include "BugOn.h"
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/Analysis/ValueTracking.h>
-#include <llvm/IR/DataLayout.h>
-#include <llvm/Support/CFG.h>
-#include <llvm/Support/CallSite.h>
+#include <llvm/IR/CallSite.h>
+#include <llvm/IR/CFG.h>
+#include <llvm/IR/Module.h>
 
 using namespace llvm;
 
@@ -34,7 +34,6 @@ struct BugOnAssert : BugOnPass {
 	virtual bool runOnInstruction(Instruction *) { return false; }
 
 private:
-	DataLayout *DL;
 
 	bool simplify(Function &);
 	bool markInfiniteLoops(Function &);
@@ -50,7 +49,6 @@ private:
 bool BugOnAssert::runOnFunction(Function &F) {
 	IRBuilder<> TheBuilder(F.getContext());
 	Builder = &TheBuilder;
-	DL = getAnalysisIfAvailable<DataLayout>();
 	bool Changed = markInfiniteLoops(F);
 	for (Function::iterator i = F.begin(), e = F.end(); i != e; ) {
 		BasicBlock *BB = i++;
@@ -207,7 +205,7 @@ bool BugOnAssert::isPrintBlock(BasicBlock *BB) {
 		if (CS.onlyReadsMemory())
 			continue;
 		// Ignore calls to debugging intrinsics.
-		if (isSafeToSpeculativelyExecute(i, DL))
+		if (isSafeToSpeculativelyExecute(i))
 			continue;
 		// Unknown function.
 		return false;

@@ -64,7 +64,7 @@ bool BugOnLinux::visitDupUser(CallInst *I) {
 	if (!isa<PointerType>(I->getType()))
 		return false;
 	Instruction *OldIP = setInsertPointAfter(I);
-	Value *V = createIsNull(I);
+	Value *V = createIsNull(I, I->getModule()->getDataLayout());
 	insert(V, I->getCalledFunction()->getName());
 	setInsertPoint(OldIP);
 	return true;
@@ -77,7 +77,7 @@ bool BugOnLinux::visitDmaPoolCreate(CallInst *I) {
 	Value *Dev = I->getArgOperand(1);
 	if (!isa<PointerType>(Dev->getType()))
 		return false;
-	Value *V = createIsNull(Dev);
+	Value *V = createIsNull(Dev, I->getModule()->getDataLayout());
 	return insert(V, I->getCalledFunction()->getName());
 }
 

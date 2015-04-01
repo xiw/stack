@@ -3,11 +3,11 @@
 
 #define DEBUG_TYPE "bugon-loop"
 #include "BugOn.h"
-#include <llvm/InstVisitor.h>
 #include <llvm/Analysis/LoopInfo.h>
 #include <llvm/Analysis/ScalarEvolution.h>
 #include <llvm/Analysis/ScalarEvolutionExpander.h>
 #include <llvm/Analysis/ScalarEvolutionExpressions.h>
+#include <llvm/IR/InstVisitor.h>
 
 using namespace llvm;
 
@@ -17,13 +17,13 @@ struct BugOnLoop : BugOnPass, InstVisitor<BugOnLoop, Value *> {
 	static char ID;
 	BugOnLoop() : BugOnPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
-		initializeLoopInfoPass(Registry);
+		//initializeLoopInfoPass(Registry);
 		initializeScalarEvolutionPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
-		AU.addRequired<LoopInfo>();
+		AU.addRequired<LoopInfoWrapperPass>();
 		AU.addRequired<ScalarEvolution>();
 	}
 
@@ -60,7 +60,7 @@ private:
 } // anonymous namespace
 
 bool BugOnLoop::runOnFunction(Function &F) {
-	LI = &getAnalysis<LoopInfo>();
+	LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
         SE = &getAnalysis<ScalarEvolution>();
         return super::runOnFunction(F);
 }
@@ -91,7 +91,7 @@ Value *BugOnLoop::visitInstruction(Instruction &I) {
 	const SCEV *S = SE->getSCEVAtScope(&I, Scope);
 	if (!SE->isLoopInvariant(S, Scope))
 		return NULL;
-	SCEVExpander Expander(*SE, "");
+	SCEVExpander Expander(*SE, I.getModule()->getDataLayout(), "");
 	return Expander.expandCodeFor(S, I.getType(), Builder->GetInsertPoint());
 }
 

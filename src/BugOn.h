@@ -44,12 +44,12 @@ struct BugOnPass : llvm::FunctionPass {
 	static bool clearDebugLoc(Value *);
 	static bool recursivelyClearDebugLoc(Value *);
 
-	static Value *getUnderlyingObject(Value *, DataLayout *);
+	static Value *getUnderlyingObject(Value *, const DataLayout &);
 	static Value *getAddressOperand(Value *, bool skipVolatile = false);
 	static Value *getNonvolatileAddressOperand(Value *V) {
 		return getAddressOperand(V, true);
 	}
-	static Value *getNonvolatileBaseAddress(Value *V, DataLayout *DL) {
+	static Value *getNonvolatileBaseAddress(Value *V, const DataLayout &DL) {
 		if (Value *P = getNonvolatileAddressOperand(V))
 			return getUnderlyingObject(P, DL);
 		return NULL;
@@ -69,8 +69,8 @@ protected:
 	Instruction *setInsertPoint(Instruction *);
 	Instruction *setInsertPointAfter(Instruction *);
 
-	Value *createIsNull(Value *);
-	Value *createIsNotNull(Value *);
+	Value *createIsNull(Value *, const DataLayout& DL);
+	Value *createIsNotNull(Value *, const DataLayout& DL);
 	Value *createIsZero(Value *);
 	Value *createIsWrap(llvm::Intrinsic::ID, Value *, Value *);
 	Value *createIsSAddWrap(Value *, Value *);

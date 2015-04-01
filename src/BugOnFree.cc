@@ -4,10 +4,12 @@
 #include "BugOn.h"
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/Analysis/MemoryBuiltins.h>
+#include <llvm/Analysis/TargetLibraryInfo.h>
+#include <llvm/IR/CallSite.h>
 #include <llvm/IR/Dominators.h>
-#include <llvm/Support/CallSite.h>
-#include <llvm/Support/InstIterator.h>
-#include <llvm/Target/TargetLibraryInfo.h>
+#include <llvm/IR/InstIterator.h>
+#include <llvm/IR/Module.h>
+
 
 using namespace llvm;
 
@@ -17,15 +19,15 @@ struct BugOnFree : BugOnPass {
 	static char ID;
 	BugOnFree() : BugOnPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
-		initializeDataLayoutPass(Registry);
-		initializeTargetLibraryInfoPass(Registry);
+		//initializeDataLayoutPassPass(Registry);
+		//initializeTargetLibraryInfoWrapperPass(Registry);
 		initializeDominatorTreeWrapperPassPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
-		AU.addRequired<DataLayout>();
-		AU.addRequired<TargetLibraryInfo>();
+		//AU.addRequired<DataLayout>();
+		AU.addRequired<TargetLibraryInfoWrapperPass>();
 		AU.addRequired<DominatorTreeWrapperPass>();
 	}
 
@@ -33,7 +35,7 @@ struct BugOnFree : BugOnPass {
 	virtual bool runOnInstruction(Instruction *);
 
 private:
-	DataLayout *DL;
+	const DataLayout *DL;
 	TargetLibraryInfo *TLI;
 	DominatorTree *DT;
 	SmallPtrSet<Use *, 4> FreePtrs; // Use is a <call, arg> pair.
@@ -45,8 +47,8 @@ private:
 
 bool BugOnFree::runOnFunction(Function &F) {
 	DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-	TLI = &getAnalysis<TargetLibraryInfo>();
-	DL = &getAnalysis<DataLayout>();
+	TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+	DL = &F.getParent()->getDataLayout();
 	// Collect free/realloc calls.
 	FreePtrs.clear();
 	for (inst_iterator i = inst_begin(F), e = inst_end(F); i != e; ++i) {
@@ -68,7 +70,7 @@ bool BugOnFree::runOnInstruction(Instruction *I) {
 	if (FreePtrs.empty())
 		return false;
 
-	Value *P = getNonvolatileBaseAddress(I, DL);
+	Value *P = getNonvolatileBaseAddress(I, *DL);
 	if (!P)
 		return false;
 
@@ -82,7 +84,7 @@ bool BugOnFree::runOnInstruction(Instruction *I) {
 		Value *V = createPointerEQ(X, P);
 		// x' = realloc(x, n): x == p && x' != null.
 		if (FreeCall->getType()->isPointerTy())
-			V = createAnd(createIsNotNull(FreeCall), V);
+			V = createAnd(createIsNotNull(FreeCall, *DL), V);
 		StringRef Name = CallSite(FreeCall).getCalledFunction()->getName();
 		Changed |= insert(V, Name, FreeCall->getDebugLoc());
 	}
