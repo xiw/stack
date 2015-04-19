@@ -1,9 +1,11 @@
 #define DEBUG_TYPE "bugon-bounds"
 #include "BugOn.h"
 #include <llvm/Analysis/MemoryBuiltins.h>
+#include <llvm/Analysis/TargetLibraryInfo.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/Target/TargetLibraryInfo.h>
+#include <llvm/IR/Module.h>
+
 
 using namespace llvm;
 
@@ -12,22 +14,22 @@ namespace {
 struct BugOnBounds : BugOnPass {
 	static char ID;
 	BugOnBounds() : BugOnPass(ID) {
-		PassRegistry &Registry = *PassRegistry::getPassRegistry();
-		initializeDataLayoutPass(Registry);
-		initializeTargetLibraryInfoPass(Registry);
+		//PassRegistry &Registry = *PassRegistry::getPassRegistry();
+		//initializeDataLayoutPassPass(Registry);
+		//initializeTargetLibraryInfoWrapperPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
-		AU.addRequired<DataLayout>();
-		AU.addRequired<TargetLibraryInfo>();
+		//AU.addRequired<DataLayout>();
+		AU.addRequired<TargetLibraryInfoWrapperPass>();
 	}
 
 	virtual bool runOnFunction(Function &);
 	virtual bool runOnInstruction(Instruction *);
 
 private:
-	DataLayout *DL;
+	const DataLayout *DL;
 	TargetLibraryInfo *TLI;
 	ObjectSizeOffsetEvaluator *ObjSizeEval;
 };
@@ -35,9 +37,9 @@ private:
 } // anonymous namespace
 
 bool BugOnBounds::runOnFunction(llvm::Function &F) {
-	DL = &getAnalysis<DataLayout>();
-	TLI = &getAnalysis<TargetLibraryInfo>();
-	ObjectSizeOffsetEvaluator TheObjSizeEval(DL, TLI, F.getContext());
+	DL = &F.getParent()->getDataLayout();
+	TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI();
+	ObjectSizeOffsetEvaluator TheObjSizeEval(*DL, TLI, F.getContext());
 	ObjSizeEval = &TheObjSizeEval;
 	return super::runOnFunction(F);
 }

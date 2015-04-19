@@ -3,6 +3,9 @@
 
 #define DEBUG_TYPE "simplify-delete"
 #include "BugOn.h"
+#include <llvm/Analysis/AliasAnalysis.h>
+#include <llvm/Analysis/LoopInfo.h>
+#include "llvm/Analysis/MemoryDependenceAnalysis.h"
 #include <llvm/Pass.h>
 #include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Dominators.h>
@@ -23,12 +26,18 @@ struct SimplifyDelete : FunctionPass {
 	}
 
 	void getAnalysisUsage(AnalysisUsage &AU) const {
+		AU.addRequired<AliasAnalysis>();
 		AU.addRequired<DominatorTreeWrapperPass>();
+		AU.addRequired<LoopInfoWrapperPass>();
+    AU.addRequired<MemoryDependenceAnalysis>();
 	}
 
 	virtual bool runOnFunction(Function &);
 
 private:
+	AliasAnalysis *AA;
+	LoopInfo *LI;
+  MemoryDependenceAnalysis *MD;
 	bool removeUnreachable(Function &);
 	bool visitDeleteBB(BasicBlock *);
 };
@@ -36,15 +45,19 @@ private:
 } // anonymous namespace
 
 bool SimplifyDelete::runOnFunction(Function &F) {
+	AA = &getAnalysis<AliasAnalysis>();
+  LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+	DominatorTree *DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  MD = &getAnalysis<MemoryDependenceAnalysis>();
 	bool Changed = false;
 	Changed |= removeUnreachable(F);
 	for (Function::iterator i = F.begin(), e = F.end(); i != e; ) {
 		BasicBlock *BB = i++;
 		Changed |= visitDeleteBB(BB);
-	        Changed |= ConstantFoldTerminator(BB, true);
-	        Changed |= EliminateDuplicatePHINodes(BB);
+	  Changed |= ConstantFoldTerminator(BB, true);
+	  Changed |= EliminateDuplicatePHINodes(BB);
 		// Must be the last one.
-		Changed |= MergeBlockIntoPredecessor(BB, this);
+		Changed |= MergeBlockIntoPredecessor(BB, DT, LI, AA, MD);
 	}
 	return Changed;
 }

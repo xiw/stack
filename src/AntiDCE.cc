@@ -8,7 +8,7 @@
 #include <llvm/IR/Constants.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instructions.h>
-#include <llvm/Support/CFG.h>
+#include <llvm/IR/CFG.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Transforms/Utils/Local.h>
 

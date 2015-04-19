@@ -6,13 +6,14 @@
 #include <clang/Frontend/FrontendPluginRegistry.h>
 #include <clang/Frontend/MultiplexConsumer.h>
 #include <clang/Lex/Preprocessor.h>
-#include <llvm/DebugInfo.h>
 #include <llvm/ADT/StringMap.h>
 #include <llvm/Bitcode/ReaderWriter.h>
+#include <llvm/IR/DebugInfo.h>
+#include <llvm/IR/InstIterator.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Metadata.h>
 #include <llvm/IR/Module.h>
-#include <llvm/Support/InstIterator.h>
+
 #include <set>
 
 using namespace clang;
@@ -116,13 +117,14 @@ public:
 
 protected:
 
-	virtual ASTConsumer *CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
+  virtual std::unique_ptr<clang::ASTConsumer>
+    CreateASTConsumer(CompilerInstance &CI, StringRef InFile) {
 		OS = CI.createDefaultOutputFile(true, InFile, "bc");
-		ASTConsumer *C[] = {
-			new ExtractMacroConsumer(MM),
-			Delegate::CreateASTConsumer(CI, InFile)
-		};
-		return new MultiplexConsumer(C);
+    std::vector<std::unique_ptr<ASTConsumer>> C;
+    C.push_back(std::unique_ptr<clang::ASTConsumer>(new ExtractMacroConsumer(MM)));
+    C.push_back(std::unique_ptr<clang::ASTConsumer>(Delegate::CreateASTConsumer(CI, InFile)));
+			//std::unique_ptr<clang::ASTConsumer>(Delegate::CreateASTConsumer(CI, InFile))
+		return llvm::make_unique<MultiplexConsumer>(std::move(C));
 	}
 
 	virtual bool BeginInvocation(CompilerInstance &CI) {
@@ -141,11 +143,11 @@ protected:
 
 	virtual void EndSourceFileAction() {
 		Delegate::EndSourceFileAction();
-		OwningPtr<llvm::Module> M(Delegate::takeModule());
-		if (!M)
-			return;
-		markMacroLocations(*M);
-		WriteBitcodeToFile(M.get(), *OS);
+  //  std::unique_ptr<llvm::Module> M(std::move(Delegate::takeModule()));
+	//	if (!M)
+	//		return;
+		//markMacroLocations(*M);
+		//WriteBitcodeToFile(M.get(), *OS);
 	}
 
 private:
@@ -171,7 +173,7 @@ void IntAction::markMacroLocations(llvm::Module &M) {
 				continue;
 			StringRef Filename = DIScope(DbgLoc.getScope(C)).getFilename();
 			unsigned Line = DbgLoc.getLine();
-			SmallVector<Value *, 4> MDElems;
+			SmallVector<Metadata *, 4> MDElems;
 			for (SourceLocation Loc : MM.lookup(Filename).lookup(Line)) {
 				StringRef MacroName = PP.getImmediateMacroName(Loc);
 				MDElems.push_back(MDString::get(C, MacroName));

@@ -3,7 +3,7 @@
 #include <llvm/Analysis/CFG.h>
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/Module.h>
-#include <llvm/Support/CFG.h>
+#include <llvm/IR/CFG.h>
 #include <llvm/Support/CommandLine.h>
 #include <llvm/Support/Debug.h>
 #include <sys/mman.h>
@@ -35,7 +35,7 @@ static BenchmarkInit X;
 
 AntiFunctionPass::AntiFunctionPass(char &ID) : FunctionPass(ID), Buffer(NULL) {
 	PassRegistry &Registry = *PassRegistry::getPassRegistry();
-	initializeDataLayoutPass(Registry);
+	//initializeDataLayoutPassPass(Registry);
 	initializeDominatorTreeWrapperPassPass(Registry);
 	initializePostDominatorTreePass(Registry);
 	if (MinBugOnOpt)
@@ -48,12 +48,12 @@ AntiFunctionPass::~AntiFunctionPass() {
 }
 
 void AntiFunctionPass::getAnalysisUsage(AnalysisUsage &AU) const {
-	AU.addRequired<DataLayout>();
+	//AU.addRequired<DataLayout>();
 	AU.addRequired<DominatorTreeWrapperPass>();
 	AU.addRequired<PostDominatorTree>();
 }
 
-#ifndef NDEBUG
+#if 0
 static std::string demangle(Function &F) {
 	std::string Name = F.getName();
 	char *s = abi::__cxa_demangle(Name.c_str(), NULL, NULL, NULL);
@@ -82,12 +82,13 @@ bool AntiFunctionPass::runOnFunction(Function &F) {
 	BugOn = getBugOn(F.getParent());
 	if (!BugOn)
 		return false;
-	DEBUG(dbgs() << "Analyzing " << demangle(F) << "\n");
+	//DEBUG(dbgs() << "Analyzing " << demangle(F) << "\n");
 	assert(BugOn->arg_size() == 1);
 	assert(BugOn->arg_begin()->getType()->isIntegerTy(1));
 	DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
 	PDT = &getAnalysis<PostDominatorTree>();
-	DL = &getAnalysis<DataLayout>();
+	//DL = &getAnalysis<DataLayout>();
+  DL = &F.getParent()->getDataLayout();
 	calculateBackedges(F, Backedges, InLoopBlocks);
 	bool Changed = runOnAntiFunction(F);
 	Backedges.clear();

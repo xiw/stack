@@ -3,6 +3,8 @@
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/Analysis/ValueTracking.h>
 #include <llvm/IR/DataLayout.h>
+#include <llvm/IR/Module.h>
+
 
 using namespace llvm;
 
@@ -11,27 +13,27 @@ namespace {
 struct BugOnNull : BugOnPass {
 	static char ID;
 	BugOnNull() : BugOnPass(ID) {
-		PassRegistry &Registry = *PassRegistry::getPassRegistry();
-		initializeDataLayoutPass(Registry);
+		//PassRegistry &Registry = *PassRegistry::getPassRegistry();
+		//initializeDataLayoutPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
-		AU.addRequired<DataLayout>();
+		//AU.addRequired<DataLayout>();
 	}
 
 	virtual bool runOnFunction(Function &);
 	virtual bool runOnInstruction(Instruction *);
 
 private:
-	DataLayout *DL;
+	const DataLayout *DL;
 	SmallPtrSet<Value *, 32> Visited;
 };
 
 } // anonymous namespace
 
 bool BugOnNull::runOnFunction(Function &F) {
-	DL = &getAnalysis<DataLayout>();
+	DL = &F.getParent()->getDataLayout();
 	return super::runOnFunction(F);
 }
 
@@ -40,12 +42,12 @@ bool BugOnNull::runOnInstruction(Instruction *I) {
 		Visited.clear();
 		return false;
 	}
-	Value *Base = getNonvolatileBaseAddress(I, DL);
+	Value *Base = getNonvolatileBaseAddress(I, *DL);
 	if (!Base)
 		return false;
-	if (!Visited.insert(Base))
+	if (!Visited.insert(Base).second)
 		return false;
-	return insert(createIsNull(Base), "null pointer dereference");
+	return insert(createIsNull(Base, *DL), "null pointer dereference");
 }
 
 char BugOnNull::ID;

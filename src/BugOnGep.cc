@@ -5,6 +5,7 @@
 #include <llvm/Analysis/InstructionSimplify.h>
 #include <llvm/IR/DataLayout.h>
 #include <llvm/IR/Operator.h>
+#include <llvm/IR/Module.h>
 #include <llvm/Target/TargetLibraryInfo.h>
 #include <llvm/Transforms/Utils/Local.h>
 
@@ -18,7 +19,7 @@ struct BugOnGep : BugOnPass {
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
-		AU.addRequired<DataLayout>();
+		//AU.addRequired<DataLayout>();
 		AU.addRequired<TargetLibraryInfo>();
 	}
 	virtual bool runOnFunction(Function &);
@@ -26,7 +27,7 @@ struct BugOnGep : BugOnPass {
 	virtual bool runOnInstruction(Instruction *);
 
 private:
-	DataLayout *DL;
+	const DataLayout *DL;
 	TargetLibraryInfo *TLI;
 
 	bool insertIndexOverflow(GEPOperator *GEP);
@@ -37,7 +38,7 @@ private:
 } // anonymous namespace
 
 bool BugOnGep::runOnFunction(Function &F) {
-	DL = &getAnalysis<DataLayout>();
+	DL = &F.getParent()->getDataLayout();
 	TLI = &getAnalysis<TargetLibraryInfo>();
 	return super::runOnFunction(F);
 }
@@ -120,7 +121,7 @@ bool BugOnGep::insertOffsetOverflow(GEPOperator *GEP) {
 bool BugOnGep::isAlwaysInBounds(Value *P, Value *Offset) {
 	// n + 0 => n.
 	if (auto I = dyn_cast<Instruction>(Offset))
-		Offset = SimplifyInstruction(I, DL, TLI);
+		Offset = SimplifyInstruction(I, *DL, TLI);
 	auto CI = dyn_cast<CallInst>(Offset);
 	if (!CI)
 		return false;

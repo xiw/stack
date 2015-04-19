@@ -4,7 +4,8 @@
 #include "BugOn.h"
 #include <llvm/ADT/SmallPtrSet.h>
 #include <llvm/IR/Dominators.h>
-#include <llvm/Support/InstIterator.h>
+#include <llvm/IR/InstIterator.h>
+#include <llvm/IR/Module.h>
 
 using namespace llvm;
 
@@ -15,13 +16,13 @@ struct BugOnAlias : BugOnPass {
 	BugOnAlias() : BugOnPass(ID) {
 		PassRegistry &Registry = *PassRegistry::getPassRegistry();
 		initializeDominatorTreeWrapperPassPass(Registry);
-		initializeDataLayoutPass(Registry);
+		//initializeDataLayoutPassPass(Registry);
 	}
 
 	virtual void getAnalysisUsage(AnalysisUsage &AU) const {
 		super::getAnalysisUsage(AU);
 		AU.addRequired<DominatorTreeWrapperPass>();
-		AU.addRequired<DataLayout>();
+		//AU.addRequired<DataLayout>();
 	}
 	virtual bool runOnFunction(Function &);
 
@@ -29,7 +30,7 @@ struct BugOnAlias : BugOnPass {
 
 private:
 	DominatorTree *DT;
-	DataLayout *DL;
+	const DataLayout *DL;
 	SmallPtrSet<Value *, 32> Objects;
 
 	void addObject(Value *);
@@ -42,13 +43,13 @@ private:
 void BugOnAlias::addObject(Value *O) {
 	if (!O->getType()->isPointerTy())
 		return;
-	O = getUnderlyingObject(O, DL);
+	O = getUnderlyingObject(O, *DL);
 	Objects.insert(O);
 }
 
 bool BugOnAlias::runOnFunction(Function &F) {
 	DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-	DL = &getAnalysis<DataLayout>();
+	DL = &F.getParent()->getDataLayout();
 
 	// Find all of the objects first.
 	Objects.clear();
@@ -87,7 +88,7 @@ bool BugOnAlias::visitCallInst(CallInst *I) {
 		return false;
 	// Move insert point to after the noalias call.
 	Instruction *OldIP = setInsertPointAfter(I);
-	Value *notNull = createIsNotNull(I);
+	Value *notNull = createIsNotNull(I, *DL);
 	for (Value *O : Objects) {
 		if (Instruction *OI = dyn_cast<Instruction>(O)) {
 			// OI needs to properly dominate I.
